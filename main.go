@@ -6,6 +6,8 @@ import (
 	"flag"
 	"log"
 	"net/http"
+
+	"github.com/dstotijn/gurp/proxy"
 )
 
 var (
@@ -26,7 +28,7 @@ func main() {
 		log.Fatalf("[FATAL] Could not parse CA: %v", err)
 	}
 
-	proxy, err := NewProxy(caCert, tlsCA.PrivateKey)
+	proxy, err := proxy.NewProxy(caCert, tlsCA.PrivateKey)
 	if err != nil {
 		log.Fatalf("[FATAL] Could not create Proxy: %v", err)
 	}

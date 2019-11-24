@@ -1,4 +1,4 @@
-package main
+package proxy
 
 import (
 	"context"
@@ -13,11 +13,8 @@ import (
 )
 
 var httpHandler = &httputil.ReverseProxy{
-	Director: func(r *http.Request) {
-		r.URL.Host = r.Host
-		r.URL.Scheme = "http"
-	},
-	ErrorHandler: proxyErrorHandler,
+	Director:     func(r *http.Request) {},
+	ErrorHandler: errorHandler,
 }
 
 var httpsHandler = &httputil.ReverseProxy{
@@ -25,10 +22,10 @@ var httpsHandler = &httputil.ReverseProxy{
 		r.URL.Host = r.Host
 		r.URL.Scheme = "https"
 	},
-	ErrorHandler: proxyErrorHandler,
+	ErrorHandler: errorHandler,
 }
 
-func proxyErrorHandler(w http.ResponseWriter, r *http.Request, err error) {
+func errorHandler(w http.ResponseWriter, r *http.Request, err error) {
 	if err == context.Canceled {
 		return
 	}
@@ -36,7 +33,8 @@ func proxyErrorHandler(w http.ResponseWriter, r *http.Request, err error) {
 	w.WriteHeader(http.StatusBadGateway)
 }
 
-// Proxy is used to forward HTTP requests.
+// Proxy implements http.Handler and offers MITM behaviour for modifying
+// HTTP requests and responses.
 type Proxy struct {
 	certConfig *CertConfig
 }
