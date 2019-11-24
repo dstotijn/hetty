@@ -12,19 +12,6 @@ import (
 	"net/http/httputil"
 )
 
-var httpHandler = &httputil.ReverseProxy{
-	Director:     func(r *http.Request) {},
-	ErrorHandler: errorHandler,
-}
-
-var httpsHandler = &httputil.ReverseProxy{
-	Director: func(r *http.Request) {
-		r.URL.Host = r.Host
-		r.URL.Scheme = "https"
-	},
-	ErrorHandler: errorHandler,
-}
-
 func errorHandler(w http.ResponseWriter, r *http.Request, err error) {
 	if err == context.Canceled {
 		return
@@ -37,6 +24,11 @@ func errorHandler(w http.ResponseWriter, r *http.Request, err error) {
 // HTTP requests and responses.
 type Proxy struct {
 	certConfig *CertConfig
+	handler    http.Handler
+
+	// TODO: Add mutex for modifier funcs.
+	reqModifier RequestModifyFunc
+	resModifier ResponseModifyFunc
 }
 
 // NewProxy returns a new Proxy.
@@ -46,9 +38,19 @@ func NewProxy(ca *x509.Certificate, key crypto.PrivateKey) (*Proxy, error) {
 		return nil, err
 	}
 
-	return &Proxy{
-		certConfig: certConfig,
-	}, nil
+	p := &Proxy{
+		certConfig:  certConfig,
+		reqModifier: nopReqModifier,
+		resModifier: nopResModifier,
+	}
+
+	p.handler = &httputil.ReverseProxy{
+		Director:       p.modifyRequest,
+		ModifyResponse: p.modifyResponse,
+		ErrorHandler:   errorHandler,
+	}
+
+	return p, nil
 }
 
 func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -57,7 +59,21 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	httpHandler.ServeHTTP(w, r)
+	p.handler.ServeHTTP(w, r)
+}
+
+func (p *Proxy) modifyRequest(r *http.Request) {
+	// Fix r.URL for HTTPS requests after CONNECT.
+	if r.URL.Scheme == "" {
+		r.URL.Host = r.Host
+		r.URL.Scheme = "https"
+	}
+
+	p.reqModifier(r)
+}
+
+func (p *Proxy) modifyResponse(res *http.Response) error {
+	return p.resModifier(res)
 }
 
 // handleConnect hijacks the incoming HTTP request and sets up an HTTP tunnel.
@@ -91,7 +107,7 @@ func (p *Proxy) handleConnect(w http.ResponseWriter, r *http.Request) {
 
 	l := &OnceAcceptListener{clientConnNotify.Conn}
 
-	err = http.Serve(l, httpsHandler)
+	err = http.Serve(l, p.handler)
 	if err != nil && err != ErrAlreadyAccepted {
 		log.Printf("[ERROR] Serving HTTP request failed: %v", err)
 	}
@@ -108,6 +124,14 @@ func (p *Proxy) clientTLSConn(conn net.Conn) (*tls.Conn, error) {
 	}
 
 	return tlsConn, nil
+}
+
+func (p *Proxy) UseRequestModifier(fn RequestModifyFunc) {
+	p.reqModifier = fn
+}
+
+func (p *Proxy) UseResponseModifier(fn ResponseModifyFunc) {
+	p.resModifier = fn
 }
 
 func writeError(w http.ResponseWriter, r *http.Request, code int) {

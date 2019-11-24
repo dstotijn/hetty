@@ -33,6 +33,15 @@ func main() {
 		log.Fatalf("[FATAL] Could not create Proxy: %v", err)
 	}
 
+	proxy.UseRequestModifier(func(req *http.Request) {
+		log.Printf("[DEBUG] Incoming request: %v", req.URL)
+	})
+
+	proxy.UseResponseModifier(func(res *http.Response) error {
+		log.Printf("[DEBUG] Downstream response: %v %v %v", res.Proto, res.StatusCode, http.StatusText(res.StatusCode))
+		return nil
+	})
+
 	s := &http.Server{
 		Addr:         ":8080",
 		Handler:      proxy,
