@@ -28,23 +28,28 @@ func main() {
 		log.Fatalf("[FATAL] Could not parse CA: %v", err)
 	}
 
-	proxy, err := proxy.NewProxy(caCert, tlsCA.PrivateKey)
+	p, err := proxy.NewProxy(caCert, tlsCA.PrivateKey)
 	if err != nil {
 		log.Fatalf("[FATAL] Could not create Proxy: %v", err)
 	}
 
-	proxy.UseRequestModifier(func(req *http.Request) {
-		log.Printf("[DEBUG] Incoming request: %v", req.URL)
+	p.UseRequestModifier(func(next proxy.RequestModifyFunc) proxy.RequestModifyFunc {
+		return func(req *http.Request) {
+			log.Printf("[DEBUG] Incoming request: %v", req.URL)
+			next(req)
+		}
 	})
 
-	proxy.UseResponseModifier(func(res *http.Response) error {
-		log.Printf("[DEBUG] Downstream response: %v %v %v", res.Proto, res.StatusCode, http.StatusText(res.StatusCode))
-		return nil
+	p.UseResponseModifier(func(next proxy.ResponseModifyFunc) proxy.ResponseModifyFunc {
+		return func(res *http.Response) error {
+			log.Printf("[DEBUG] Downstream response: %v %v %v", res.Proto, res.StatusCode, http.StatusText(res.StatusCode))
+			return next(res)
+		}
 	})
 
 	s := &http.Server{
 		Addr:         ":8080",
-		Handler:      proxy,
+		Handler:      p,
 		TLSNextProto: map[string]func(*http.Server, *tls.Conn, http.Handler){}, // Disable HTTP/2
 	}
 

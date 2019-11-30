@@ -12,14 +12,6 @@ import (
 	"net/http/httputil"
 )
 
-func errorHandler(w http.ResponseWriter, r *http.Request, err error) {
-	if err == context.Canceled {
-		return
-	}
-	log.Printf("[ERROR]: Proxy error: %v", err)
-	w.WriteHeader(http.StatusBadGateway)
-}
-
 // Proxy implements http.Handler and offers MITM behaviour for modifying
 // HTTP requests and responses.
 type Proxy struct {
@@ -27,8 +19,8 @@ type Proxy struct {
 	handler    http.Handler
 
 	// TODO: Add mutex for modifier funcs.
-	reqModifier RequestModifyFunc
-	resModifier ResponseModifyFunc
+	reqModifiers []RequestModifyMiddleware
+	resModifiers []ResponseModifyMiddleware
 }
 
 // NewProxy returns a new Proxy.
@@ -39,9 +31,9 @@ func NewProxy(ca *x509.Certificate, key crypto.PrivateKey) (*Proxy, error) {
 	}
 
 	p := &Proxy{
-		certConfig:  certConfig,
-		reqModifier: nopReqModifier,
-		resModifier: nopResModifier,
+		certConfig:   certConfig,
+		reqModifiers: make([]RequestModifyMiddleware, 0),
+		resModifiers: make([]ResponseModifyMiddleware, 0),
 	}
 
 	p.handler = &httputil.ReverseProxy{
@@ -62,6 +54,14 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	p.handler.ServeHTTP(w, r)
 }
 
+func (p *Proxy) UseRequestModifier(fn ...RequestModifyMiddleware) {
+	p.reqModifiers = append(p.reqModifiers, fn...)
+}
+
+func (p *Proxy) UseResponseModifier(fn ...ResponseModifyMiddleware) {
+	p.resModifiers = append(p.resModifiers, fn...)
+}
+
 func (p *Proxy) modifyRequest(r *http.Request) {
 	// Fix r.URL for HTTPS requests after CONNECT.
 	if r.URL.Scheme == "" {
@@ -69,11 +69,23 @@ func (p *Proxy) modifyRequest(r *http.Request) {
 		r.URL.Scheme = "https"
 	}
 
-	p.reqModifier(r)
+	fn := nopReqModifier
+
+	for i := len(p.reqModifiers) - 1; i >= 0; i-- {
+		fn = p.reqModifiers[i](fn)
+	}
+
+	fn(r)
 }
 
 func (p *Proxy) modifyResponse(res *http.Response) error {
-	return p.resModifier(res)
+	fn := nopResModifier
+
+	for i := len(p.resModifiers) - 1; i >= 0; i-- {
+		fn = p.resModifiers[i](fn)
+	}
+
+	return fn(res)
 }
 
 // handleConnect hijacks the incoming HTTP request and sets up an HTTP tunnel.
@@ -126,12 +138,12 @@ func (p *Proxy) clientTLSConn(conn net.Conn) (*tls.Conn, error) {
 	return tlsConn, nil
 }
 
-func (p *Proxy) UseRequestModifier(fn RequestModifyFunc) {
-	p.reqModifier = fn
-}
-
-func (p *Proxy) UseResponseModifier(fn ResponseModifyFunc) {
-	p.resModifier = fn
+func errorHandler(w http.ResponseWriter, r *http.Request, err error) {
+	if err == context.Canceled {
+		return
+	}
+	log.Printf("[ERROR]: Proxy error: %v", err)
+	w.WriteHeader(http.StatusBadGateway)
 }
 
 func writeError(w http.ResponseWriter, r *http.Request, code int) {
