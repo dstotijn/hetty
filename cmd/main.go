@@ -6,13 +6,18 @@ import (
 	"flag"
 	"log"
 	"net/http"
+	"net/http/httputil"
+	"net/url"
 
-	"github.com/dstotijn/gurp/proxy"
+	"github.com/dstotijn/gurp/pkg/proxy"
+	"github.com/gorilla/mux"
 )
 
 var (
 	caCertFile = flag.String("cert", "", "CA certificate file path")
 	caKeyFile  = flag.String("key", "", "CA private key file path")
+	dev        = flag.Bool("dev", false, "Run in development mode")
+	adminPath  = flag.String("adminPath", "", "File path to admin build")
 )
 
 func main() {
@@ -47,9 +52,27 @@ func main() {
 		}
 	})
 
+	router := mux.NewRouter().SkipClean(true)
+	adminRouter := router.Host("gurp.proxy")
+
+	if *dev {
+		adminURL, err := url.Parse("http://localhost:3000")
+		if err != nil {
+			log.Fatalf("[FATAL] Invalid admin URL: %v", err)
+		}
+		adminRouter.Handler(httputil.NewSingleHostReverseProxy(adminURL))
+	} else {
+		if *adminPath == "" {
+			log.Fatal("[FATAL] `adminPath` must be set")
+		}
+		adminRouter.Handler(http.FileServer(http.Dir(*adminPath)))
+	}
+
+	router.PathPrefix("").Handler(p)
+
 	s := &http.Server{
 		Addr:         ":8080",
-		Handler:      p,
+		Handler:      router,
 		TLSNextProto: map[string]func(*http.Server, *tls.Conn, http.Handler){}, // Disable HTTP/2
 	}
 
