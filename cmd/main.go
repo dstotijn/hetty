@@ -15,6 +15,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/99designs/gqlgen/handler"
+	"github.com/dstotijn/gurp/pkg/api"
 	"github.com/dstotijn/gurp/pkg/proxy"
 	"github.com/dstotijn/gurp/pkg/reqlog"
 
@@ -108,13 +110,14 @@ func main() {
 		hostname, _ := os.Hostname()
 		host, _, _ := net.SplitHostPort(req.Host)
 		return strings.EqualFold(host, hostname) || req.Host == "gurp.proxy"
-	})
+	}).Subrouter()
 
 	// GraphQL server.
-	// adminRouter.Path("/graphql").Handler(...)
+	adminRouter.Path("/api/playground").Handler(handler.Playground("GraphQL Playground", "/api/graphql"))
+	adminRouter.Path("/api/graphql").Handler(handler.GraphQL(api.NewExecutableSchema(api.Config{Resolvers: &api.Resolver{}})))
 
 	// Admin interface.
-	adminRouter.Handler(adminHandler)
+	adminRouter.PathPrefix("").Handler(adminHandler)
 
 	// Fallback (default) is the Proxy handler.
 	router.PathPrefix("").Handler(p)
