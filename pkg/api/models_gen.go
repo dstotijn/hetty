@@ -2,19 +2,56 @@
 
 package api
 
-type NewTodo struct {
-	Text   string `json:"text"`
-	UserID string `json:"userId"`
+import (
+	"fmt"
+	"io"
+	"strconv"
+	"time"
+)
+
+type Request struct {
+	URL       string     `json:"url"`
+	Method    HTTPMethod `json:"method"`
+	Timestamp time.Time  `json:"timestamp"`
 }
 
-type Todo struct {
-	ID   string `json:"id"`
-	Text string `json:"text"`
-	Done bool   `json:"done"`
-	User *User  `json:"user"`
+type HTTPMethod string
+
+const (
+	HTTPMethodGet  HTTPMethod = "GET"
+	HTTPMethodPost HTTPMethod = "POST"
+)
+
+var AllHTTPMethod = []HTTPMethod{
+	HTTPMethodGet,
+	HTTPMethodPost,
 }
 
-type User struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
+func (e HTTPMethod) IsValid() bool {
+	switch e {
+	case HTTPMethodGet, HTTPMethodPost:
+		return true
+	}
+	return false
+}
+
+func (e HTTPMethod) String() string {
+	return string(e)
+}
+
+func (e *HTTPMethod) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = HTTPMethod(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid HttpMethod", str)
+	}
+	return nil
+}
+
+func (e HTTPMethod) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
 }

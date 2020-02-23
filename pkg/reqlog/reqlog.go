@@ -5,9 +5,9 @@ import (
 	"sync"
 )
 
-type request struct {
-	req  http.Request
-	body []byte
+type Request struct {
+	Request http.Request
+	Body    []byte
 }
 
 type response struct {
@@ -15,30 +15,37 @@ type response struct {
 	body []byte
 }
 
-type RequestLog struct {
-	reqStore []request
+type RequestLogStore struct {
+	reqStore []Request
 	resStore []response
 	reqMu    sync.Mutex
 	resMu    sync.Mutex
 }
 
-func NewRequestLog() RequestLog {
-	return RequestLog{
-		reqStore: make([]request, 0),
+func NewRequestLogStore() RequestLogStore {
+	return RequestLogStore{
+		reqStore: make([]Request, 0),
 		resStore: make([]response, 0),
 	}
 }
 
-func (rl *RequestLog) AddRequest(req http.Request, body []byte) {
-	rl.reqMu.Lock()
-	defer rl.reqMu.Unlock()
+func (store *RequestLogStore) AddRequest(req http.Request, body []byte) {
+	store.reqMu.Lock()
+	defer store.reqMu.Unlock()
 
-	rl.reqStore = append(rl.reqStore, request{req, body})
+	store.reqStore = append(store.reqStore, Request{req, body})
 }
 
-func (rl *RequestLog) AddResponse(res http.Response, body []byte) {
-	rl.resMu.Lock()
-	defer rl.resMu.Unlock()
+func (store *RequestLogStore) Requests() []Request {
+	store.reqMu.Lock()
+	defer store.reqMu.Unlock()
 
-	rl.resStore = append(rl.resStore, response{res, body})
+	return store.reqStore
+}
+
+func (store *RequestLogStore) AddResponse(res http.Response, body []byte) {
+	store.resMu.Lock()
+	defer store.resMu.Unlock()
+
+	store.resStore = append(store.resStore, response{res, body})
 }

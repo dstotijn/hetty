@@ -15,11 +15,12 @@ import (
 	"os"
 	"strings"
 
-	"github.com/99designs/gqlgen/handler"
 	"github.com/dstotijn/gurp/pkg/api"
 	"github.com/dstotijn/gurp/pkg/proxy"
 	"github.com/dstotijn/gurp/pkg/reqlog"
 
+	"github.com/99designs/gqlgen/graphql/handler"
+	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/gorilla/mux"
 )
 
@@ -43,7 +44,7 @@ func main() {
 		log.Fatalf("[FATAL] Could not parse CA: %v", err)
 	}
 
-	reqLog := reqlog.NewRequestLog()
+	reqLogStore := reqlog.NewRequestLogStore()
 
 	p, err := proxy.NewProxy(caCert, tlsCA.PrivateKey)
 	if err != nil {
@@ -64,7 +65,7 @@ func main() {
 				}
 				req.Body = ioutil.NopCloser(bytes.NewBuffer(body))
 			}
-			reqLog.AddRequest(*clone, body)
+			reqLogStore.AddRequest(*clone, body)
 		}
 	})
 
@@ -84,7 +85,7 @@ func main() {
 				}
 				res.Body = ioutil.NopCloser(bytes.NewBuffer(body))
 			}
-			reqLog.AddResponse(clone, body)
+			reqLogStore.AddResponse(clone, body)
 			return nil
 		}
 	})
@@ -113,8 +114,10 @@ func main() {
 	}).Subrouter()
 
 	// GraphQL server.
-	adminRouter.Path("/api/playground").Handler(handler.Playground("GraphQL Playground", "/api/graphql"))
-	adminRouter.Path("/api/graphql").Handler(handler.GraphQL(api.NewExecutableSchema(api.Config{Resolvers: &api.Resolver{}})))
+	adminRouter.Path("/api/playground").Handler(playground.Handler("GraphQL Playground", "/api/graphql"))
+	adminRouter.Path("/api/graphql").Handler(handler.NewDefaultServer(api.NewExecutableSchema(api.Config{Resolvers: &api.Resolver{
+		RequestLogStore: &reqLogStore,
+	}})))
 
 	// Admin interface.
 	adminRouter.PathPrefix("").Handler(adminHandler)
