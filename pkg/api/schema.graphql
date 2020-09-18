@@ -1,17 +1,30 @@
-type Request {
+type HttpRequest {
   url: String!
   method: HttpMethod!
+  body: String
   timestamp: Time!
+  response: HttpResponse
 }
 
+type HttpResponse {
+  statusCode: Int!
+  body: String
+}
 
 type Query {
-  getRequests: [Request!]!
+  getHttpRequests: [HttpRequest!]!
 }
 
 enum HttpMethod {
   GET
+  HEAD
   POST
+  PUT
+  DELETE
+  CONNECT
+  OPTIONS
+  TRACE
+  PATCH
 }
 
 scalar Time

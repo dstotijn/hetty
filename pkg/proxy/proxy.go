@@ -10,7 +10,13 @@ import (
 	"net"
 	"net/http"
 	"net/http/httputil"
+
+	"github.com/google/uuid"
 )
+
+type contextKey int
+
+const ReqIDKey contextKey = 0
 
 // Proxy implements http.Handler and offers MITM behaviour for modifying
 // HTTP requests and responses.
@@ -46,6 +52,11 @@ func NewProxy(ca *x509.Certificate, key crypto.PrivateKey) (*Proxy, error) {
 }
 
 func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// Add a unique request ID, to be used for correlating responses to requests.
+	reqID := uuid.New()
+	ctx := context.WithValue(r.Context(), ReqIDKey, reqID)
+	r = r.WithContext(ctx)
+
 	if r.Method == http.MethodConnect {
 		p.handleConnect(w, r)
 		return
@@ -68,6 +79,10 @@ func (p *Proxy) modifyRequest(r *http.Request) {
 		r.URL.Host = r.Host
 		r.URL.Scheme = "https"
 	}
+
+	// Setting `X-Forwarded-For` to `nil` ensures that http.ReverseProxy doesn't
+	// set this header.
+	r.Header["X-Forwarded-For"] = nil
 
 	fn := nopReqModifier
 
@@ -119,7 +134,7 @@ func (p *Proxy) handleConnect(w http.ResponseWriter, r *http.Request) {
 
 	l := &OnceAcceptListener{clientConnNotify.Conn}
 
-	err = http.Serve(l, p.handler)
+	err = http.Serve(l, p)
 	if err != nil && err != ErrAlreadyAccepted {
 		log.Printf("[ERROR] Serving HTTP request failed: %v", err)
 	}

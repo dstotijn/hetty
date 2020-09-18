@@ -9,27 +9,48 @@ import (
 	"time"
 )
 
-type Request struct {
-	URL       string     `json:"url"`
-	Method    HTTPMethod `json:"method"`
-	Timestamp time.Time  `json:"timestamp"`
+type HTTPRequest struct {
+	URL       string        `json:"url"`
+	Method    HTTPMethod    `json:"method"`
+	Body      *string       `json:"body"`
+	Timestamp time.Time     `json:"timestamp"`
+	Response  *HTTPResponse `json:"response"`
+}
+
+type HTTPResponse struct {
+	StatusCode int     `json:"statusCode"`
+	Body       *string `json:"body"`
 }
 
 type HTTPMethod string
 
 const (
-	HTTPMethodGet  HTTPMethod = "GET"
-	HTTPMethodPost HTTPMethod = "POST"
+	HTTPMethodGet     HTTPMethod = "GET"
+	HTTPMethodHead    HTTPMethod = "HEAD"
+	HTTPMethodPost    HTTPMethod = "POST"
+	HTTPMethodPut     HTTPMethod = "PUT"
+	HTTPMethodDelete  HTTPMethod = "DELETE"
+	HTTPMethodConnect HTTPMethod = "CONNECT"
+	HTTPMethodOptions HTTPMethod = "OPTIONS"
+	HTTPMethodTrace   HTTPMethod = "TRACE"
+	HTTPMethodPatch   HTTPMethod = "PATCH"
 )
 
 var AllHTTPMethod = []HTTPMethod{
 	HTTPMethodGet,
+	HTTPMethodHead,
 	HTTPMethodPost,
+	HTTPMethodPut,
+	HTTPMethodDelete,
+	HTTPMethodConnect,
+	HTTPMethodOptions,
+	HTTPMethodTrace,
+	HTTPMethodPatch,
 }
 
 func (e HTTPMethod) IsValid() bool {
 	switch e {
-	case HTTPMethodGet, HTTPMethodPost:
+	case HTTPMethodGet, HTTPMethodHead, HTTPMethodPost, HTTPMethodPut, HTTPMethodDelete, HTTPMethodConnect, HTTPMethodOptions, HTTPMethodTrace, HTTPMethodPatch:
 		return true
 	}
 	return false

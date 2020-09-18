@@ -1,12 +1,9 @@
 package main
 
 import (
-	"bytes"
 	"crypto/tls"
 	"crypto/x509"
 	"flag"
-	"fmt"
-	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
@@ -44,51 +41,15 @@ func main() {
 		log.Fatalf("[FATAL] Could not parse CA: %v", err)
 	}
 
-	reqLogStore := reqlog.NewRequestLogStore()
+	reqLogService := reqlog.NewService()
 
 	p, err := proxy.NewProxy(caCert, tlsCA.PrivateKey)
 	if err != nil {
 		log.Fatalf("[FATAL] Could not create Proxy: %v", err)
 	}
 
-	p.UseRequestModifier(func(next proxy.RequestModifyFunc) proxy.RequestModifyFunc {
-		return func(req *http.Request) {
-			next(req)
-			clone := req.Clone(req.Context())
-			var body []byte
-			if req.Body != nil {
-				// TODO: Use io.LimitReader.
-				body, err := ioutil.ReadAll(req.Body)
-				if err != nil {
-					log.Printf("[ERROR] Could not read request body for logging: %v", err)
-					return
-				}
-				req.Body = ioutil.NopCloser(bytes.NewBuffer(body))
-			}
-			reqLogStore.AddRequest(*clone, body)
-		}
-	})
-
-	p.UseResponseModifier(func(next proxy.ResponseModifyFunc) proxy.ResponseModifyFunc {
-		return func(res *http.Response) error {
-			if err := next(res); err != nil {
-				return err
-			}
-			clone := *res
-			var body []byte
-			if res.Body != nil {
-				// TODO: Use io.LimitReader.
-				var err error
-				body, err = ioutil.ReadAll(res.Body)
-				if err != nil {
-					return fmt.Errorf("could not read response body: %v", err)
-				}
-				res.Body = ioutil.NopCloser(bytes.NewBuffer(body))
-			}
-			reqLogStore.AddResponse(clone, body)
-			return nil
-		}
-	})
+	p.UseRequestModifier(reqLogService.RequestModifier)
+	p.UseResponseModifier(reqLogService.ResponseModifier)
 
 	var adminHandler http.Handler
 
@@ -116,7 +77,7 @@ func main() {
 	// GraphQL server.
 	adminRouter.Path("/api/playground").Handler(playground.Handler("GraphQL Playground", "/api/graphql"))
 	adminRouter.Path("/api/graphql").Handler(handler.NewDefaultServer(api.NewExecutableSchema(api.Config{Resolvers: &api.Resolver{
-		RequestLogStore: &reqLogStore,
+		RequestLogService: &reqLogService,
 	}})))
 
 	// Admin interface.
@@ -131,6 +92,7 @@ func main() {
 		TLSNextProto: map[string]func(*http.Server, *tls.Conn, http.Handler){}, // Disable HTTP/2
 	}
 
+	log.Println("[INFO] Running server on :8080 ...")
 	err = s.ListenAndServe()
 	if err != nil && err != http.ErrServerClosed {
 		log.Fatalf("[FATAL] HTTP server closed: %v", err)
