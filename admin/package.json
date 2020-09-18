@@ -9,8 +9,8 @@
     "export": "next build && next export -o build"
   },
   "dependencies": {
-    "next": "9.3.2",
-    "react": "16.12.0",
-    "react-dom": "16.12.0"
+    "next": "9.4.4",
+    "react": "16.13.1",
+    "react-dom": "16.13.1"
   }
 }
