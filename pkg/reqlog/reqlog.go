@@ -15,6 +15,8 @@ import (
 	"github.com/google/uuid"
 )
 
+var ErrRequestNotFound = errors.New("reqlog: request not found")
+
 type Request struct {
 	ID        uuid.UUID
 	Request   http.Request
@@ -40,12 +42,21 @@ func NewService() Service {
 	}
 }
 
-func (svc *Service) Requests() []Request {
-	// TODO(?): Is locking necessary here?
+func (svc *Service) FindAllRequests() []Request {
+	return svc.store
+}
+
+func (svc *Service) FindRequestLogByID(id string) (Request, error) {
 	svc.mu.Lock()
 	defer svc.mu.Unlock()
 
-	return svc.store
+	for _, req := range svc.store {
+		if req.ID.String() == id {
+			return req, nil
+		}
+	}
+
+	return Request{}, ErrRequestNotFound
 }
 
 func (svc *Service) addRequest(reqID uuid.UUID, req http.Request, body []byte) Request {

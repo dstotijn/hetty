@@ -9,15 +9,19 @@ import (
 	"time"
 )
 
-type HTTPRequest struct {
-	URL       string        `json:"url"`
-	Method    HTTPMethod    `json:"method"`
-	Body      *string       `json:"body"`
-	Timestamp time.Time     `json:"timestamp"`
-	Response  *HTTPResponse `json:"response"`
+type HTTPRequestLog struct {
+	ID        string           `json:"id"`
+	URL       string           `json:"url"`
+	Method    HTTPMethod       `json:"method"`
+	Body      *string          `json:"body"`
+	Timestamp time.Time        `json:"timestamp"`
+	Response  *HTTPResponseLog `json:"response"`
 }
 
-type HTTPResponse struct {
+type HTTPResponseLog struct {
+	RequestID  string  `json:"requestId"`
+	Proto      string  `json:"proto"`
+	Status     string  `json:"status"`
 	StatusCode int     `json:"statusCode"`
 	Body       *string `json:"body"`
 }

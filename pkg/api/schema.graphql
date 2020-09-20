@@ -1,18 +1,23 @@
-type HttpRequest {
+type HttpRequestLog {
+  id: ID!
   url: String!
   method: HttpMethod!
   body: String
   timestamp: Time!
-  response: HttpResponse
+  response: HttpResponseLog
 }
 
-type HttpResponse {
+type HttpResponseLog {
+  requestId: ID!
+  proto: String!
+  status: String!
   statusCode: Int!
   body: String
 }
 
 type Query {
-  getHttpRequests: [HttpRequest!]!
+  httpRequestLog(id: ID!): HttpRequestLog
+  httpRequestLogs: [HttpRequestLog!]!
 }
 
 enum HttpMethod {

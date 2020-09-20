@@ -4,6 +4,7 @@ package api
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/dstotijn/gurp/pkg/reqlog"
@@ -17,37 +18,67 @@ type queryResolver struct{ *Resolver }
 
 func (r *Resolver) Query() QueryResolver { return &queryResolver{r} }
 
-func (r *queryResolver) GetHTTPRequests(ctx context.Context) ([]HTTPRequest, error) {
-	logs := r.RequestLogService.Requests()
-	reqs := make([]HTTPRequest, len(logs))
+func (r *queryResolver) HTTPRequestLogs(ctx context.Context) ([]HTTPRequestLog, error) {
+	reqs := r.RequestLogService.FindAllRequests()
+	logs := make([]HTTPRequestLog, len(reqs))
 
-	for i, log := range logs {
-		method := HTTPMethod(log.Request.Method)
-		if !method.IsValid() {
-			return nil, fmt.Errorf("request has invalid method: %v", method)
+	for i, req := range reqs {
+		req, err := parseRequestLog(req)
+		if err != nil {
+			return nil, err
 		}
+		logs[i] = req
+	}
 
-		reqs[i] = HTTPRequest{
-			URL:       log.Request.URL.String(),
-			Method:    method,
-			Timestamp: log.Timestamp,
+	return logs, nil
+}
+
+func (r *queryResolver) HTTPRequestLog(ctx context.Context, id string) (*HTTPRequestLog, error) {
+	log, err := r.RequestLogService.FindRequestLogByID(id)
+	if err == reqlog.ErrRequestNotFound {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, errors.New("could not get request by ID")
+	}
+	req, err := parseRequestLog(log)
+	if err != nil {
+		return nil, err
+	}
+
+	return &req, nil
+}
+
+func parseRequestLog(req reqlog.Request) (HTTPRequestLog, error) {
+	method := HTTPMethod(req.Request.Method)
+	if !method.IsValid() {
+		return HTTPRequestLog{}, fmt.Errorf("request has invalid method: %v", method)
+	}
+
+	log := HTTPRequestLog{
+		ID:        req.ID.String(),
+		URL:       req.Request.URL.String(),
+		Method:    method,
+		Timestamp: req.Timestamp,
+	}
+
+	if len(req.Body) > 0 {
+		reqBody := string(req.Body)
+		log.Body = &reqBody
+	}
+
+	if req.Response != nil {
+		log.Response = &HTTPResponseLog{
+			RequestID:  req.ID.String(),
+			Proto:      req.Response.Response.Proto,
+			Status:     req.Response.Response.Status,
+			StatusCode: req.Response.Response.StatusCode,
 		}
-
-		if len(log.Body) > 0 {
-			reqBody := string(log.Body)
-			reqs[i].Body = &reqBody
-		}
-
-		if log.Response != nil {
-			reqs[i].Response = &HTTPResponse{
-				StatusCode: log.Response.Response.StatusCode,
-			}
-			if len(log.Response.Body) > 0 {
-				resBody := string(log.Response.Body)
-				reqs[i].Response.Body = &resBody
-			}
+		if len(req.Response.Body) > 0 {
+			resBody := string(req.Response.Body)
+			log.Response.Body = &resBody
 		}
 	}
 
-	return reqs, nil
+	return log, nil
 }

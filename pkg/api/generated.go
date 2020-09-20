@@ -42,26 +42,32 @@ type DirectiveRoot struct {
 }
 
 type ComplexityRoot struct {
-	HTTPRequest struct {
+	HTTPRequestLog struct {
 		Body      func(childComplexity int) int
+		ID        func(childComplexity int) int
 		Method    func(childComplexity int) int
 		Response  func(childComplexity int) int
 		Timestamp func(childComplexity int) int
 		URL       func(childComplexity int) int
 	}
 
-	HTTPResponse struct {
+	HTTPResponseLog struct {
 		Body       func(childComplexity int) int
+		Proto      func(childComplexity int) int
+		RequestID  func(childComplexity int) int
+		Status     func(childComplexity int) int
 		StatusCode func(childComplexity int) int
 	}
 
 	Query struct {
-		GetHTTPRequests func(childComplexity int) int
+		HTTPRequestLog  func(childComplexity int, id string) int
+		HTTPRequestLogs func(childComplexity int) int
 	}
 }
 
 type QueryResolver interface {
-	GetHTTPRequests(ctx context.Context) ([]HTTPRequest, error)
+	HTTPRequestLog(ctx context.Context, id string) (*HTTPRequestLog, error)
+	HTTPRequestLogs(ctx context.Context) ([]HTTPRequestLog, error)
 }
 
 type executableSchema struct {
@@ -79,61 +85,101 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 	_ = ec
 	switch typeName + "." + field {
 
-	case "HttpRequest.body":
-		if e.complexity.HTTPRequest.Body == nil {
+	case "HttpRequestLog.body":
+		if e.complexity.HTTPRequestLog.Body == nil {
 			break
 		}
 
-		return e.complexity.HTTPRequest.Body(childComplexity), true
+		return e.complexity.HTTPRequestLog.Body(childComplexity), true
 
-	case "HttpRequest.method":
-		if e.complexity.HTTPRequest.Method == nil {
+	case "HttpRequestLog.id":
+		if e.complexity.HTTPRequestLog.ID == nil {
 			break
 		}
 
-		return e.complexity.HTTPRequest.Method(childComplexity), true
+		return e.complexity.HTTPRequestLog.ID(childComplexity), true
 
-	case "HttpRequest.response":
-		if e.complexity.HTTPRequest.Response == nil {
+	case "HttpRequestLog.method":
+		if e.complexity.HTTPRequestLog.Method == nil {
 			break
 		}
 
-		return e.complexity.HTTPRequest.Response(childComplexity), true
+		return e.complexity.HTTPRequestLog.Method(childComplexity), true
 
-	case "HttpRequest.timestamp":
-		if e.complexity.HTTPRequest.Timestamp == nil {
+	case "HttpRequestLog.response":
+		if e.complexity.HTTPRequestLog.Response == nil {
 			break
 		}
 
-		return e.complexity.HTTPRequest.Timestamp(childComplexity), true
+		return e.complexity.HTTPRequestLog.Response(childComplexity), true
 
-	case "HttpRequest.url":
-		if e.complexity.HTTPRequest.URL == nil {
+	case "HttpRequestLog.timestamp":
+		if e.complexity.HTTPRequestLog.Timestamp == nil {
 			break
 		}
 
-		return e.complexity.HTTPRequest.URL(childComplexity), true
+		return e.complexity.HTTPRequestLog.Timestamp(childComplexity), true
 
-	case "HttpResponse.body":
-		if e.complexity.HTTPResponse.Body == nil {
+	case "HttpRequestLog.url":
+		if e.complexity.HTTPRequestLog.URL == nil {
 			break
 		}
 
-		return e.complexity.HTTPResponse.Body(childComplexity), true
+		return e.complexity.HTTPRequestLog.URL(childComplexity), true
 
-	case "HttpResponse.statusCode":
-		if e.complexity.HTTPResponse.StatusCode == nil {
+	case "HttpResponseLog.body":
+		if e.complexity.HTTPResponseLog.Body == nil {
 			break
 		}
 
-		return e.complexity.HTTPResponse.StatusCode(childComplexity), true
+		return e.complexity.HTTPResponseLog.Body(childComplexity), true
 
-	case "Query.getHttpRequests":
-		if e.complexity.Query.GetHTTPRequests == nil {
+	case "HttpResponseLog.proto":
+		if e.complexity.HTTPResponseLog.Proto == nil {
 			break
 		}
 
-		return e.complexity.Query.GetHTTPRequests(childComplexity), true
+		return e.complexity.HTTPResponseLog.Proto(childComplexity), true
+
+	case "HttpResponseLog.requestId":
+		if e.complexity.HTTPResponseLog.RequestID == nil {
+			break
+		}
+
+		return e.complexity.HTTPResponseLog.RequestID(childComplexity), true
+
+	case "HttpResponseLog.status":
+		if e.complexity.HTTPResponseLog.Status == nil {
+			break
+		}
+
+		return e.complexity.HTTPResponseLog.Status(childComplexity), true
+
+	case "HttpResponseLog.statusCode":
+		if e.complexity.HTTPResponseLog.StatusCode == nil {
+			break
+		}
+
+		return e.complexity.HTTPResponseLog.StatusCode(childComplexity), true
+
+	case "Query.httpRequestLog":
+		if e.complexity.Query.HTTPRequestLog == nil {
+			break
+		}
+
+		args, err := ec.field_Query_httpRequestLog_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.HTTPRequestLog(childComplexity, args["id"].(string)), true
+
+	case "Query.httpRequestLogs":
+		if e.complexity.Query.HTTPRequestLogs == nil {
+			break
+		}
+
+		return e.complexity.Query.HTTPRequestLogs(childComplexity), true
 
 	}
 	return 0, false
@@ -185,21 +231,26 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 }
 
 var sources = []*ast.Source{
-	&ast.Source{Name: "pkg/api/schema.graphql", Input: `type HttpRequest {
+	&ast.Source{Name: "pkg/api/schema.graphql", Input: `type HttpRequestLog {
+  id: ID!
   url: String!
   method: HttpMethod!
   body: String
   timestamp: Time!
-  response: HttpResponse
+  response: HttpResponseLog
 }
 
-type HttpResponse {
+type HttpResponseLog {
+  requestId: ID!
+  proto: String!
+  status: String!
   statusCode: Int!
   body: String
 }
 
 type Query {
-  getHttpRequests: [HttpRequest!]!
+  httpRequestLog(id: ID!): HttpRequestLog
+  httpRequestLogs: [HttpRequestLog!]!
 }
 
 enum HttpMethod {
@@ -234,6 +285,20 @@ func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs
 		}
 	}
 	args["name"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_httpRequestLog_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["id"]; ok {
+		arg0, err = ec.unmarshalNID2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["id"] = arg0
 	return args, nil
 }
 
@@ -273,7 +338,7 @@ func (ec *executionContext) field___Type_fields_args(ctx context.Context, rawArg
 
 // region    **************************** field.gotpl *****************************
 
-func (ec *executionContext) _HttpRequest_url(ctx context.Context, field graphql.CollectedField, obj *HTTPRequest) (ret graphql.Marshaler) {
+func (ec *executionContext) _HttpRequestLog_id(ctx context.Context, field graphql.CollectedField, obj *HTTPRequestLog) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -281,7 +346,41 @@ func (ec *executionContext) _HttpRequest_url(ctx context.Context, field graphql.
 		}
 	}()
 	fc := &graphql.FieldContext{
-		Object:   "HttpRequest",
+		Object:   "HttpRequestLog",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNID2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _HttpRequestLog_url(ctx context.Context, field graphql.CollectedField, obj *HTTPRequestLog) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "HttpRequestLog",
 		Field:    field,
 		Args:     nil,
 		IsMethod: false,
@@ -307,7 +406,7 @@ func (ec *executionContext) _HttpRequest_url(ctx context.Context, field graphql.
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _HttpRequest_method(ctx context.Context, field graphql.CollectedField, obj *HTTPRequest) (ret graphql.Marshaler) {
+func (ec *executionContext) _HttpRequestLog_method(ctx context.Context, field graphql.CollectedField, obj *HTTPRequestLog) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -315,7 +414,7 @@ func (ec *executionContext) _HttpRequest_method(ctx context.Context, field graph
 		}
 	}()
 	fc := &graphql.FieldContext{
-		Object:   "HttpRequest",
+		Object:   "HttpRequestLog",
 		Field:    field,
 		Args:     nil,
 		IsMethod: false,
@@ -341,7 +440,7 @@ func (ec *executionContext) _HttpRequest_method(ctx context.Context, field graph
 	return ec.marshalNHttpMethod2githubᚗcomᚋdstotijnᚋgurpᚋpkgᚋapiᚐHTTPMethod(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _HttpRequest_body(ctx context.Context, field graphql.CollectedField, obj *HTTPRequest) (ret graphql.Marshaler) {
+func (ec *executionContext) _HttpRequestLog_body(ctx context.Context, field graphql.CollectedField, obj *HTTPRequestLog) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -349,7 +448,7 @@ func (ec *executionContext) _HttpRequest_body(ctx context.Context, field graphql
 		}
 	}()
 	fc := &graphql.FieldContext{
-		Object:   "HttpRequest",
+		Object:   "HttpRequestLog",
 		Field:    field,
 		Args:     nil,
 		IsMethod: false,
@@ -372,7 +471,7 @@ func (ec *executionContext) _HttpRequest_body(ctx context.Context, field graphql
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _HttpRequest_timestamp(ctx context.Context, field graphql.CollectedField, obj *HTTPRequest) (ret graphql.Marshaler) {
+func (ec *executionContext) _HttpRequestLog_timestamp(ctx context.Context, field graphql.CollectedField, obj *HTTPRequestLog) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -380,7 +479,7 @@ func (ec *executionContext) _HttpRequest_timestamp(ctx context.Context, field gr
 		}
 	}()
 	fc := &graphql.FieldContext{
-		Object:   "HttpRequest",
+		Object:   "HttpRequestLog",
 		Field:    field,
 		Args:     nil,
 		IsMethod: false,
@@ -406,7 +505,7 @@ func (ec *executionContext) _HttpRequest_timestamp(ctx context.Context, field gr
 	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _HttpRequest_response(ctx context.Context, field graphql.CollectedField, obj *HTTPRequest) (ret graphql.Marshaler) {
+func (ec *executionContext) _HttpRequestLog_response(ctx context.Context, field graphql.CollectedField, obj *HTTPRequestLog) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -414,7 +513,7 @@ func (ec *executionContext) _HttpRequest_response(ctx context.Context, field gra
 		}
 	}()
 	fc := &graphql.FieldContext{
-		Object:   "HttpRequest",
+		Object:   "HttpRequestLog",
 		Field:    field,
 		Args:     nil,
 		IsMethod: false,
@@ -432,12 +531,12 @@ func (ec *executionContext) _HttpRequest_response(ctx context.Context, field gra
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*HTTPResponse)
+	res := resTmp.(*HTTPResponseLog)
 	fc.Result = res
-	return ec.marshalOHttpResponse2ᚖgithubᚗcomᚋdstotijnᚋgurpᚋpkgᚋapiᚐHTTPResponse(ctx, field.Selections, res)
+	return ec.marshalOHttpResponseLog2ᚖgithubᚗcomᚋdstotijnᚋgurpᚋpkgᚋapiᚐHTTPResponseLog(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _HttpResponse_statusCode(ctx context.Context, field graphql.CollectedField, obj *HTTPResponse) (ret graphql.Marshaler) {
+func (ec *executionContext) _HttpResponseLog_requestId(ctx context.Context, field graphql.CollectedField, obj *HTTPResponseLog) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -445,7 +544,109 @@ func (ec *executionContext) _HttpResponse_statusCode(ctx context.Context, field 
 		}
 	}()
 	fc := &graphql.FieldContext{
-		Object:   "HttpResponse",
+		Object:   "HttpResponseLog",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.RequestID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNID2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _HttpResponseLog_proto(ctx context.Context, field graphql.CollectedField, obj *HTTPResponseLog) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "HttpResponseLog",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Proto, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _HttpResponseLog_status(ctx context.Context, field graphql.CollectedField, obj *HTTPResponseLog) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "HttpResponseLog",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Status, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _HttpResponseLog_statusCode(ctx context.Context, field graphql.CollectedField, obj *HTTPResponseLog) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "HttpResponseLog",
 		Field:    field,
 		Args:     nil,
 		IsMethod: false,
@@ -471,7 +672,7 @@ func (ec *executionContext) _HttpResponse_statusCode(ctx context.Context, field 
 	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _HttpResponse_body(ctx context.Context, field graphql.CollectedField, obj *HTTPResponse) (ret graphql.Marshaler) {
+func (ec *executionContext) _HttpResponseLog_body(ctx context.Context, field graphql.CollectedField, obj *HTTPResponseLog) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -479,7 +680,7 @@ func (ec *executionContext) _HttpResponse_body(ctx context.Context, field graphq
 		}
 	}()
 	fc := &graphql.FieldContext{
-		Object:   "HttpResponse",
+		Object:   "HttpResponseLog",
 		Field:    field,
 		Args:     nil,
 		IsMethod: false,
@@ -502,7 +703,45 @@ func (ec *executionContext) _HttpResponse_body(ctx context.Context, field graphq
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Query_getHttpRequests(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+func (ec *executionContext) _Query_httpRequestLog(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Query",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Query_httpRequestLog_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().HTTPRequestLog(rctx, args["id"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*HTTPRequestLog)
+	fc.Result = res
+	return ec.marshalOHttpRequestLog2ᚖgithubᚗcomᚋdstotijnᚋgurpᚋpkgᚋapiᚐHTTPRequestLog(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Query_httpRequestLogs(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -519,7 +758,7 @@ func (ec *executionContext) _Query_getHttpRequests(ctx context.Context, field gr
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().GetHTTPRequests(rctx)
+		return ec.resolvers.Query().HTTPRequestLogs(rctx)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -531,9 +770,9 @@ func (ec *executionContext) _Query_getHttpRequests(ctx context.Context, field gr
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]HTTPRequest)
+	res := resTmp.([]HTTPRequestLog)
 	fc.Result = res
-	return ec.marshalNHttpRequest2ᚕgithubᚗcomᚋdstotijnᚋgurpᚋpkgᚋapiᚐHTTPRequestᚄ(ctx, field.Selections, res)
+	return ec.marshalNHttpRequestLog2ᚕgithubᚗcomᚋdstotijnᚋgurpᚋpkgᚋapiᚐHTTPRequestLogᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query___type(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -1668,36 +1907,41 @@ func (ec *executionContext) ___Type_ofType(ctx context.Context, field graphql.Co
 
 // region    **************************** object.gotpl ****************************
 
-var httpRequestImplementors = []string{"HttpRequest"}
+var httpRequestLogImplementors = []string{"HttpRequestLog"}
 
-func (ec *executionContext) _HttpRequest(ctx context.Context, sel ast.SelectionSet, obj *HTTPRequest) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, httpRequestImplementors)
+func (ec *executionContext) _HttpRequestLog(ctx context.Context, sel ast.SelectionSet, obj *HTTPRequestLog) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, httpRequestLogImplementors)
 
 	out := graphql.NewFieldSet(fields)
 	var invalids uint32
 	for i, field := range fields {
 		switch field.Name {
 		case "__typename":
-			out.Values[i] = graphql.MarshalString("HttpRequest")
+			out.Values[i] = graphql.MarshalString("HttpRequestLog")
+		case "id":
+			out.Values[i] = ec._HttpRequestLog_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		case "url":
-			out.Values[i] = ec._HttpRequest_url(ctx, field, obj)
+			out.Values[i] = ec._HttpRequestLog_url(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
 		case "method":
-			out.Values[i] = ec._HttpRequest_method(ctx, field, obj)
+			out.Values[i] = ec._HttpRequestLog_method(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
 		case "body":
-			out.Values[i] = ec._HttpRequest_body(ctx, field, obj)
+			out.Values[i] = ec._HttpRequestLog_body(ctx, field, obj)
 		case "timestamp":
-			out.Values[i] = ec._HttpRequest_timestamp(ctx, field, obj)
+			out.Values[i] = ec._HttpRequestLog_timestamp(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
 		case "response":
-			out.Values[i] = ec._HttpRequest_response(ctx, field, obj)
+			out.Values[i] = ec._HttpRequestLog_response(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -1709,24 +1953,39 @@ func (ec *executionContext) _HttpRequest(ctx context.Context, sel ast.SelectionS
 	return out
 }
 
-var httpResponseImplementors = []string{"HttpResponse"}
+var httpResponseLogImplementors = []string{"HttpResponseLog"}
 
-func (ec *executionContext) _HttpResponse(ctx context.Context, sel ast.SelectionSet, obj *HTTPResponse) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, httpResponseImplementors)
+func (ec *executionContext) _HttpResponseLog(ctx context.Context, sel ast.SelectionSet, obj *HTTPResponseLog) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, httpResponseLogImplementors)
 
 	out := graphql.NewFieldSet(fields)
 	var invalids uint32
 	for i, field := range fields {
 		switch field.Name {
 		case "__typename":
-			out.Values[i] = graphql.MarshalString("HttpResponse")
+			out.Values[i] = graphql.MarshalString("HttpResponseLog")
+		case "requestId":
+			out.Values[i] = ec._HttpResponseLog_requestId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "proto":
+			out.Values[i] = ec._HttpResponseLog_proto(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "status":
+			out.Values[i] = ec._HttpResponseLog_status(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		case "statusCode":
-			out.Values[i] = ec._HttpResponse_statusCode(ctx, field, obj)
+			out.Values[i] = ec._HttpResponseLog_statusCode(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
 		case "body":
-			out.Values[i] = ec._HttpResponse_body(ctx, field, obj)
+			out.Values[i] = ec._HttpResponseLog_body(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -1753,7 +2012,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("Query")
-		case "getHttpRequests":
+		case "httpRequestLog":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {
 				defer func() {
@@ -1761,7 +2020,18 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
-				res = ec._Query_getHttpRequests(ctx, field)
+				res = ec._Query_httpRequestLog(ctx, field)
+				return res
+			})
+		case "httpRequestLogs":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_httpRequestLogs(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&invalids, 1)
 				}
@@ -2050,11 +2320,11 @@ func (ec *executionContext) marshalNHttpMethod2githubᚗcomᚋdstotijnᚋgurpᚋ
 	return v
 }
 
-func (ec *executionContext) marshalNHttpRequest2githubᚗcomᚋdstotijnᚋgurpᚋpkgᚋapiᚐHTTPRequest(ctx context.Context, sel ast.SelectionSet, v HTTPRequest) graphql.Marshaler {
-	return ec._HttpRequest(ctx, sel, &v)
+func (ec *executionContext) marshalNHttpRequestLog2githubᚗcomᚋdstotijnᚋgurpᚋpkgᚋapiᚐHTTPRequestLog(ctx context.Context, sel ast.SelectionSet, v HTTPRequestLog) graphql.Marshaler {
+	return ec._HttpRequestLog(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNHttpRequest2ᚕgithubᚗcomᚋdstotijnᚋgurpᚋpkgᚋapiᚐHTTPRequestᚄ(ctx context.Context, sel ast.SelectionSet, v []HTTPRequest) graphql.Marshaler {
+func (ec *executionContext) marshalNHttpRequestLog2ᚕgithubᚗcomᚋdstotijnᚋgurpᚋpkgᚋapiᚐHTTPRequestLogᚄ(ctx context.Context, sel ast.SelectionSet, v []HTTPRequestLog) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -2078,7 +2348,7 @@ func (ec *executionContext) marshalNHttpRequest2ᚕgithubᚗcomᚋdstotijnᚋgur
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNHttpRequest2githubᚗcomᚋdstotijnᚋgurpᚋpkgᚋapiᚐHTTPRequest(ctx, sel, v[i])
+			ret[i] = ec.marshalNHttpRequestLog2githubᚗcomᚋdstotijnᚋgurpᚋpkgᚋapiᚐHTTPRequestLog(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -2089,6 +2359,20 @@ func (ec *executionContext) marshalNHttpRequest2ᚕgithubᚗcomᚋdstotijnᚋgur
 	}
 	wg.Wait()
 	return ret
+}
+
+func (ec *executionContext) unmarshalNID2string(ctx context.Context, v interface{}) (string, error) {
+	return graphql.UnmarshalID(v)
+}
+
+func (ec *executionContext) marshalNID2string(ctx context.Context, sel ast.SelectionSet, v string) graphql.Marshaler {
+	res := graphql.MarshalID(v)
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+	}
+	return res
 }
 
 func (ec *executionContext) unmarshalNInt2int(ctx context.Context, v interface{}) (int, error) {
@@ -2382,15 +2666,26 @@ func (ec *executionContext) marshalOBoolean2ᚖbool(ctx context.Context, sel ast
 	return ec.marshalOBoolean2bool(ctx, sel, *v)
 }
 
-func (ec *executionContext) marshalOHttpResponse2githubᚗcomᚋdstotijnᚋgurpᚋpkgᚋapiᚐHTTPResponse(ctx context.Context, sel ast.SelectionSet, v HTTPResponse) graphql.Marshaler {
-	return ec._HttpResponse(ctx, sel, &v)
+func (ec *executionContext) marshalOHttpRequestLog2githubᚗcomᚋdstotijnᚋgurpᚋpkgᚋapiᚐHTTPRequestLog(ctx context.Context, sel ast.SelectionSet, v HTTPRequestLog) graphql.Marshaler {
+	return ec._HttpRequestLog(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalOHttpResponse2ᚖgithubᚗcomᚋdstotijnᚋgurpᚋpkgᚋapiᚐHTTPResponse(ctx context.Context, sel ast.SelectionSet, v *HTTPResponse) graphql.Marshaler {
+func (ec *executionContext) marshalOHttpRequestLog2ᚖgithubᚗcomᚋdstotijnᚋgurpᚋpkgᚋapiᚐHTTPRequestLog(ctx context.Context, sel ast.SelectionSet, v *HTTPRequestLog) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
-	return ec._HttpResponse(ctx, sel, v)
+	return ec._HttpRequestLog(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOHttpResponseLog2githubᚗcomᚋdstotijnᚋgurpᚋpkgᚋapiᚐHTTPResponseLog(ctx context.Context, sel ast.SelectionSet, v HTTPResponseLog) graphql.Marshaler {
+	return ec._HttpResponseLog(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalOHttpResponseLog2ᚖgithubᚗcomᚋdstotijnᚋgurpᚋpkgᚋapiᚐHTTPResponseLog(ctx context.Context, sel ast.SelectionSet, v *HTTPResponseLog) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._HttpResponseLog(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalOString2string(ctx context.Context, v interface{}) (string, error) {

@@ -71,7 +71,7 @@ func main() {
 	adminRouter := router.MatcherFunc(func(req *http.Request, match *mux.RouteMatch) bool {
 		hostname, _ := os.Hostname()
 		host, _, _ := net.SplitHostPort(req.Host)
-		return strings.EqualFold(host, hostname) || req.Host == "gurp.proxy"
+		return strings.EqualFold(host, hostname) || (req.Host == "gurp.proxy" || req.Host == "localhost:8080")
 	}).Subrouter()
 
 	// GraphQL server.
