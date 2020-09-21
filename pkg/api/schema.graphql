@@ -2,6 +2,7 @@ type HttpRequestLog {
   id: ID!
   url: String!
   method: HttpMethod!
+  proto: String!
   body: String
   timestamp: Time!
   response: HttpResponseLog

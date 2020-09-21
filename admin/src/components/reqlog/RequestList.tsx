@@ -34,8 +34,8 @@ interface Props {
 function RequestList({ onLogClick }: Props): JSX.Element {
   const { loading, error, data } = useQuery(HTTP_REQUEST_LOGS);
 
-  if (loading) return "Loading...";
-  if (error) return `Error: ${error.message}`;
+  if (loading) return <div>"Loading..."</div>;
+  if (error) return <div>`Error: ${error.message}`</div>;
 
   const { httpRequestLogs: logs } = data;
 

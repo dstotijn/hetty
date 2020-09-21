@@ -58,6 +58,7 @@ func parseRequestLog(req reqlog.Request) (HTTPRequestLog, error) {
 	log := HTTPRequestLog{
 		ID:        req.ID.String(),
 		URL:       req.Request.URL.String(),
+		Proto:     req.Request.Proto,
 		Method:    method,
 		Timestamp: req.Timestamp,
 	}

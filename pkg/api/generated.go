@@ -46,6 +46,7 @@ type ComplexityRoot struct {
 		Body      func(childComplexity int) int
 		ID        func(childComplexity int) int
 		Method    func(childComplexity int) int
+		Proto     func(childComplexity int) int
 		Response  func(childComplexity int) int
 		Timestamp func(childComplexity int) int
 		URL       func(childComplexity int) int
@@ -105,6 +106,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.HTTPRequestLog.Method(childComplexity), true
+
+	case "HttpRequestLog.proto":
+		if e.complexity.HTTPRequestLog.Proto == nil {
+			break
+		}
+
+		return e.complexity.HTTPRequestLog.Proto(childComplexity), true
 
 	case "HttpRequestLog.response":
 		if e.complexity.HTTPRequestLog.Response == nil {
@@ -235,6 +243,7 @@ var sources = []*ast.Source{
   id: ID!
   url: String!
   method: HttpMethod!
+  proto: String!
   body: String
   timestamp: Time!
   response: HttpResponseLog
@@ -438,6 +447,40 @@ func (ec *executionContext) _HttpRequestLog_method(ctx context.Context, field gr
 	res := resTmp.(HTTPMethod)
 	fc.Result = res
 	return ec.marshalNHttpMethod2githubᚗcomᚋdstotijnᚋgurpᚋpkgᚋapiᚐHTTPMethod(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _HttpRequestLog_proto(ctx context.Context, field graphql.CollectedField, obj *HTTPRequestLog) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "HttpRequestLog",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Proto, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _HttpRequestLog_body(ctx context.Context, field graphql.CollectedField, obj *HTTPRequestLog) (ret graphql.Marshaler) {
@@ -1930,6 +1973,11 @@ func (ec *executionContext) _HttpRequestLog(ctx context.Context, sel ast.Selecti
 			}
 		case "method":
 			out.Values[i] = ec._HttpRequestLog_method(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "proto":
+			out.Values[i] = ec._HttpRequestLog_proto(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}

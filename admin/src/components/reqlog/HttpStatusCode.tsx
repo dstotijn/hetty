@@ -1,4 +1,4 @@
-import { green, orange, red } from "@material-ui/core/colors";
+import { teal, orange, red } from "@material-ui/core/colors";
 import FiberManualRecordIcon from "@material-ui/icons/FiberManualRecord";
 
 function HttpStatusIcon({ status }: { status: number }): JSX.Element {
@@ -6,7 +6,7 @@ function HttpStatusIcon({ status }: { status: number }): JSX.Element {
   switch (Math.floor(status / 100)) {
     case 2:
     case 3:
-      return <FiberManualRecordIcon style={{ ...style, color: green[400] }} />;
+      return <FiberManualRecordIcon style={{ ...style, color: teal[400] }} />;
     case 4:
       return <FiberManualRecordIcon style={{ ...style, color: orange[400] }} />;
     case 5:

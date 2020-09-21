@@ -13,6 +13,7 @@ type HTTPRequestLog struct {
 	ID        string           `json:"id"`
 	URL       string           `json:"url"`
 	Method    HTTPMethod       `json:"method"`
+	Proto     string           `json:"proto"`
 	Body      *string          `json:"body"`
 	Timestamp time.Time        `json:"timestamp"`
 	Response  *HTTPResponseLog `json:"response"`

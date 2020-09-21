@@ -6,12 +6,13 @@ interface Props {
   request: {
     method: string;
     url: string;
+    proto: string;
     body?: string;
   };
 }
 
 function RequestDetail({ request }: Props): JSX.Element {
-  const { method, url, body } = request;
+  const { method, url, proto, body } = request;
 
   const parsedUrl = new URL(url);
   console.log(parsedUrl);
@@ -24,7 +25,7 @@ function RequestDetail({ request }: Props): JSX.Element {
           style={{ fontSize: "1rem", whiteSpace: "nowrap" }}
         >
           {request.method}{" "}
-          {decodeURIComponent(parsedUrl.pathname + parsedUrl.search)}
+          {decodeURIComponent(parsedUrl.pathname + parsedUrl.search)} {proto}
         </Typography>
       </Box>
       <Box>
