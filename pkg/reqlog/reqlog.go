@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dstotijn/gurp/pkg/proxy"
+	"github.com/dstotijn/hetty/pkg/proxy"
 	"github.com/google/uuid"
 )
 

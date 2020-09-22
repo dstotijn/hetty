@@ -7,7 +7,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/dstotijn/gurp/pkg/reqlog"
+	"github.com/dstotijn/hetty/pkg/reqlog"
 )
 
 type Resolver struct {

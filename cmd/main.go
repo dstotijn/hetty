@@ -12,9 +12,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/dstotijn/gurp/pkg/api"
-	"github.com/dstotijn/gurp/pkg/proxy"
-	"github.com/dstotijn/gurp/pkg/reqlog"
+	"github.com/dstotijn/hetty/pkg/api"
+	"github.com/dstotijn/hetty/pkg/proxy"
+	"github.com/dstotijn/hetty/pkg/reqlog"
 
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
@@ -71,7 +71,7 @@ func main() {
 	adminRouter := router.MatcherFunc(func(req *http.Request, match *mux.RouteMatch) bool {
 		hostname, _ := os.Hostname()
 		host, _, _ := net.SplitHostPort(req.Host)
-		return strings.EqualFold(host, hostname) || (req.Host == "gurp.proxy" || req.Host == "localhost:8080")
+		return strings.EqualFold(host, hostname) || (req.Host == "hetty.proxy" || req.Host == "localhost:8080")
 	}).Subrouter()
 
 	// GraphQL server.

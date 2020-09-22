@@ -446,7 +446,7 @@ func (ec *executionContext) _HttpRequestLog_method(ctx context.Context, field gr
 	}
 	res := resTmp.(HTTPMethod)
 	fc.Result = res
-	return ec.marshalNHttpMethod2githubᚗcomᚋdstotijnᚋgurpᚋpkgᚋapiᚐHTTPMethod(ctx, field.Selections, res)
+	return ec.marshalNHttpMethod2githubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐHTTPMethod(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _HttpRequestLog_proto(ctx context.Context, field graphql.CollectedField, obj *HTTPRequestLog) (ret graphql.Marshaler) {
@@ -576,7 +576,7 @@ func (ec *executionContext) _HttpRequestLog_response(ctx context.Context, field 
 	}
 	res := resTmp.(*HTTPResponseLog)
 	fc.Result = res
-	return ec.marshalOHttpResponseLog2ᚖgithubᚗcomᚋdstotijnᚋgurpᚋpkgᚋapiᚐHTTPResponseLog(ctx, field.Selections, res)
+	return ec.marshalOHttpResponseLog2ᚖgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐHTTPResponseLog(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _HttpResponseLog_requestId(ctx context.Context, field graphql.CollectedField, obj *HTTPResponseLog) (ret graphql.Marshaler) {
@@ -781,7 +781,7 @@ func (ec *executionContext) _Query_httpRequestLog(ctx context.Context, field gra
 	}
 	res := resTmp.(*HTTPRequestLog)
 	fc.Result = res
-	return ec.marshalOHttpRequestLog2ᚖgithubᚗcomᚋdstotijnᚋgurpᚋpkgᚋapiᚐHTTPRequestLog(ctx, field.Selections, res)
+	return ec.marshalOHttpRequestLog2ᚖgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐHTTPRequestLog(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query_httpRequestLogs(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -815,7 +815,7 @@ func (ec *executionContext) _Query_httpRequestLogs(ctx context.Context, field gr
 	}
 	res := resTmp.([]HTTPRequestLog)
 	fc.Result = res
-	return ec.marshalNHttpRequestLog2ᚕgithubᚗcomᚋdstotijnᚋgurpᚋpkgᚋapiᚐHTTPRequestLogᚄ(ctx, field.Selections, res)
+	return ec.marshalNHttpRequestLog2ᚕgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐHTTPRequestLogᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query___type(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -2359,20 +2359,20 @@ func (ec *executionContext) marshalNBoolean2bool(ctx context.Context, sel ast.Se
 	return res
 }
 
-func (ec *executionContext) unmarshalNHttpMethod2githubᚗcomᚋdstotijnᚋgurpᚋpkgᚋapiᚐHTTPMethod(ctx context.Context, v interface{}) (HTTPMethod, error) {
+func (ec *executionContext) unmarshalNHttpMethod2githubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐHTTPMethod(ctx context.Context, v interface{}) (HTTPMethod, error) {
 	var res HTTPMethod
 	return res, res.UnmarshalGQL(v)
 }
 
-func (ec *executionContext) marshalNHttpMethod2githubᚗcomᚋdstotijnᚋgurpᚋpkgᚋapiᚐHTTPMethod(ctx context.Context, sel ast.SelectionSet, v HTTPMethod) graphql.Marshaler {
+func (ec *executionContext) marshalNHttpMethod2githubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐHTTPMethod(ctx context.Context, sel ast.SelectionSet, v HTTPMethod) graphql.Marshaler {
 	return v
 }
 
-func (ec *executionContext) marshalNHttpRequestLog2githubᚗcomᚋdstotijnᚋgurpᚋpkgᚋapiᚐHTTPRequestLog(ctx context.Context, sel ast.SelectionSet, v HTTPRequestLog) graphql.Marshaler {
+func (ec *executionContext) marshalNHttpRequestLog2githubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐHTTPRequestLog(ctx context.Context, sel ast.SelectionSet, v HTTPRequestLog) graphql.Marshaler {
 	return ec._HttpRequestLog(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNHttpRequestLog2ᚕgithubᚗcomᚋdstotijnᚋgurpᚋpkgᚋapiᚐHTTPRequestLogᚄ(ctx context.Context, sel ast.SelectionSet, v []HTTPRequestLog) graphql.Marshaler {
+func (ec *executionContext) marshalNHttpRequestLog2ᚕgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐHTTPRequestLogᚄ(ctx context.Context, sel ast.SelectionSet, v []HTTPRequestLog) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -2396,7 +2396,7 @@ func (ec *executionContext) marshalNHttpRequestLog2ᚕgithubᚗcomᚋdstotijnᚋ
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNHttpRequestLog2githubᚗcomᚋdstotijnᚋgurpᚋpkgᚋapiᚐHTTPRequestLog(ctx, sel, v[i])
+			ret[i] = ec.marshalNHttpRequestLog2githubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐHTTPRequestLog(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -2714,22 +2714,22 @@ func (ec *executionContext) marshalOBoolean2ᚖbool(ctx context.Context, sel ast
 	return ec.marshalOBoolean2bool(ctx, sel, *v)
 }
 
-func (ec *executionContext) marshalOHttpRequestLog2githubᚗcomᚋdstotijnᚋgurpᚋpkgᚋapiᚐHTTPRequestLog(ctx context.Context, sel ast.SelectionSet, v HTTPRequestLog) graphql.Marshaler {
+func (ec *executionContext) marshalOHttpRequestLog2githubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐHTTPRequestLog(ctx context.Context, sel ast.SelectionSet, v HTTPRequestLog) graphql.Marshaler {
 	return ec._HttpRequestLog(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalOHttpRequestLog2ᚖgithubᚗcomᚋdstotijnᚋgurpᚋpkgᚋapiᚐHTTPRequestLog(ctx context.Context, sel ast.SelectionSet, v *HTTPRequestLog) graphql.Marshaler {
+func (ec *executionContext) marshalOHttpRequestLog2ᚖgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐHTTPRequestLog(ctx context.Context, sel ast.SelectionSet, v *HTTPRequestLog) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
 	return ec._HttpRequestLog(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalOHttpResponseLog2githubᚗcomᚋdstotijnᚋgurpᚋpkgᚋapiᚐHTTPResponseLog(ctx context.Context, sel ast.SelectionSet, v HTTPResponseLog) graphql.Marshaler {
+func (ec *executionContext) marshalOHttpResponseLog2githubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐHTTPResponseLog(ctx context.Context, sel ast.SelectionSet, v HTTPResponseLog) graphql.Marshaler {
 	return ec._HttpResponseLog(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalOHttpResponseLog2ᚖgithubᚗcomᚋdstotijnᚋgurpᚋpkgᚋapiᚐHTTPResponseLog(ctx context.Context, sel ast.SelectionSet, v *HTTPResponseLog) graphql.Marshaler {
+func (ec *executionContext) marshalOHttpResponseLog2ᚖgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐHTTPResponseLog(ctx context.Context, sel ast.SelectionSet, v *HTTPResponseLog) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}

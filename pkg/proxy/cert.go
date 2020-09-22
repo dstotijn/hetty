@@ -141,7 +141,7 @@ func (c *CertConfig) cert(hostname string) (*tls.Certificate, error) {
 		SerialNumber: serial,
 		Subject: pkix.Name{
 			CommonName:   hostname,
-			Organization: []string{"Gurp"},
+			Organization: []string{"Hetty"},
 		},
 		SubjectKeyId:          c.keyID,
 		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,

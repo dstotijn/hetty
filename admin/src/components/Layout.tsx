@@ -136,10 +136,7 @@ export function Layout(props: { children: React.ReactNode }): JSX.Element {
             <MenuIcon />
           </IconButton>
           <Typography variant="h5" noWrap>
-            <Box component="span" mr={1} display="inline-block">
-              🥥
-            </Box>{" "}
-            Coco
+            Hetty
           </Typography>
         </Toolbar>
       </AppBar>

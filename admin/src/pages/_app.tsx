@@ -22,7 +22,7 @@ function App({ Component, pageProps }: AppProps): JSX.Element {
   return (
     <React.Fragment>
       <Head>
-        <title>gurp</title>
+        <title>Hetty</title>
         <meta
           name="viewport"
           content="minimum-scale=1, initial-scale=1, width=device-width"

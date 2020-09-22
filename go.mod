@@ -1,4 +1,4 @@
-module github.com/dstotijn/gurp
+module github.com/dstotijn/hetty
 
 go 1.13
 

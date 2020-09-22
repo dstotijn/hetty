@@ -3,7 +3,7 @@ import RequestList from "../components/reqlog/RequestList";
 function Index(): JSX.Element {
   return (
     <div>
-      <h1>gurp</h1>
+      <h1>Hetty</h1>
     </div>
   );
 }
