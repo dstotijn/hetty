@@ -1,4 +1,3 @@
-import { gql, useQuery } from "@apollo/client";
 import {
   TableContainer,
   Paper,
@@ -7,42 +6,50 @@ import {
   TableRow,
   TableCell,
   TableBody,
+  CircularProgress,
   Typography,
+  Box,
 } from "@material-ui/core";
 
 import HttpStatusIcon from "./HttpStatusCode";
-
-const HTTP_REQUEST_LOGS = gql`
-  query HttpRequestLogs {
-    httpRequestLogs {
-      id
-      method
-      url
-      timestamp
-      response {
-        status
-        statusCode
-      }
-    }
-  }
-`;
+import CenteredPaper from "../CenteredPaper";
 
 interface Props {
+  logs: Array<any>;
   onLogClick(requestId: string): void;
 }
 
-function RequestList({ onLogClick }: Props): JSX.Element {
-  const { loading, error, data } = useQuery(HTTP_REQUEST_LOGS);
+function RequestList({ logs, onLogClick }: Props): JSX.Element {
+  return (
+    <div>
+      <RequestListTable onLogClick={onLogClick} logs={logs} />
+      {logs.length === 0 && (
+        <Box my={1}>
+          <CenteredPaper>
+            <Typography>No logs found.</Typography>
+          </CenteredPaper>
+        </Box>
+      )}
+    </div>
+  );
+}
 
-  if (loading) return <div>"Loading..."</div>;
-  if (error) return <div>`Error: ${error.message}`</div>;
+interface RequestListTableProps {
+  logs?: any;
+  onLogClick(requestId: string): void;
+}
 
-  const { httpRequestLogs: logs } = data;
-
+function RequestListTable({
+  logs,
+  onLogClick,
+}: RequestListTableProps): JSX.Element {
   return (
     <TableContainer
       component={Paper}
-      style={{ minHeight: 200, height: "24vh" }}
+      style={{
+        minHeight: logs.length ? 200 : 0,
+        height: logs.length ? "24vh" : "inherit",
+      }}
     >
       <Table stickyHeader size="small">
         <TableHead>

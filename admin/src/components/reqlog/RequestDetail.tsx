@@ -1,6 +1,6 @@
 import { Typography, Box } from "@material-ui/core";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { materialLight } from "react-syntax-highlighter/dist/cjs/styles/prism";
+import { vscDarkPlus } from "react-syntax-highlighter/dist/cjs/styles/prism";
 
 interface Props {
   request: {
@@ -15,7 +15,6 @@ function RequestDetail({ request }: Props): JSX.Element {
   const { method, url, proto, body } = request;
 
   const parsedUrl = new URL(url);
-  console.log(parsedUrl);
 
   return (
     <div>
@@ -24,18 +23,18 @@ function RequestDetail({ request }: Props): JSX.Element {
           variant="h6"
           style={{ fontSize: "1rem", whiteSpace: "nowrap" }}
         >
-          {request.method}{" "}
-          {decodeURIComponent(parsedUrl.pathname + parsedUrl.search)} {proto}
+          {method} {decodeURIComponent(parsedUrl.pathname + parsedUrl.search)}{" "}
+          {proto}
         </Typography>
       </Box>
       <Box>
-        {request.body && (
+        {body && (
           <SyntaxHighlighter
             language="markup"
             showLineNumbers={true}
-            style={materialLight}
+            style={vscDarkPlus}
           >
-            {request.body}
+            {body}
           </SyntaxHighlighter>
         )}
       </Box>

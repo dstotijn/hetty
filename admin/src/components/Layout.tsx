@@ -86,7 +86,7 @@ const useStyles = makeStyles((theme: Theme) =>
     },
     content: {
       flexGrow: 1,
-      padding: theme.spacing(2),
+      padding: theme.spacing(3),
     },
     listItem: {
       paddingLeft: 16,
@@ -136,7 +136,7 @@ export function Layout(props: { children: React.ReactNode }): JSX.Element {
             <MenuIcon />
           </IconButton>
           <Typography variant="h5" noWrap>
-            Hetty
+            <span style={{ marginRight: 12 }}>‍🧑‍🔧</span>Hetty
           </Typography>
         </Toolbar>
       </AppBar>

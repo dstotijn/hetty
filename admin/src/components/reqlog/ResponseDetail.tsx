@@ -1,6 +1,6 @@
 import { Typography, Box } from "@material-ui/core";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { materialLight } from "react-syntax-highlighter/dist/cjs/styles/prism";
+import { vscDarkPlus } from "react-syntax-highlighter/dist/cjs/styles/prism";
 
 import HttpStatusIcon from "./HttpStatusCode";
 
@@ -26,22 +26,24 @@ function ResponseDetail({ response }: Props): JSX.Element {
         </Typography>
       </Box>
       <Box>
-        <SyntaxHighlighter
-          language="markup"
-          showLineNumbers={true}
-          showInlineLineNumbers={true}
-          style={materialLight}
-          lineProps={{
-            style: {
-              display: "block",
-              wordBreak: "break-all",
-              whiteSpace: "pre-wrap",
-            },
-          }}
-          wrapLines={true}
-        >
-          {response.body}
-        </SyntaxHighlighter>
+        {response.body && (
+          <SyntaxHighlighter
+            language="markup"
+            showLineNumbers={true}
+            showInlineLineNumbers={true}
+            style={vscDarkPlus}
+            lineProps={{
+              style: {
+                display: "block",
+                wordBreak: "break-all",
+                whiteSpace: "pre-wrap",
+              },
+            }}
+            wrapLines={true}
+          >
+            {response.body}
+          </SyntaxHighlighter>
+        )}
       </Box>
     </div>
   );
