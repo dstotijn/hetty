@@ -68,6 +68,18 @@ func parseRequestLog(req reqlog.Request) (HTTPRequestLog, error) {
 		log.Body = &reqBody
 	}
 
+	if req.Request.Header != nil {
+		log.Headers = make([]HTTPHeader, 0)
+		for key, values := range req.Request.Header {
+			for _, value := range values {
+				log.Headers = append(log.Headers, HTTPHeader{
+					Key:   key,
+					Value: value,
+				})
+			}
+		}
+	}
+
 	if req.Response != nil {
 		log.Response = &HTTPResponseLog{
 			RequestID:  req.ID.String(),
@@ -78,6 +90,17 @@ func parseRequestLog(req reqlog.Request) (HTTPRequestLog, error) {
 		if len(req.Response.Body) > 0 {
 			resBody := string(req.Response.Body)
 			log.Response.Body = &resBody
+		}
+		if req.Response.Response.Header != nil {
+			log.Response.Headers = make([]HTTPHeader, 0)
+			for key, values := range req.Response.Response.Header {
+				for _, value := range values {
+					log.Response.Headers = append(log.Response.Headers, HTTPHeader{
+						Key:   key,
+						Value: value,
+					})
+				}
+			}
 		}
 	}
 

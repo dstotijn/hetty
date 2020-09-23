@@ -12,9 +12,17 @@ const HTTP_REQUEST_LOG = gql`
       method
       url
       proto
+      headers {
+        key
+        value
+      }
       body
       response {
         proto
+        headers {
+          key
+          value
+        }
         status
         statusCode
         body
@@ -43,14 +51,14 @@ function LogDetail({ requestId: id }: Props): JSX.Element {
     );
   }
 
-  const { method, url, proto, body, response } = data.httpRequestLog;
+  const { method, url, proto, headers, body, response } = data.httpRequestLog;
 
   return (
     <div>
       <Grid container item spacing={2}>
         <Grid item xs={6}>
           <Box component={Paper} maxHeight="62vh" overflow="scroll">
-            <RequestDetail request={{ method, url, proto, body }} />
+            <RequestDetail request={{ method, url, proto, headers, body }} />
           </Box>
         </Grid>
         <Grid item xs={6}>

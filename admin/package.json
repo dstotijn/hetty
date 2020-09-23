@@ -13,10 +13,15 @@
     "@material-ui/core": "^4.11.0",
     "@material-ui/icons": "^4.9.1",
     "@material-ui/lab": "^4.0.0-alpha.56",
+    "@zeit/next-css": "^1.0.1",
     "graphql": "^15.3.0",
+    "monaco-editor": "^0.20.0",
+    "monaco-editor-webpack-plugin": "^1.9.0",
     "next": "^9.5.3",
+    "next-fonts": "^1.0.3",
     "react": "^16.13.1",
     "react-dom": "^16.13.1",
+    "react-monaco-editor": "^0.34.0",
     "react-syntax-highlighter": "^13.5.3"
   },
   "devDependencies": {
