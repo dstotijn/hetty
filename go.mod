@@ -7,4 +7,5 @@ require (
 	github.com/google/uuid v1.1.2
 	github.com/gorilla/mux v1.7.4
 	github.com/vektah/gqlparser/v2 v2.0.1
+	golang.org/x/net v0.0.0-20190620200207-3b0461eec859
 )

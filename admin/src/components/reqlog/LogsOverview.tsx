@@ -1,3 +1,4 @@
+import { useRouter } from "next/router";
 import { gql, useQuery } from "@apollo/client";
 import { useState } from "react";
 import { Box, Typography, CircularProgress } from "@material-ui/core";
@@ -23,10 +24,17 @@ const HTTP_REQUEST_LOGS = gql`
 `;
 
 function LogsOverview(): JSX.Element {
+  const router = useRouter();
+  const detailReqLogId = router.query.id as string;
+  console.log(detailReqLogId);
+
   const { loading, error, data } = useQuery(HTTP_REQUEST_LOGS);
 
-  const [detailReqLogId, setDetailReqLogId] = useState<string | null>(null);
-  const handleLogClick = (reqId: string) => setDetailReqLogId(reqId);
+  const handleLogClick = (reqId: string) => {
+    router.push("/proxy/logs?id=" + reqId, undefined, {
+      shallow: false,
+    });
+  };
 
   if (loading) {
     return <CircularProgress />;
@@ -40,7 +48,11 @@ function LogsOverview(): JSX.Element {
   return (
     <div>
       <Box mb={2}>
-        <RequestList logs={logs} onLogClick={handleLogClick} />
+        <RequestList
+          logs={logs}
+          selectedReqLogId={detailReqLogId}
+          onLogClick={handleLogClick}
+        />
       </Box>
       <Box>
         {detailReqLogId && <LogDetail requestId={detailReqLogId} />}

@@ -12,7 +12,10 @@ const monacoOptions = {
 type language = "html" | "typescript" | "json";
 
 function editorDidMount() {
-  return (window.MonacoEnvironment.getWorkerUrl = (moduleId, label) => {
+  return ((window as any).MonacoEnvironment.getWorkerUrl = (
+    moduleId,
+    label
+  ) => {
     if (label === "json") return "/_next/static/json.worker.js";
     if (label === "html") return "/_next/static/html.worker.js";
     if (label === "javascript") return "/_next/static/ts.worker.js";
@@ -26,8 +29,10 @@ function languageForContentType(contentType: string): language {
     case "text/html":
       return "html";
     case "application/json":
+    case "application/json; charset=utf-8":
       return "json";
     case "application/javascript":
+    case "application/javascript; charset=utf-8":
       return "typescript";
     default:
       return;

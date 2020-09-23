@@ -6,23 +6,64 @@ import {
   TableRow,
   TableCell,
   TableBody,
-  CircularProgress,
   Typography,
   Box,
+  createStyles,
+  makeStyles,
+  Theme,
+  withTheme,
 } from "@material-ui/core";
 
 import HttpStatusIcon from "./HttpStatusCode";
 import CenteredPaper from "../CenteredPaper";
 
+const useStyles = makeStyles((theme: Theme) =>
+  createStyles({
+    requestTitle: {
+      width: "calc(100% - 80px)",
+      fontSize: "1rem",
+      wordBreak: "break-all",
+      whiteSpace: "pre-wrap",
+    },
+    headersTable: {
+      tableLayout: "fixed",
+      width: "100%",
+    },
+    headerKeyCell: {
+      verticalAlign: "top",
+      width: "30%",
+      fontWeight: "bold",
+    },
+    headerValueCell: {
+      width: "70%",
+      verticalAlign: "top",
+      wordBreak: "break-all",
+      whiteSpace: "pre-wrap",
+    },
+  })
+);
+
 interface Props {
   logs: Array<any>;
+  selectedReqLogId?: string;
   onLogClick(requestId: string): void;
+  theme: Theme;
 }
 
-function RequestList({ logs, onLogClick }: Props): JSX.Element {
+function RequestList({
+  logs,
+  onLogClick,
+  selectedReqLogId,
+  theme,
+}: Props): JSX.Element {
   return (
     <div>
-      <RequestListTable onLogClick={onLogClick} logs={logs} />
+      <RequestListTable
+        onLogClick={onLogClick}
+        logs={logs}
+        selectedReqLogId={selectedReqLogId}
+        theme={theme}
+      />
       {logs.length === 0 && (
         <Box my={1}>
           <CenteredPaper>
@@ -36,12 +77,16 @@ function RequestList({ logs, onLogClick }: Props): JSX.Element {
 
 interface RequestListTableProps {
   logs?: any;
+  selectedReqLogId?: string;
   onLogClick(requestId: string): void;
+  theme: Theme;
 }
 
 function RequestListTable({
   logs,
+  selectedReqLogId,
   onLogClick,
+  theme,
 }: RequestListTableProps): JSX.Element {
   return (
     <TableContainer
@@ -70,10 +115,21 @@ function RequestListTable({
               textOverflow: "ellipsis",
             } as any;
 
+            const rowStyle = {
+              backgroundColor:
+                id === selectedReqLogId
+                  ? theme.palette.action.selected
+                  : "inherit",
+            };
+
             return (
-              <TableRow key={id} onClick={() => onLogClick(id)}>
+              <TableRow
+                key={id}
+                style={rowStyle}
+                onClick={() => onLogClick(id)}
+              >
                 <TableCell style={{ ...cellStyle, width: "100px" }}>
-                  {method}
+                  <code>{method}</code>
                 </TableCell>
                 <TableCell style={{ ...cellStyle, maxWidth: "100px" }}>
                   {origin}
@@ -85,7 +141,7 @@ function RequestListTable({
                   {response && (
                     <div>
                       <HttpStatusIcon status={response.statusCode} />{" "}
-                      {response.status}
+                      <code>{response.status}</code>
                     </div>
                   )}
                 </TableCell>
@@ -98,4 +154,4 @@ function RequestListTable({
   );
 }
 
-export default RequestList;
+export default withTheme(RequestList);

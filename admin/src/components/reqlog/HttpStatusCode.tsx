@@ -6,7 +6,7 @@ function HttpStatusIcon({ status }: { status: number }): JSX.Element {
   switch (Math.floor(status / 100)) {
     case 2:
     case 3:
-      return <FiberManualRecordIcon style={{ ...style, color: green[600] }} />;
+      return <FiberManualRecordIcon style={{ ...style, color: green[400] }} />;
     case 4:
       return <FiberManualRecordIcon style={{ ...style, color: orange[400] }} />;
     case 5:

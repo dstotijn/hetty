@@ -51,6 +51,14 @@ function LogDetail({ requestId: id }: Props): JSX.Element {
     );
   }
 
+  if (!data.httpRequestLog) {
+    return (
+      <Alert severity="warning">
+        Request <strong>{id}</strong> was not found.
+      </Alert>
+    );
+  }
+
   const { method, url, proto, headers, body, response } = data.httpRequestLog;
 
   return (

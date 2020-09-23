@@ -1,6 +1,6 @@
 import { createMuiTheme } from "@material-ui/core/styles";
 import grey from "@material-ui/core/colors/grey";
-import green from "@material-ui/core/colors/green";
+import teal from "@material-ui/core/colors/teal";
 
 const theme = createMuiTheme({
   palette: {
@@ -9,7 +9,36 @@ const theme = createMuiTheme({
       main: grey[900],
     },
     secondary: {
-      main: green[500],
+      main: teal["A400"],
+    },
+  },
+  typography: {
+    h2: {
+      fontFamily: "'JetBrains Mono', monospace",
+      fontWeight: 600,
+    },
+    h3: {
+      fontFamily: "'JetBrains Mono', monospace",
+      fontWeight: 600,
+    },
+    h4: {
+      fontFamily: "'JetBrains Mono', monospace",
+      fontWeight: 600,
+    },
+    h5: {
+      fontFamily: "'JetBrains Mono', monospace",
+      fontWeight: 600,
+    },
+    h6: {
+      fontFamily: "'JetBrains Mono', monospace",
+      fontWeight: 600,
+    },
+  },
+  overrides: {
+    MuiTableCell: {
+      stickyHeader: {
+        backgroundColor: grey[900],
+      },
     },
   },
 });

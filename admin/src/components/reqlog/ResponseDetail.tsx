@@ -34,7 +34,13 @@ function ResponseDetail({ response }: Props): JSX.Element {
         >
           <HttpStatusIcon status={response.statusCode} />{" "}
           <Typography component="span" color="textSecondary">
-            {response.proto}
+            <Typography
+              component="span"
+              color="textSecondary"
+              style={{ fontFamily: "'JetBrains Mono', monospace" }}
+            >
+              {response.proto}
+            </Typography>
           </Typography>{" "}
           {response.status}
         </Typography>
@@ -42,7 +48,9 @@ function ResponseDetail({ response }: Props): JSX.Element {
 
       <Divider />
 
-      <HttpHeadersTable headers={response.headers} />
+      <Box m={2}>
+        <HttpHeadersTable headers={response.headers} />
+      </Box>
 
       {response.body && (
         <Editor content={response.body} contentType={contentType} />

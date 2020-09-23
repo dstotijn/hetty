@@ -67,7 +67,11 @@ function RequestDetail({ request }: Props): JSX.Element {
         </Typography>
         <Typography className={classes.requestTitle} variant="h6">
           {method} {decodeURIComponent(parsedUrl.pathname + parsedUrl.search)}{" "}
-          <Typography component="span" color="textSecondary">
+          <Typography
+            component="span"
+            color="textSecondary"
+            style={{ fontFamily: "'JetBrains Mono', monospace" }}
+          >
             {proto}
           </Typography>
         </Typography>
@@ -75,7 +79,9 @@ function RequestDetail({ request }: Props): JSX.Element {
 
       <Divider />
 
-      <HttpHeadersTable headers={headers} />
+      <Box m={2}>
+        <HttpHeadersTable headers={headers} />
+      </Box>
 
       {body && <Editor content={body} contentType={contentType} />}
     </div>

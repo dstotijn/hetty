@@ -14,12 +14,13 @@ import {
   ListItem,
   ListItemIcon,
   ListItemText,
-  Box,
   Tooltip,
 } from "@material-ui/core";
+import Link from "next/link";
 import MenuIcon from "@material-ui/icons/Menu";
 import HomeIcon from "@material-ui/icons/Home";
 import SettingsEthernetIcon from "@material-ui/icons/SettingsEthernet";
+import SendIcon from "@material-ui/icons/Send";
 import ChevronLeftIcon from "@material-ui/icons/ChevronLeft";
 import ChevronRightIcon from "@material-ui/icons/ChevronRight";
 import clsx from "clsx";
@@ -136,7 +137,7 @@ export function Layout(props: { children: React.ReactNode }): JSX.Element {
             <MenuIcon />
           </IconButton>
           <Typography variant="h5" noWrap>
-            <span style={{ marginRight: 12 }}>‍🧑‍🔧</span>Hetty
+            Hetty://
           </Typography>
         </Toolbar>
       </AppBar>
@@ -164,22 +165,51 @@ export function Layout(props: { children: React.ReactNode }): JSX.Element {
         </div>
         <Divider />
         <List>
-          <ListItem button key="home" className={classes.listItem}>
-            <Tooltip title="Home">
-              <ListItemIcon className={classes.listItemIcon}>
-                <HomeIcon />
-              </ListItemIcon>
-            </Tooltip>
-            <ListItemText primary="Home" />
-          </ListItem>
-          <ListItem button key="proxy" className={classes.listItem}>
-            <Tooltip title="Proxy">
-              <ListItemIcon className={classes.listItemIcon}>
-                <SettingsEthernetIcon />
-              </ListItemIcon>
-            </Tooltip>
-            <ListItemText primary="Proxy" />
-          </ListItem>
+          <Link href="/" passHref>
+            <ListItem
+              button
+              component="a"
+              key="home"
+              className={classes.listItem}
+            >
+              <Tooltip title="Home">
+                <ListItemIcon className={classes.listItemIcon}>
+                  <HomeIcon />
+                </ListItemIcon>
+              </Tooltip>
+              <ListItemText primary="Home" />
+            </ListItem>
+          </Link>
+          <Link href="/proxy/logs" passHref>
+            <ListItem
+              button
+              component="a"
+              key="proxy"
+              className={classes.listItem}
+            >
+              <Tooltip title="Proxy">
+                <ListItemIcon className={classes.listItemIcon}>
+                  <SettingsEthernetIcon />
+                </ListItemIcon>
+              </Tooltip>
+              <ListItemText primary="Proxy" />
+            </ListItem>
+          </Link>
+          <Link href="/sender" passHref>
+            <ListItem
+              button
+              component="a"
+              key="sender"
+              className={classes.listItem}
+            >
+              <Tooltip title="Sender">
+                <ListItemIcon className={classes.listItemIcon}>
+                  <SendIcon />
+                </ListItemIcon>
+              </Tooltip>
+              <ListItemText primary="Sender" />
+            </ListItem>
+          </Link>
         </List>
       </Drawer>
       <main className={classes.content}>

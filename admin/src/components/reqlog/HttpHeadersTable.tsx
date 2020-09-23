@@ -9,25 +9,36 @@ import {
   TableRow,
 } from "@material-ui/core";
 
-const useStyles = makeStyles((theme: Theme) =>
-  createStyles({
+const useStyles = makeStyles((theme: Theme) => {
+  const paddingX = 0;
+  const paddingY = theme.spacing(1) / 3;
+  const tableCell = {
+    paddingLeft: paddingX,
+    paddingRight: paddingX,
+    paddingTop: paddingY,
+    paddingBottom: paddingY,
+    verticalAlign: "top",
+    border: "none",
+  };
+  return createStyles({
     table: {
       tableLayout: "fixed",
       width: "100%",
     },
     keyCell: {
-      verticalAlign: "top",
-      width: "30%",
+      ...tableCell,
+      width: "40%",
       fontWeight: "bold",
     },
     valueCell: {
-      width: "70%",
-      verticalAlign: "top",
+      ...tableCell,
+      width: "60%",
+      border: "none",
       wordBreak: "break-all",
       whiteSpace: "pre-wrap",
     },
-  })
-);
+  });
+});
 
 interface Props {
   headers: Array<{ key: string; value: string }>;
@@ -42,7 +53,7 @@ function HttpHeadersTable({ headers }: Props): JSX.Element {
           {headers.map(({ key, value }, index) => (
             <TableRow key={index}>
               <TableCell component="th" scope="row" className={classes.keyCell}>
-                <code>{key}</code>
+                <code>{key}:</code>
               </TableCell>
               <TableCell className={classes.valueCell}>
                 <code>{value}</code>
