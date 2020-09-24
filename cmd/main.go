@@ -7,8 +7,6 @@ import (
 	"log"
 	"net"
 	"net/http"
-	"net/http/httputil"
-	"net/url"
 	"os"
 	"strings"
 
@@ -25,7 +23,8 @@ var (
 	caCertFile = flag.String("cert", "", "CA certificate file path")
 	caKeyFile  = flag.String("key", "", "CA private key file path")
 	dev        = flag.Bool("dev", false, "Run in development mode")
-	adminPath  = flag.String("adminPath", "", "File path to admin build")
+	addr       = flag.String("addr", ":80", "TCP address to listen on, in the form \"host:port\"")
+	adminPath  = flag.String("adminPath", "./admin/dist", "File path to admin build")
 )
 
 func main() {
@@ -53,15 +52,9 @@ func main() {
 
 	var adminHandler http.Handler
 
-	if *dev {
-		adminURL, err := url.Parse("http://localhost:3000")
-		if err != nil {
-			log.Fatalf("[FATAL] Invalid admin URL: %v", err)
-		}
-		adminHandler = httputil.NewSingleHostReverseProxy(adminURL)
-	} else {
+	if !*dev {
 		if *adminPath == "" {
-			log.Fatal("[FATAL] `adminPath` must be set")
+			*adminPath = "./admin/dist"
 		}
 		adminHandler = http.FileServer(http.Dir(*adminPath))
 	}
@@ -87,12 +80,12 @@ func main() {
 	router.PathPrefix("").Handler(p)
 
 	s := &http.Server{
-		Addr:         ":8080",
+		Addr:         *addr,
 		Handler:      router,
 		TLSNextProto: map[string]func(*http.Server, *tls.Conn, http.Handler){}, // Disable HTTP/2
 	}
 
-	log.Println("[INFO] Running server on :8080 ...")
+	log.Printf("[INFO] Running server on %v ...", *addr)
 	err = s.ListenAndServe()
 	if err != nil && err != http.ErrServerClosed {
 		log.Fatalf("[FATAL] HTTP server closed: %v", err)

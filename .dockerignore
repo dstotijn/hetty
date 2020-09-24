@@ -1,0 +1,4 @@
+/admin/.env
+/admin/.next
+/admin/dist
+/admin/node_modules
