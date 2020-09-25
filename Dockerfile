@@ -8,7 +8,7 @@ COPY go.mod go.sum ./
 RUN go mod download
 COPY cmd ./cmd
 COPY pkg ./pkg
-RUN go build ./cmd/hetty
+RUN go build -o hetty ./cmd/hetty
 
 FROM node:${NODE_VERSION}-alpine AS node-builder
 WORKDIR /app
