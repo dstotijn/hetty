@@ -1,4 +1,4 @@
-package hetty
+package main
 
 import (
 	"crypto/tls"
@@ -56,7 +56,7 @@ func main() {
 
 	var adminHandler http.Handler
 	if adminPath == "" {
-		// Use
+		// Used for embedding with `rice`.
 		box, err := rice.FindBox("../../admin/dist")
 		if err != nil {
 			log.Fatalf("[FATAL] Could not find embedded admin resources: %v", err)
