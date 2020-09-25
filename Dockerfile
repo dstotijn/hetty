@@ -8,8 +8,7 @@ COPY go.mod go.sum ./
 RUN go mod download
 COPY cmd ./cmd
 COPY pkg ./pkg
-COPY gqlgen.yml .
-RUN go build -o hetty ./cmd/
+RUN go build ./cmd/hetty
 
 FROM node:${NODE_VERSION}-alpine AS node-builder
 WORKDIR /app
@@ -24,6 +23,6 @@ WORKDIR /app
 COPY --from=go-builder /app/hetty .
 COPY --from=node-builder /app/dist admin
 
-ENTRYPOINT ["./hetty"]
+ENTRYPOINT ["./hetty", "-adminPath=./admin"]
 
 EXPOSE 80

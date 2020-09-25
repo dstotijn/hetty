@@ -1,4 +1,4 @@
-package main
+package hetty
 
 import (
 	"crypto/tls"
@@ -10,6 +10,7 @@ import (
 	"os"
 	"strings"
 
+	rice "github.com/GeertJohan/go.rice"
 	"github.com/dstotijn/hetty/pkg/api"
 	"github.com/dstotijn/hetty/pkg/proxy"
 	"github.com/dstotijn/hetty/pkg/reqlog"
@@ -20,17 +21,20 @@ import (
 )
 
 var (
-	caCertFile = flag.String("cert", "", "CA certificate file path")
-	caKeyFile  = flag.String("key", "", "CA private key file path")
-	dev        = flag.Bool("dev", false, "Run in development mode")
-	addr       = flag.String("addr", ":80", "TCP address to listen on, in the form \"host:port\"")
-	adminPath  = flag.String("adminPath", "./admin/dist", "File path to admin build")
+	caCertFile string
+	caKeyFile  string
+	addr       string
+	adminPath  string
 )
 
 func main() {
+	flag.StringVar(&caCertFile, "cert", "", "CA certificate file path")
+	flag.StringVar(&caKeyFile, "key", "", "CA private key file path")
+	flag.StringVar(&addr, "addr", ":80", "TCP address to listen on, in the form \"host:port\"")
+	flag.StringVar(&adminPath, "adminPath", "", "File path to admin build")
 	flag.Parse()
 
-	tlsCA, err := tls.LoadX509KeyPair(*caCertFile, *caKeyFile)
+	tlsCA, err := tls.LoadX509KeyPair(caCertFile, caKeyFile)
 	if err != nil {
 		log.Fatalf("[FATAL] Could not load CA key pair: %v", err)
 	}
@@ -51,12 +55,15 @@ func main() {
 	p.UseResponseModifier(reqLogService.ResponseModifier)
 
 	var adminHandler http.Handler
-
-	if !*dev {
-		if *adminPath == "" {
-			*adminPath = "./admin/dist"
+	if adminPath == "" {
+		// Use
+		box, err := rice.FindBox("../../admin/dist")
+		if err != nil {
+			log.Fatalf("[FATAL] Could not find embedded admin resources: %v", err)
 		}
-		adminHandler = http.FileServer(http.Dir(*adminPath))
+		adminHandler = http.FileServer(box.HTTPBox())
+	} else {
+		adminHandler = http.FileServer(http.Dir(adminPath))
 	}
 
 	router := mux.NewRouter().SkipClean(true)
@@ -80,12 +87,12 @@ func main() {
 	router.PathPrefix("").Handler(p)
 
 	s := &http.Server{
-		Addr:         *addr,
+		Addr:         addr,
 		Handler:      router,
 		TLSNextProto: map[string]func(*http.Server, *tls.Conn, http.Handler){}, // Disable HTTP/2
 	}
 
-	log.Printf("[INFO] Running server on %v ...", *addr)
+	log.Printf("[INFO] Running server on %v ...", addr)
 	err = s.ListenAndServe()
 	if err != nil && err != http.ErrServerClosed {
 		log.Fatalf("[FATAL] HTTP server closed: %v", err)
