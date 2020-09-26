@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	rice "github.com/GeertJohan/go.rice"
+	"github.com/dstotijn/hetty/db/cayley"
 	"github.com/dstotijn/hetty/pkg/api"
 	"github.com/dstotijn/hetty/pkg/proxy"
 	"github.com/dstotijn/hetty/pkg/reqlog"
@@ -23,6 +24,7 @@ import (
 var (
 	caCertFile string
 	caKeyFile  string
+	dbFile     string
 	addr       string
 	adminPath  string
 )
@@ -30,6 +32,7 @@ var (
 func main() {
 	flag.StringVar(&caCertFile, "cert", "", "CA certificate file path")
 	flag.StringVar(&caKeyFile, "key", "", "CA private key file path")
+	flag.StringVar(&dbFile, "db", "hetty.db", "Database file path")
 	flag.StringVar(&addr, "addr", ":80", "TCP address to listen on, in the form \"host:port\"")
 	flag.StringVar(&adminPath, "adminPath", "", "File path to admin build")
 	flag.Parse()
@@ -44,7 +47,13 @@ func main() {
 		log.Fatalf("[FATAL] Could not parse CA: %v", err)
 	}
 
-	reqLogService := reqlog.NewService()
+	db, err := cayley.NewDatabase(dbFile)
+	if err != nil {
+		log.Fatalf("[FATAL] Could not initialize database: %v", err)
+	}
+	defer db.Close()
+
+	reqLogService := reqlog.NewService(db)
 
 	p, err := proxy.NewProxy(caCert, tlsCA.PrivateKey)
 	if err != nil {
@@ -77,7 +86,7 @@ func main() {
 	// GraphQL server.
 	adminRouter.Path("/api/playground").Handler(playground.Handler("GraphQL Playground", "/api/graphql"))
 	adminRouter.Path("/api/graphql").Handler(handler.NewDefaultServer(api.NewExecutableSchema(api.Config{Resolvers: &api.Resolver{
-		RequestLogService: &reqLogService,
+		RequestLogService: reqLogService,
 	}})))
 
 	// Admin interface.

@@ -4,8 +4,9 @@ package api
 
 import (
 	"context"
-	"errors"
 	"fmt"
+
+	"github.com/google/uuid"
 
 	"github.com/dstotijn/hetty/pkg/reqlog"
 )
@@ -19,7 +20,10 @@ type queryResolver struct{ *Resolver }
 func (r *Resolver) Query() QueryResolver { return &queryResolver{r} }
 
 func (r *queryResolver) HTTPRequestLogs(ctx context.Context) ([]HTTPRequestLog, error) {
-	reqs := r.RequestLogService.FindAllRequests()
+	reqs, err := r.RequestLogService.FindAllRequests(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("could not query repository for requests: %v", err)
+	}
 	logs := make([]HTTPRequestLog, len(reqs))
 
 	for i, req := range reqs {
@@ -34,12 +38,16 @@ func (r *queryResolver) HTTPRequestLogs(ctx context.Context) ([]HTTPRequestLog, 
 }
 
 func (r *queryResolver) HTTPRequestLog(ctx context.Context, id string) (*HTTPRequestLog, error) {
-	log, err := r.RequestLogService.FindRequestLogByID(id)
+	reqLogID, err := uuid.Parse(id)
+	if err != nil {
+		return nil, fmt.Errorf("invalid id: %v", err)
+	}
+	log, err := r.RequestLogService.FindRequestLogByID(ctx, reqLogID)
 	if err == reqlog.ErrRequestNotFound {
 		return nil, nil
 	}
 	if err != nil {
-		return nil, errors.New("could not get request by ID")
+		return nil, fmt.Errorf("could not get request by ID: %v", err)
 	}
 	req, err := parseRequestLog(log)
 	if err != nil {

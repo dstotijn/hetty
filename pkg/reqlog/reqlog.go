@@ -3,12 +3,12 @@ package reqlog
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
-	"sync"
 	"time"
 
 	"github.com/dstotijn/hetty/pkg/proxy"
@@ -26,43 +26,29 @@ type Request struct {
 }
 
 type Response struct {
+	RequestID uuid.UUID
 	Response  http.Response
 	Body      []byte
 	Timestamp time.Time
 }
 
 type Service struct {
-	store []Request
-	mu    sync.Mutex
+	repo Repository
 }
 
-func NewService() Service {
-	return Service{
-		store: make([]Request, 0),
-	}
+func NewService(repo Repository) *Service {
+	return &Service{repo}
 }
 
-func (svc *Service) FindAllRequests() []Request {
-	return svc.store
+func (svc *Service) FindAllRequests(ctx context.Context) ([]Request, error) {
+	return svc.repo.FindAllRequestLogs(ctx)
 }
 
-func (svc *Service) FindRequestLogByID(id string) (Request, error) {
-	svc.mu.Lock()
-	defer svc.mu.Unlock()
-
-	for _, req := range svc.store {
-		if req.ID.String() == id {
-			return req, nil
-		}
-	}
-
-	return Request{}, ErrRequestNotFound
+func (svc *Service) FindRequestLogByID(ctx context.Context, id uuid.UUID) (Request, error) {
+	return svc.repo.FindRequestLogByID(ctx, id)
 }
 
-func (svc *Service) addRequest(reqID uuid.UUID, req http.Request, body []byte) Request {
-	svc.mu.Lock()
-	defer svc.mu.Unlock()
-
+func (svc *Service) addRequest(ctx context.Context, reqID uuid.UUID, req http.Request, body []byte) error {
 	reqLog := Request{
 		ID:        reqID,
 		Request:   req,
@@ -70,27 +56,18 @@ func (svc *Service) addRequest(reqID uuid.UUID, req http.Request, body []byte) R
 		Timestamp: time.Now(),
 	}
 
-	svc.store = append(svc.store, reqLog)
-
-	return reqLog
+	return svc.repo.AddRequestLog(ctx, reqLog)
 }
 
-func (svc *Service) addResponse(reqID uuid.UUID, res http.Response, body []byte) error {
-	svc.mu.Lock()
-	defer svc.mu.Unlock()
-
-	for i := range svc.store {
-		if svc.store[i].ID == reqID {
-			svc.store[i].Response = &Response{
-				Response:  res,
-				Body:      body,
-				Timestamp: time.Now(),
-			}
-			return nil
-		}
+func (svc *Service) addResponse(ctx context.Context, reqID uuid.UUID, res http.Response, body []byte) error {
+	resLog := Response{
+		RequestID: reqID,
+		Response:  res,
+		Body:      body,
+		Timestamp: time.Now(),
 	}
 
-	return fmt.Errorf("no request found with ID: %s", reqID)
+	return svc.repo.AddResponseLog(ctx, resLog)
 }
 
 func (svc *Service) RequestModifier(next proxy.RequestModifyFunc) proxy.RequestModifyFunc {
@@ -116,7 +93,10 @@ func (svc *Service) RequestModifier(next proxy.RequestModifyFunc) proxy.RequestM
 			return
 		}
 
-		_ = svc.addRequest(reqID, *clone, body)
+		err := svc.addRequest(req.Context(), reqID, *clone, body)
+		if err != nil {
+			log.Printf("[ERROR] Could not store request log: %v", err)
+		}
 	}
 }
 
@@ -152,7 +132,7 @@ func (svc *Service) ResponseModifier(next proxy.ResponseModifyFunc) proxy.Respon
 			return errors.New("reqlog: request is missing ID")
 		}
 
-		if err := svc.addResponse(reqID, clone, body); err != nil {
+		if err := svc.addResponse(res.Request.Context(), reqID, clone, body); err != nil {
 			return fmt.Errorf("reqlog: could not add response: %v", err)
 		}
 
