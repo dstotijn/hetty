@@ -60,6 +60,18 @@ func (svc *Service) addRequest(ctx context.Context, reqID uuid.UUID, req http.Re
 }
 
 func (svc *Service) addResponse(ctx context.Context, reqID uuid.UUID, res http.Response, body []byte) error {
+	if res.Header.Get("Content-Encoding") == "gzip" {
+		gzipReader, err := gzip.NewReader(bytes.NewBuffer(body))
+		if err != nil {
+			return fmt.Errorf("reqlog: could not create gzip reader: %v", err)
+		}
+		defer gzipReader.Close()
+		body, err = ioutil.ReadAll(gzipReader)
+		if err != nil {
+			return fmt.Errorf("reqlog: could not read gzipped response body: %v", err)
+		}
+	}
+
 	resLog := Response{
 		RequestID: reqID,
 		Response:  res,
@@ -93,10 +105,11 @@ func (svc *Service) RequestModifier(next proxy.RequestModifyFunc) proxy.RequestM
 			return
 		}
 
-		err := svc.addRequest(req.Context(), reqID, *clone, body)
-		if err != nil {
-			log.Printf("[ERROR] Could not store request log: %v", err)
-		}
+		go func() {
+			if err := svc.addRequest(context.Background(), reqID, *clone, body); err != nil {
+				log.Printf("[ERROR] Could not store request log: %v", err)
+			}
+		}()
 	}
 }
 
@@ -104,6 +117,11 @@ func (svc *Service) ResponseModifier(next proxy.ResponseModifyFunc) proxy.Respon
 	return func(res *http.Response) error {
 		if err := next(res); err != nil {
 			return err
+		}
+
+		reqID, _ := res.Request.Context().Value(proxy.ReqIDKey).(uuid.UUID)
+		if reqID == uuid.Nil {
+			return errors.New("reqlog: request is missing ID")
 		}
 
 		clone := *res
@@ -115,26 +133,11 @@ func (svc *Service) ResponseModifier(next proxy.ResponseModifyFunc) proxy.Respon
 		}
 		res.Body = ioutil.NopCloser(bytes.NewBuffer(body))
 
-		if res.Header.Get("Content-Encoding") == "gzip" {
-			gzipReader, err := gzip.NewReader(bytes.NewBuffer(body))
-			if err != nil {
-				return fmt.Errorf("reqlog: could not create gzip reader: %v", err)
+		go func() {
+			if err := svc.addResponse(res.Request.Context(), reqID, clone, body); err != nil {
+				log.Printf("[ERROR] Could not store response log: %v", err)
 			}
-			defer gzipReader.Close()
-			body, err = ioutil.ReadAll(gzipReader)
-			if err != nil {
-				return fmt.Errorf("reqlog: could not read gzipped response body: %v", err)
-			}
-		}
-
-		reqID, _ := res.Request.Context().Value(proxy.ReqIDKey).(uuid.UUID)
-		if reqID == uuid.Nil {
-			return errors.New("reqlog: request is missing ID")
-		}
-
-		if err := svc.addResponse(res.Request.Context(), reqID, clone, body); err != nil {
-			return fmt.Errorf("reqlog: could not add response: %v", err)
-		}
+		}()
 
 		return nil
 	}

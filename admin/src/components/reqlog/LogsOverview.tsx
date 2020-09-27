@@ -28,7 +28,9 @@ function LogsOverview(): JSX.Element {
   const detailReqLogId = router.query.id as string;
   console.log(detailReqLogId);
 
-  const { loading, error, data } = useQuery(HTTP_REQUEST_LOGS);
+  const { loading, error, data } = useQuery(HTTP_REQUEST_LOGS, {
+    pollInterval: 1000,
+  });
 
   const handleLogClick = (reqId: string) => {
     router.push("/proxy/logs?id=" + reqId, undefined, {

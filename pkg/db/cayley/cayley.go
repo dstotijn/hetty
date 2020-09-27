@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"path"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/cayleygraph/cayley"
@@ -54,6 +55,7 @@ type HTTPHeader struct {
 type Database struct {
 	store  *cayley.Handle
 	schema *schema.Config
+	mu     sync.Mutex
 }
 
 func init() {
@@ -106,11 +108,14 @@ func (db *Database) Close() error {
 }
 
 func (db *Database) FindAllRequestLogs(ctx context.Context) ([]reqlog.Request, error) {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+
 	var reqLogs []reqlog.Request
 	var reqs []HTTPRequest
 
 	path := cayley.StartPath(db.store, quad.IRI("hy:HTTPRequest")).In(quad.IRI(rdf.Type))
-	err := path.Iterate(ctx).EachValue(nil, func(v quad.Value) {
+	err := path.Iterate(ctx).EachValue(db.store, func(v quad.Value) {
 		var req HTTPRequest
 		if err := db.schema.LoadToDepth(ctx, db.store, &req, -1, v); err != nil {
 			log.Printf("[ERROR] Could not load sub-graph for http requests: %v", err)
@@ -130,10 +135,20 @@ func (db *Database) FindAllRequestLogs(ctx context.Context) ([]reqlog.Request, e
 		reqLogs = append(reqLogs, reqLog)
 	}
 
+	// By default, all retrieved requests are ordered chronologically, oldest first.
+	// Reverse the order, so newest logs are first.
+	for i := len(reqLogs)/2 - 1; i >= 0; i-- {
+		opp := len(reqLogs) - 1 - i
+		reqLogs[i], reqLogs[opp] = reqLogs[opp], reqLogs[i]
+	}
+
 	return reqLogs, nil
 }
 
 func (db *Database) FindRequestLogByID(ctx context.Context, id uuid.UUID) (reqlog.Request, error) {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+
 	var req HTTPRequest
 	err := db.schema.LoadTo(ctx, db.store, &req, iriFromUUID(id))
 	if schema.IsNotFound(err) {
@@ -152,6 +167,9 @@ func (db *Database) FindRequestLogByID(ctx context.Context, id uuid.UUID) (reqlo
 }
 
 func (db *Database) AddRequestLog(ctx context.Context, reqLog reqlog.Request) error {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+
 	httpReq := HTTPRequest{
 		ID:        iriFromUUID(reqLog.ID),
 		Proto:     reqLog.Request.Proto,
@@ -162,18 +180,25 @@ func (db *Database) AddRequestLog(ctx context.Context, reqLog reqlog.Request) er
 		Timestamp: reqLog.Timestamp,
 	}
 
-	qw := graph.NewWriter(db.store)
-	defer qw.Close()
+	tx := cayley.NewTransaction()
+	qw := graph.NewTxWriter(tx, graph.Add)
 
 	_, err := db.schema.WriteAsQuads(qw, httpReq)
 	if err != nil {
 		return fmt.Errorf("cayley: could not write quads: %v", err)
 	}
 
+	if err := db.store.ApplyTransaction(tx); err != nil {
+		return fmt.Errorf("cayley: could not apply transaction: %v", err)
+	}
+
 	return nil
 }
 
 func (db *Database) AddResponseLog(ctx context.Context, resLog reqlog.Response) error {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+
 	httpRes := HTTPResponse{
 		RequestID:  iriFromUUID(resLog.RequestID),
 		Proto:      resLog.Response.Proto,
@@ -184,12 +209,16 @@ func (db *Database) AddResponseLog(ctx context.Context, resLog reqlog.Response) 
 		Timestamp:  resLog.Timestamp,
 	}
 
-	qw := graph.NewWriter(db.store)
-	defer qw.Close()
+	tx := cayley.NewTransaction()
+	qw := graph.NewTxWriter(tx, graph.Add)
 
 	_, err := db.schema.WriteAsQuads(qw, httpRes)
 	if err != nil {
 		return fmt.Errorf("cayley: could not write response quads: %v", err)
+	}
+
+	if err := db.store.ApplyTransaction(tx); err != nil {
+		return fmt.Errorf("cayley: could not apply transaction: %v", err)
 	}
 
 	return nil
