@@ -25,6 +25,13 @@ import ChevronLeftIcon from "@material-ui/icons/ChevronLeft";
 import ChevronRightIcon from "@material-ui/icons/ChevronRight";
 import clsx from "clsx";
 
+export enum Page {
+  Home,
+  ProxySetup,
+  ProxyLogs,
+  Sender,
+}
+
 const drawerWidth = 240;
 
 const useStyles = makeStyles((theme: Theme) =>
@@ -49,7 +56,7 @@ const useStyles = makeStyles((theme: Theme) =>
       }),
     },
     menuButton: {
-      marginRight: 36,
+      marginRight: 28,
     },
     hide: {
       display: "none",
@@ -100,10 +107,20 @@ const useStyles = makeStyles((theme: Theme) =>
     listItemIcon: {
       minWidth: 42,
     },
+    titleHighlight: {
+      color: theme.palette.secondary.main,
+      marginRight: 4,
+    },
   })
 );
 
-export function Layout(props: { children: React.ReactNode }): JSX.Element {
+interface Props {
+  children: React.ReactNode;
+  title: string;
+  page: Page;
+}
+
+export function Layout({ title, page, children }: Props): JSX.Element {
   const classes = useStyles();
   const theme = useTheme();
   const [open, setOpen] = React.useState(false);
@@ -137,7 +154,10 @@ export function Layout(props: { children: React.ReactNode }): JSX.Element {
             <MenuIcon />
           </IconButton>
           <Typography variant="h5" noWrap>
-            Hetty://
+            <span className={title !== "" && classes.titleHighlight}>
+              Hetty://
+            </span>
+            {title}
           </Typography>
         </Toolbar>
       </AppBar>
@@ -170,6 +190,7 @@ export function Layout(props: { children: React.ReactNode }): JSX.Element {
               button
               component="a"
               key="home"
+              selected={page === Page.Home}
               className={classes.listItem}
             >
               <Tooltip title="Home">
@@ -184,7 +205,8 @@ export function Layout(props: { children: React.ReactNode }): JSX.Element {
             <ListItem
               button
               component="a"
-              key="proxy"
+              key="proxyLogs"
+              selected={page === Page.ProxyLogs}
               className={classes.listItem}
             >
               <Tooltip title="Proxy">
@@ -200,6 +222,7 @@ export function Layout(props: { children: React.ReactNode }): JSX.Element {
               button
               component="a"
               key="sender"
+              selected={page === Page.Sender}
               className={classes.listItem}
             >
               <Tooltip title="Sender">
@@ -214,7 +237,7 @@ export function Layout(props: { children: React.ReactNode }): JSX.Element {
       </Drawer>
       <main className={classes.content}>
         <div className={classes.toolbar} />
-        {props.children}
+        {children}
       </main>
     </div>
   );

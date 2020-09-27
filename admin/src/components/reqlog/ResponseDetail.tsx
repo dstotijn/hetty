@@ -20,7 +20,7 @@ function ResponseDetail({ response }: Props): JSX.Element {
   )?.value;
   return (
     <div>
-      <Box mx={2} my={2}>
+      <Box p={2}>
         <Typography
           variant="overline"
           color="textSecondary"
@@ -48,7 +48,7 @@ function ResponseDetail({ response }: Props): JSX.Element {
 
       <Divider />
 
-      <Box m={2}>
+      <Box p={2}>
         <HttpHeadersTable headers={response.headers} />
       </Box>
 

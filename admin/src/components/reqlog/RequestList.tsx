@@ -19,27 +19,13 @@ import CenteredPaper from "../CenteredPaper";
 
 const useStyles = makeStyles((theme: Theme) =>
   createStyles({
-    requestTitle: {
-      width: "calc(100% - 80px)",
-      fontSize: "1rem",
-      wordBreak: "break-all",
-      whiteSpace: "pre-wrap",
+    row: {
+      "&:hover": {
+        cursor: "pointer",
+      },
     },
-    headersTable: {
-      tableLayout: "fixed",
-      width: "100%",
-    },
-    headerKeyCell: {
-      verticalAlign: "top",
-      width: "30%",
-      fontWeight: "bold",
-    },
-    headerValueCell: {
-      width: "70%",
-      verticalAlign: "top",
-      wordBreak: "break-all",
-      whiteSpace: "pre-wrap",
-    },
+    /* Pseudo-class applied to the root element if `hover={true}`. */
+    hover: {},
   })
 );
 
@@ -88,6 +74,7 @@ function RequestListTable({
   onLogClick,
   theme,
 }: RequestListTableProps): JSX.Element {
+  const classes = useStyles();
   return (
     <TableContainer
       component={Paper}
@@ -117,15 +104,15 @@ function RequestListTable({
 
             const rowStyle = {
               backgroundColor:
-                id === selectedReqLogId
-                  ? theme.palette.action.selected
-                  : "inherit",
+                id === selectedReqLogId && theme.palette.action.selected,
             };
 
             return (
               <TableRow
                 key={id}
+                className={classes.row}
                 style={rowStyle}
+                hover
                 onClick={() => onLogClick(id)}
               >
                 <TableCell style={{ ...cellStyle, width: "100px" }}>

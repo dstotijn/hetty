@@ -65,13 +65,13 @@ function LogDetail({ requestId: id }: Props): JSX.Element {
     <div>
       <Grid container item spacing={2}>
         <Grid item xs={6}>
-          <Box component={Paper} maxHeight="62vh" overflow="scroll">
+          <Box component={Paper}>
             <RequestDetail request={{ method, url, proto, headers, body }} />
           </Box>
         </Grid>
         <Grid item xs={6}>
           {response && (
-            <Box component={Paper} maxHeight="62vh" overflow="scroll">
+            <Box component={Paper}>
               <ResponseDetail response={response} />
             </Box>
           )}

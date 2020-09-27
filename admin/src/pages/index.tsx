@@ -11,7 +11,7 @@ import SettingsEthernetIcon from "@material-ui/icons/SettingsEthernet";
 import SendIcon from "@material-ui/icons/Send";
 import Link from "next/link";
 
-import Layout from "../components/Layout";
+import Layout, { Page } from "../components/Layout";
 
 const useStyles = makeStyles((theme: Theme) =>
   createStyles({
@@ -33,7 +33,7 @@ const useStyles = makeStyles((theme: Theme) =>
 function Index(): JSX.Element {
   const classes = useStyles();
   return (
-    <Layout>
+    <Layout page={Page.Home} title="">
       <Box p={4}>
         <Box mb={4} width="60%">
           <Typography variant="h2">

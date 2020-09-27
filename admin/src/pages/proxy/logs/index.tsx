@@ -1,14 +1,9 @@
-import { Typography, Box } from "@material-ui/core";
-
 import LogsOverview from "../../../components/reqlog/LogsOverview";
-import Layout from "../../../components/Layout";
+import Layout, { Page } from "../../../components/Layout";
 
 function ProxyLogs(): JSX.Element {
   return (
-    <Layout>
-      <Box mb={2}>
-        <Typography variant="h5">Proxy logs</Typography>
-      </Box>
+    <Layout page={Page.ProxyLogs} title="Proxy logs">
       <LogsOverview />
     </Layout>
   );
