@@ -11,6 +11,5 @@ require (
 	github.com/gorilla/mux v1.7.4
 	github.com/hidal-go/hidalgo v0.0.0-20190814174001-42e03f3b5eaa
 	github.com/vektah/gqlparser/v2 v2.0.1
-	golang.org/x/net v0.0.0-20200822124328-c89045814202
 	golang.org/x/tools v0.0.0-20200925191224-5d1fdd8fa346 // indirect
 )
