@@ -10,12 +10,12 @@
 
 - [x] HTTP man-in-the-middle (MITM) proxy and GraphQL server.
 - [x] Web interface (Next.js) with proxy log viewer.
-- [] Add scope support to the proxy.
-- [] Full text search (with regex) in proxy log viewer.
-- [] Project management.
-- [] Sender module for sending manual HTTP requests, either from scratch or based
+- [ ] Add scope support to the proxy.
+- [ ] Full text search (with regex) in proxy log viewer.
+- [ ] Project management.
+- [ ] Sender module for sending manual HTTP requests, either from scratch or based
   off requests from the proxy log.
-- [] Attacker module for automated sending of HTTP requests. Leverage the concurrency
+- [ ] Attacker module for automated sending of HTTP requests. Leverage the concurrency
   features of Go and its `net/http` package to make it blazingly fast.
 
 ## Installation
