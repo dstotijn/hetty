@@ -8,7 +8,7 @@ function createApolloClient() {
   return new ApolloClient({
     ssrMode: typeof window === "undefined",
     link: new HttpLink({
-      uri: "/api/graphql",
+      uri: "/api/graphql/",
     }),
     cache: new InMemoryCache({
       typePolicies: {

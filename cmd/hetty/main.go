@@ -81,11 +81,11 @@ func main() {
 		hostname, _ := os.Hostname()
 		host, _, _ := net.SplitHostPort(req.Host)
 		return strings.EqualFold(host, hostname) || (req.Host == "hetty.proxy" || req.Host == "localhost:8080")
-	}).Subrouter()
+	}).Subrouter().StrictSlash(true)
 
 	// GraphQL server.
-	adminRouter.Path("/api/playground").Handler(playground.Handler("GraphQL Playground", "/api/graphql"))
-	adminRouter.Path("/api/graphql").Handler(handler.NewDefaultServer(api.NewExecutableSchema(api.Config{Resolvers: &api.Resolver{
+	adminRouter.Path("/api/playground/").Handler(playground.Handler("GraphQL Playground", "/api/graphql/"))
+	adminRouter.Path("/api/graphql/").Handler(handler.NewDefaultServer(api.NewExecutableSchema(api.Config{Resolvers: &api.Resolver{
 		RequestLogService: reqLogService,
 	}})))
 
