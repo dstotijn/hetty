@@ -11,8 +11,8 @@ import (
 	"strings"
 
 	rice "github.com/GeertJohan/go.rice"
-	"github.com/dstotijn/hetty/db/cayley"
 	"github.com/dstotijn/hetty/pkg/api"
+	"github.com/dstotijn/hetty/pkg/db/cayley"
 	"github.com/dstotijn/hetty/pkg/proxy"
 	"github.com/dstotijn/hetty/pkg/reqlog"
 
