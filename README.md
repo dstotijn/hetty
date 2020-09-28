@@ -30,7 +30,7 @@ embedded.
 **Build from source**
 
 ```
-$ go get github.com/dstotijn/hetty
+$ go get github.com/dstotijn/hetty/cmd/hetty
 ```
 
 Then export the Next.js frontend app:
