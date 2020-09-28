@@ -88,7 +88,12 @@ Usage of hetty:
 
 **Note:** There is no built-in in support yet for generating a CA certificate.
 This will be added really soon in an upcoming release. In the meantime, please
-use `openssl` (_TODO: add instructions_).
+use [openssl](https://www.openssl.org/docs/man1.0.2/man1/openssl.html).
+To generate a key and a certificate run the following command:
+```
+openssl req -newkey rsa:2048 -nodes -keyout hetty_key.pem -x509 -days 365 -out hetty_cert.pem
+```
+You can vary the validity time since it's self signed.
 
 ## Vision and roadmap
 
