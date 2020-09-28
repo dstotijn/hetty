@@ -60,7 +60,7 @@ $ docker run \
 -v $HOME/.hetty/hetty_key.pem:/root/.hetty/hetty_key.pem \
 -v $HOME/.hetty/hetty_cert.pem:/root/.hetty/hetty_cert.pem \
 -v $HOME/.hetty/hetty.db:/app/hetty.db \
--p 127.0.0.1:8080:80 \
+-p 127.0.0.1:8080:8080 \
 dstotijn/hetty
 ```
 

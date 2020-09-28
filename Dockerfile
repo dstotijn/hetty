@@ -25,4 +25,4 @@ COPY --from=node-builder /app/dist admin
 
 ENTRYPOINT ["./hetty", "-adminPath=./admin"]
 
-EXPOSE 80
+EXPOSE 8080
