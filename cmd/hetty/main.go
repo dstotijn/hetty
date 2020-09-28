@@ -13,6 +13,7 @@ import (
 	rice "github.com/GeertJohan/go.rice"
 	"github.com/dstotijn/hetty/pkg/api"
 	"github.com/dstotijn/hetty/pkg/db/cayley"
+	"github.com/dstotijn/hetty/pkg/key"
 	"github.com/dstotijn/hetty/pkg/proxy"
 	"github.com/dstotijn/hetty/pkg/reqlog"
 
@@ -27,6 +28,7 @@ var (
 	dbFile     string
 	addr       string
 	adminPath  string
+	keyName    string
 )
 
 func main() {
@@ -35,7 +37,13 @@ func main() {
 	flag.StringVar(&dbFile, "db", "hetty.db", "Database file path")
 	flag.StringVar(&addr, "addr", ":80", "TCP address to listen on, in the form \"host:port\"")
 	flag.StringVar(&adminPath, "adminPath", "", "File path to admin build")
+	flag.StringVar(&keyName, "gen", "", "Generates CA certificate files")
 	flag.Parse()
+
+	if keyName != "" {
+		key.New(keyName)
+		return
+	}
 
 	tlsCA, err := tls.LoadX509KeyPair(caCertFile, caKeyFile)
 	if err != nil {
