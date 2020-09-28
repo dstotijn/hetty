@@ -33,7 +33,6 @@ embedded.
 $ GO111MODULE=auto go get -u -v github.com/dstotijn/hetty/cmd/hetty
 ```
 
-Then export the Next.js frontend app:
 
 ```
 $ cd admin
