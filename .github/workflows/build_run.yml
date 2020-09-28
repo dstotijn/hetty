@@ -1,0 +1,31 @@
+name: Build Frontend, Backend  and Run
+
+on: [pull_request]
+
+jobs:
+  build:
+    name: Build Images and Deploy Example WebApp
+    runs-on: ubuntu-20.04
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+      with:
+        submodules: true
+
+    - name: Test Yarn
+      uses:
+        node_version: '14.x'
+      run: |-
+        cd admin && \
+        yarn install && \
+        yarn export
+
+    - name: Test make
+      run: |-
+        cd .. && \
+        make build 
+
+    - name: Run
+      run: |-
+        ./hetty
