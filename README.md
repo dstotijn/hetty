@@ -118,7 +118,7 @@ back soon. 🤗
 
 ## Acknowledgements
 
-Thanks to the [Hacker101 community on Discord](https://discordapp.com/channels/514337135491416065)
+Thanks to the [Hacker101 community on Discord](https://www.hacker101.com/discord)
 for all the encouragement to actually start building this thing!
 
 ## License
