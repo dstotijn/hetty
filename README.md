@@ -14,9 +14,9 @@
 - [ ] Full text search (with regex) in proxy log viewer.
 - [ ] Project management.
 - [ ] Sender module for sending manual HTTP requests, either from scratch or based
-  off requests from the proxy log.
+      off requests from the proxy log.
 - [ ] Attacker module for automated sending of HTTP requests. Leverage the concurrency
-  features of Go and its `net/http` package to make it blazingly fast.
+      features of Go and its `net/http` package to make it blazingly fast.
 
 ## Installation
 
@@ -57,11 +57,11 @@ on Docker Hub.
 
 ```
 $ docker run \
--v $HOME/.ssh/hetty_key.pem:/.ssh/hetty_key.pem \
--v $HOME/.ssh/hetty_cert.pem:/.ssh/hetty_cert.pem \
+-v $HOME/.hetty/hetty_key.pem:/root/.hetty/hetty_key.pem \
+-v $HOME/.hetty/hetty_cert.pem:/root/.hetty/hetty_cert.pem \
 -v $HOME/.hetty/hetty.db:/app/hetty.db \
 -p 127.0.0.1:8080:80 \
-dstotijn/hetty -key /.ssh/hetty_key.pem -cert /.ssh/hetty_cert.pem -db hetty.db
+dstotijn/hetty
 ```
 
 ## Usage
@@ -72,23 +72,21 @@ http://localhost:8080. Depending on incoming HTTP requests, it either acts as a
 MITM proxy, or it serves the GraphQL API and web interface (Next.js).
 
 ```
-$ hetty -h
-Usage of hetty:
+$ Usage of ./hetty:
   -addr string
-    	TCP address to listen on, in the form "host:port" (default ":80")
+        TCP address to listen on, in the form "host:port" (default ":80")
   -adminPath string
-    	File path to admin build
+        File path to admin build
   -cert string
-    	CA certificate file path
+        CA certificate filepath. Creates a new CA certificate is file doesn't exist (default "~/.hetty/hetty_cert.pem")
   -db string
-    	Database file path (default "hetty.db")
+        Database file path (default "hetty.db")
   -key string
-    	CA private key file path
+        CA private key filepath. Creates a new CA private key if file doesn't exist (default "~/.hetty/hetty_key.pem")
 ```
 
-**Note:** There is no built-in in support yet for generating a CA certificate.
-This will be added really soon in an upcoming release. In the meantime, please
-use `openssl` (_TODO: add instructions_).
+⚠️ _Todo: Write instructions for installing CA certificate in local CA store, and_
+_configuring Hetty to be used as a proxy server._
 
 ## Vision and roadmap
 

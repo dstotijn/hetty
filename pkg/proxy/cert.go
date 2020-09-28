@@ -9,9 +9,13 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/pem"
 	"errors"
+	"fmt"
 	"math/big"
 	"net"
+	"os"
+	"path/filepath"
 	"time"
 )
 
@@ -56,6 +60,70 @@ func NewCertConfig(ca *x509.Certificate, caPrivKey crypto.PrivateKey) (*CertConf
 	}, nil
 }
 
+// LoadOrCreateCA loads an existing CA key pair from disk, or creates
+// a new keypair and saves to disk if certificate or key files don't exist.
+func LoadOrCreateCA(caKeyFile, caCertFile string) (*x509.Certificate, *rsa.PrivateKey, error) {
+	tlsCA, err := tls.LoadX509KeyPair(caCertFile, caKeyFile)
+	if err == nil {
+		caCert, err := x509.ParseCertificate(tlsCA.Certificate[0])
+		if err != nil {
+			return nil, nil, fmt.Errorf("proxy: could not parse CA: %v", err)
+		}
+		caKey, ok := tlsCA.PrivateKey.(*rsa.PrivateKey)
+		if !ok {
+			return nil, nil, errors.New("proxy: private key is not RSA")
+		}
+		return caCert, caKey, nil
+	}
+	if !os.IsNotExist(err) {
+		return nil, nil, fmt.Errorf("proxy: could not load CA key pair: %v", err)
+	}
+
+	// Create directories for files if they don't exist yet.
+	keyDir, _ := filepath.Split(caKeyFile)
+	if keyDir != "" {
+		if _, err := os.Stat(keyDir); os.IsNotExist(err) {
+			os.Mkdir(keyDir, 0755)
+		}
+	}
+	keyDir, _ = filepath.Split(caCertFile)
+	if keyDir != "" {
+		if _, err := os.Stat("keyDir"); os.IsNotExist(err) {
+			os.Mkdir(keyDir, 0755)
+		}
+	}
+
+	// Create new CA keypair.
+	caCert, caKey, err := NewCA("Hetty", "Hetty CA", time.Duration(365*24*time.Hour))
+	if err != nil {
+		return nil, nil, fmt.Errorf("proxy: could not generate new CA keypair: %v", err)
+	}
+
+	// Open CA certificate and key files for writing.
+	certOut, err := os.Create(caCertFile)
+	if err != nil {
+		return nil, nil, fmt.Errorf("proxy: could not open cert file for writing: %v", err)
+	}
+	keyOut, err := os.OpenFile(caKeyFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+	if err != nil {
+		return nil, nil, fmt.Errorf("proxy: could not open key file for writing: %v", err)
+	}
+
+	// Write PEM blocks to CA certificate and key files.
+	if err := pem.Encode(certOut, &pem.Block{Type: "CERTIFICATE", Bytes: caCert.Raw}); err != nil {
+		return nil, nil, fmt.Errorf("proxy: could not write CA certificate to disk: %v", err)
+	}
+	privBytes, err := x509.MarshalPKCS8PrivateKey(caKey)
+	if err != nil {
+		return nil, nil, fmt.Errorf("proxy: could not convert private key to DER format: %v", err)
+	}
+	if err := pem.Encode(keyOut, &pem.Block{Type: "PRIVATE KEY", Bytes: privBytes}); err != nil {
+		return nil, nil, fmt.Errorf("proxy: could not write CA key to disk: %v", err)
+	}
+
+	return caCert, caKey, nil
+}
+
 // NewCA creates a new CA certificate and associated private key.
 func NewCA(name, organization string, validity time.Duration) (*x509.Certificate, *rsa.PrivateKey, error) {
 	priv, err := rsa.GenerateKey(rand.Reader, 2048)
@@ -91,8 +159,8 @@ func NewCA(name, organization string, validity time.Duration) (*x509.Certificate
 		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 		BasicConstraintsValid: true,
-		NotBefore:             time.Now().Add(-24 * time.Hour),
-		NotAfter:              time.Now().Add(24 * time.Hour),
+		NotBefore:             time.Now(),
+		NotAfter:              time.Now().Add(validity),
 		DNSNames:              []string{name},
 		IsCA:                  true,
 	}

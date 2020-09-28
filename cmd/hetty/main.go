@@ -2,7 +2,6 @@ package main
 
 import (
 	"crypto/tls"
-	"crypto/x509"
 	"flag"
 	"log"
 	"net"
@@ -19,6 +18,7 @@ import (
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/gorilla/mux"
+	"github.com/mitchellh/go-homedir"
 )
 
 var (
@@ -30,21 +30,28 @@ var (
 )
 
 func main() {
-	flag.StringVar(&caCertFile, "cert", "", "CA certificate file path")
-	flag.StringVar(&caKeyFile, "key", "", "CA private key file path")
+	flag.StringVar(&caCertFile, "cert", "~/.hetty/hetty_cert.pem", "CA certificate filepath. Creates a new CA certificate is file doesn't exist")
+	flag.StringVar(&caKeyFile, "key", "~/.hetty/hetty_key.pem", "CA private key filepath. Creates a new CA private key if file doesn't exist")
 	flag.StringVar(&dbFile, "db", "hetty.db", "Database file path")
 	flag.StringVar(&addr, "addr", ":80", "TCP address to listen on, in the form \"host:port\"")
 	flag.StringVar(&adminPath, "adminPath", "", "File path to admin build")
 	flag.Parse()
 
-	tlsCA, err := tls.LoadX509KeyPair(caCertFile, caKeyFile)
+	// Expand `~` in filepaths.
+	caCertFile, err := homedir.Expand(caCertFile)
 	if err != nil {
-		log.Fatalf("[FATAL] Could not load CA key pair: %v", err)
+		log.Fatalf("[FATAL] Could not parse CA certificate filepath: %v", err)
+	}
+	caKeyFile, err := homedir.Expand(caKeyFile)
+	if err != nil {
+		log.Fatalf("[FATAL] Could not parse CA private key filepath: %v", err)
 	}
 
-	caCert, err := x509.ParseCertificate(tlsCA.Certificate[0])
+	// Load existing CA certificate and key from disk, or generate and write
+	// to disk if no files exist yet.
+	caCert, caKey, err := proxy.LoadOrCreateCA(caKeyFile, caCertFile)
 	if err != nil {
-		log.Fatalf("[FATAL] Could not parse CA: %v", err)
+		log.Fatalf("[FATAL] Could not create/load CA key pair: %v", err)
 	}
 
 	db, err := cayley.NewDatabase(dbFile)
@@ -55,7 +62,7 @@ func main() {
 
 	reqLogService := reqlog.NewService(db)
 
-	p, err := proxy.NewProxy(caCert, tlsCA.PrivateKey)
+	p, err := proxy.NewProxy(caCert, caKey)
 	if err != nil {
 		log.Fatalf("[FATAL] Could not create Proxy: %v", err)
 	}
