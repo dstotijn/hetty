@@ -59,7 +59,7 @@ on Docker Hub.
 $ docker run \
 -v $HOME/.hetty/hetty_key.pem:/root/.hetty/hetty_key.pem \
 -v $HOME/.hetty/hetty_cert.pem:/root/.hetty/hetty_cert.pem \
--v $HOME/.hetty/hetty.db:/app/hetty.db \
+-v $HOME/.hetty/hetty.bolt:/root/.hetty/hetty.bolt \
 -p 127.0.0.1:8080:8080 \
 dstotijn/hetty
 ```
