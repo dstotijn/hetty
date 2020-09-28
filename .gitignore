@@ -2,3 +2,4 @@
 dist
 hetty
 hetty.bolt
+*.test
