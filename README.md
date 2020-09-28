@@ -72,15 +72,16 @@ http://localhost:8080. Depending on incoming HTTP requests, it either acts as a
 MITM proxy, or it serves the GraphQL API and web interface (Next.js).
 
 ```
-$ Usage of ./hetty:
+$ hetty -h
+Usage of ./hetty:
   -addr string
-        TCP address to listen on, in the form "host:port" (default ":80")
+        TCP address to listen on, in the form "host:port" (default ":8080")
   -adminPath string
         File path to admin build
   -cert string
         CA certificate filepath. Creates a new CA certificate is file doesn't exist (default "~/.hetty/hetty_cert.pem")
   -db string
-        Database file path (default "hetty.db")
+        Database file path (default "~/.hetty/hetty.bolt")
   -key string
         CA private key filepath. Creates a new CA private key if file doesn't exist (default "~/.hetty/hetty_key.pem")
 ```
