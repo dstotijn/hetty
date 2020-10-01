@@ -20,7 +20,8 @@ type queryResolver struct{ *Resolver }
 func (r *Resolver) Query() QueryResolver { return &queryResolver{r} }
 
 func (r *queryResolver) HTTPRequestLogs(ctx context.Context) ([]HTTPRequestLog, error) {
-	reqs, err := r.RequestLogService.FindAllRequests(ctx)
+	opts := reqlog.FindRequestsOptions{OmitOutOfScope: false}
+	reqs, err := r.RequestLogService.FindRequests(ctx, opts)
 	if err != nil {
 		return nil, fmt.Errorf("could not query repository for requests: %v", err)
 	}

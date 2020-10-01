@@ -11,6 +11,8 @@ import (
 	"net/http"
 	"net/http/httputil"
 
+	"github.com/dstotijn/hetty/pkg/scope"
+
 	"github.com/google/uuid"
 )
 
@@ -27,6 +29,8 @@ type Proxy struct {
 	// TODO: Add mutex for modifier funcs.
 	reqModifiers []RequestModifyMiddleware
 	resModifiers []ResponseModifyMiddleware
+
+	scope *scope.Scope
 }
 
 // NewProxy returns a new Proxy.

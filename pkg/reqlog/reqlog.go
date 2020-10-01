@@ -12,8 +12,14 @@ import (
 	"time"
 
 	"github.com/dstotijn/hetty/pkg/proxy"
+	"github.com/dstotijn/hetty/pkg/scope"
+
 	"github.com/google/uuid"
 )
+
+type contextKey int
+
+const LogBypassedKey contextKey = 0
 
 var ErrRequestNotFound = errors.New("reqlog: request not found")
 
@@ -33,15 +39,37 @@ type Response struct {
 }
 
 type Service struct {
-	repo Repository
+	BypassOutOfScopeRequests bool
+
+	scope *scope.Scope
+	repo  Repository
 }
 
-func NewService(repo Repository) *Service {
-	return &Service{repo}
+type FindRequestsOptions struct {
+	OmitOutOfScope bool
 }
 
-func (svc *Service) FindAllRequests(ctx context.Context) ([]Request, error) {
-	return svc.repo.FindAllRequestLogs(ctx)
+type Config struct {
+	Scope                    *scope.Scope
+	Repository               Repository
+	BypassOutOfScopeRequests bool
+}
+
+func NewService(cfg Config) *Service {
+	return &Service{
+		scope:                    cfg.Scope,
+		repo:                     cfg.Repository,
+		BypassOutOfScopeRequests: cfg.BypassOutOfScopeRequests,
+	}
+}
+
+func (svc *Service) FindRequests(ctx context.Context, opts FindRequestsOptions) ([]Request, error) {
+	var scope *scope.Scope
+	if opts.OmitOutOfScope {
+		scope = svc.scope
+	}
+
+	return svc.repo.FindRequestLogs(ctx, opts, scope)
 }
 
 func (svc *Service) FindRequestLogByID(ctx context.Context, id uuid.UUID) (Request, error) {
@@ -99,6 +127,14 @@ func (svc *Service) RequestModifier(next proxy.RequestModifyFunc) proxy.RequestM
 			req.Body = ioutil.NopCloser(bytes.NewBuffer(body))
 		}
 
+		// Bypass logging if this setting is enabled and the incoming request
+		// doens't match any rules of the scope.
+		if svc.BypassOutOfScopeRequests && !svc.scope.Match(clone, body) {
+			ctx := context.WithValue(req.Context(), LogBypassedKey, true)
+			req = req.WithContext(ctx)
+			return
+		}
+
 		reqID, _ := req.Context().Value(proxy.ReqIDKey).(uuid.UUID)
 		if reqID == uuid.Nil {
 			log.Println("[ERROR] Request is missing a related request ID")
@@ -117,6 +153,10 @@ func (svc *Service) ResponseModifier(next proxy.ResponseModifyFunc) proxy.Respon
 	return func(res *http.Response) error {
 		if err := next(res); err != nil {
 			return err
+		}
+
+		if bypassed, _ := res.Request.Context().Value(LogBypassedKey).(bool); bypassed {
+			return nil
 		}
 
 		reqID, _ := res.Request.Context().Value(proxy.ReqIDKey).(uuid.UUID)
