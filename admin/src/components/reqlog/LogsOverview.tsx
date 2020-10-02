@@ -9,8 +9,8 @@ import LogDetail from "./LogDetail";
 import CenteredPaper from "../CenteredPaper";
 
 const HTTP_REQUEST_LOGS = gql`
-  query HttpRequestLogs {
-    httpRequestLogs {
+  query HttpRequestLogs($filter: String!  = "") {
+    httpRequestLogs(filter: $filter) {
       id
       method
       url
@@ -26,14 +26,31 @@ const HTTP_REQUEST_LOGS = gql`
 function LogsOverview(): JSX.Element {
   const router = useRouter();
   const detailReqLogId = router.query.id as string;
+  const filter = router.query.s as string;
   console.log(detailReqLogId);
 
-  const { loading, error, data } = useQuery(HTTP_REQUEST_LOGS, {
-    pollInterval: 1000,
+  const { loading, error, data } = useQuery(HTTP_REQUEST_LOGS, { 
+    variables: { filter },
+    //pollInterval: 1000,
   });
 
   const handleLogClick = (reqId: string) => {
-    router.push("/proxy/logs?id=" + reqId, undefined, {
+    var querystring ='?';
+    if(filter != '')
+    {
+      querystring += 's='+filter+'&id='+reqId; 
+    }
+    else 
+    {
+      querystring += 'id='+reqId;
+    }
+    router.push("/proxy/logs" + querystring, undefined, {
+      shallow: false,
+    });
+  };
+
+  const handleSearch = (filter: string) => {
+    router.push("/proxy/logs?s=" + filter, undefined, {
       shallow: false,
     });
   };
@@ -54,6 +71,7 @@ function LogsOverview(): JSX.Element {
           logs={logs}
           selectedReqLogId={detailReqLogId}
           onLogClick={handleLogClick}
+          onSearch={handleSearch}
         />
       </Box>
       <Box>

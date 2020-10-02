@@ -1,14 +1,14 @@
 package api
 
 //go:generate go run github.com/99designs/gqlgen
-
 import (
 	"context"
 	"fmt"
-
-	"github.com/google/uuid"
+	"io"
+	"strings"
 
 	"github.com/dstotijn/hetty/pkg/reqlog"
+	"github.com/google/uuid"
 )
 
 type Resolver struct {
@@ -19,12 +19,42 @@ type queryResolver struct{ *Resolver }
 
 func (r *Resolver) Query() QueryResolver { return &queryResolver{r} }
 
-func (r *queryResolver) HTTPRequestLogs(ctx context.Context) ([]HTTPRequestLog, error) {
-	opts := reqlog.FindRequestsOptions{OmitOutOfScope: false}
-	reqs, err := r.RequestLogService.FindRequests(ctx, opts)
+func Filter(ss []reqlog.Request, test func(reqlog.Request) bool) (ret []reqlog.Request) {
+	for _, s := range ss {
+		if test(s) {
+			ret = append(ret, s)
+		}
+	}
+	return
+}
+
+func DerefString(s *string) string {
+	if s != nil {
+		return *s
+	}
+
+	return ""
+}
+
+func OpenBodyToRead(body io.ReadCloser) string {
+	if body == nil {
+		return ""
+	}
+	buf := new(strings.Builder)
+	n, err := io.Copy(buf, body)
+	// check errors
+	if err != nil || n == 0 {
+		return ""
+	}
+	return buf.String()
+}
+
+func (r *queryResolver) HTTPRequestLogs(ctx context.Context, filter string) ([]HTTPRequestLog, error) {
+	reqs, err := r.RequestLogService.FindAllRequests(ctx, filter)
 	if err != nil {
 		return nil, fmt.Errorf("could not query repository for requests: %v", err)
 	}
+
 	logs := make([]HTTPRequestLog, len(reqs))
 
 	for i, req := range reqs {

@@ -14,7 +14,6 @@ import (
 	"github.com/cayleygraph/cayley"
 	"github.com/cayleygraph/cayley/graph"
 	"github.com/cayleygraph/cayley/graph/kv"
-	cpath "github.com/cayleygraph/cayley/graph/path"
 	"github.com/cayleygraph/cayley/schema"
 	"github.com/cayleygraph/quad"
 	"github.com/cayleygraph/quad/voc"
@@ -22,7 +21,6 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/dstotijn/hetty/pkg/reqlog"
-	"github.com/dstotijn/hetty/pkg/scope"
 )
 
 type HTTPRequest struct {
@@ -109,37 +107,52 @@ func (db *Database) Close() error {
 	return db.store.Close()
 }
 
-func (db *Database) FindRequestLogs(ctx context.Context, opts reqlog.FindRequestsOptions, scope *scope.Scope) ([]reqlog.Request, error) {
+func HeaderContainsValue(header []HTTPHeader, value string) bool {
+
+	ret := false
+	for k := range header {
+		if strings.Contains(header[k].Key, value) || strings.Contains(header[k].Value, value) {
+			ret = true
+			break
+		}
+	}
+	return ret
+}
+
+func (db *Database) FindAllRequestLogs(ctx context.Context, filter string) ([]reqlog.Request, error) {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
 	var reqLogs []reqlog.Request
 	var reqs []HTTPRequest
 
-	reqPath := cayley.StartPath(db.store, quad.IRI("hy:HTTPRequest")).In(quad.IRI(rdf.Type))
-	if opts.OmitOutOfScope {
-		var filterPath *cpath.Path
-		for _, rule := range scope.Rules() {
-			if rule.URL != nil {
-				if filterPath == nil {
-					filterPath = reqPath.Out(quad.IRI("hy:url")).Regex(rule.URL).In(quad.IRI("hy:url"))
-				} else {
-					filterPath = filterPath.Or(reqPath.Out(quad.IRI("hy:url")).Regex(rule.URL).In(quad.IRI("hy:url")))
-				}
-			}
-		}
-		if filterPath != nil {
-			reqPath = filterPath
-		}
-	}
-
-	err := reqPath.Iterate(ctx).EachValue(db.store, func(v quad.Value) {
+	path := cayley.StartPath(db.store, quad.IRI("hy:HTTPRequest")).In(quad.IRI(rdf.Type))
+	err := path.Iterate(ctx).EachValue(db.store, func(v quad.Value) {
 		var req HTTPRequest
-		if err := db.schema.LoadToDepth(ctx, db.store, &req, 0, v); err != nil {
+		if err := db.schema.LoadToDepth(ctx, db.store, &req, -1, v); err != nil {
 			log.Printf("[ERROR] Could not load sub-graph for http requests: %v", err)
 			return
 		}
-		reqs = append(reqs, req)
+
+		ffilter := func(r HTTPRequest) bool {
+			ret := false
+
+			ret = strings.Contains(r.URL, filter) ||
+				strings.Contains(r.Method, filter) ||
+				HeaderContainsValue(r.Headers, filter) ||
+				strings.Contains(r.Body, filter)
+			if r.Response != nil {
+				ret = ret ||
+					strings.Contains(r.Response.Body, filter) ||
+					HeaderContainsValue(r.Response.Headers, filter)
+			}
+			return ret
+		}
+
+		if len(filter) == 0 || ffilter(req) {
+			reqs = append(reqs, req)
+		}
+
 	})
 	if err != nil {
 		return nil, fmt.Errorf("cayley: could not iterate over http requests: %v", err)

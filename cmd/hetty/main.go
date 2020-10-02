@@ -14,7 +14,6 @@ import (
 	"github.com/dstotijn/hetty/pkg/db/cayley"
 	"github.com/dstotijn/hetty/pkg/proxy"
 	"github.com/dstotijn/hetty/pkg/reqlog"
-	"github.com/dstotijn/hetty/pkg/scope"
 
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
@@ -65,11 +64,7 @@ func main() {
 	}
 	defer db.Close()
 
-	scope := scope.New(nil)
-	reqLogService := reqlog.NewService(reqlog.Config{
-		Scope:      scope,
-		Repository: db,
-	})
+	reqLogService := reqlog.NewService(db)
 
 	p, err := proxy.NewProxy(caCert, caKey)
 	if err != nil {

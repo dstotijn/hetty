@@ -24,8 +24,9 @@ type HttpHeader {
 }
 
 type Query {
+  httpRequestLogs(filter: String!):[HttpRequestLog!]! 
   httpRequestLog(id: ID!): HttpRequestLog
-  httpRequestLogs: [HttpRequestLog!]!
+  #httpRequestLogs: [HttpRequestLog!]!
 }
 
 enum HttpMethod {

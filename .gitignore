@@ -3,3 +3,4 @@ dist
 hetty
 hetty.bolt
 *.test
+*.pem
