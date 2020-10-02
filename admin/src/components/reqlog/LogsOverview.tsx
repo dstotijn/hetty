@@ -35,8 +35,9 @@ function LogsOverview(): JSX.Element {
   });
 
   const handleLogClick = (reqId: string) => {
+    const filter = router.query.s as string;
     var querystring ='?';
-    if(filter != '')
+    if(filter)
     {
       querystring += 's='+filter+'&id='+reqId; 
     }

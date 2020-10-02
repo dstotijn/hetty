@@ -86,7 +86,8 @@ function RequestListTable({
   const classes = useStyles();
   const router = useRouter();
   var searchValue = '';
-  const filter = router.query.s as string;
+  var filter = router.query.s as string;
+  if (!filter) filter = '';
   const x = function (searchterm) {
     searchValue = searchterm;
   };
@@ -99,7 +100,7 @@ function RequestListTable({
         alignItems="center"
       >
         <Grid item xs={11}>
-          <TextField   style = {{width: '100%'}} id="searchbox" label="Search Term" variant="filled" size="small" onChange={e => x(e.target.value)} defaultValue={filter} />
+          <TextField style={{ width: '100%' }} id="searchbox" label="Search Term" variant="filled" size="small" onChange={e => x(e.target.value)} defaultValue={filter} />
         </Grid>
         <Grid item xs={1}>
           <Button
