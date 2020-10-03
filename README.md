@@ -94,11 +94,31 @@ installed to the host for them to be trusted by your browser. The following step
 will cover how you can generate your certificate, provide them to hetty, and how
 you can install them in your local CA store.
 
-⚠️ _Note: These instructions assume you have access to the OpenSSL libraries and_
-_command line utilities. This process was done on a Linux machine but should_
+⚠️ _This process was done on a Linux machine but should_
 _provide guidance on Windows and macOS as well._
 
 ### Generating CA certificates
+
+You can generate CA certificates two different ways. The first is bundled directly
+with hetty, and simplifies the process immensely. The alternative is using OpenSSL
+to generate them, which provides more control over expiration time and cryptography
+used, but requires you install the OpenSSL tooling. The first is suggested for any
+beginners trying to get started.
+
+#### Generating CA certificates with hetty
+
+Hetty will generate the default key and certificate on its own if none are supplied
+or found in `~/.hetty/` when first running the CLI. To generate a default key and
+certificate with hetty, simply run the command with no arguments
+
+```sh
+hetty
+```
+
+You should now have a key and certificate located at  `~/.hetty/hetty_key.pem` and
+`~/.hetty/hetty_cert.pem` respectively.
+
+#### Generating CA certificates with OpenSSL
 
 You can start off by generating a new key and CA certificate which will both expire
 after a month.
