@@ -86,8 +86,67 @@ Usage of ./hetty:
         CA private key filepath. Creates a new CA private key if file doesn't exist (default "~/.hetty/hetty_key.pem")
 ```
 
-⚠️ _Todo: Write instructions for installing CA certificate in local CA store, and_
-_configuring Hetty to be used as a proxy server._
+## Certificate Setup and Installation
+
+In order for Hetty to proxy requests going to HTTPS endpoints, certificates for 
+Hetty will need to be set up. Furthermore, these certificates may need to be
+installed to the host for them to be trusted by your browser. The following steps
+will cover how you can generate your certificate, provide them to hetty, and how
+you can install them in your local CA store.
+
+⚠️ _Note: These instructions assume you have access to the OpenSSL libraries and_
+_command line utilities. This process was done on a Linux machine but should_
+_provide guidance on Windows and macOS as well._
+
+### Generating CA certificates
+
+You can start off by generating a new key and CA certificate which will both expire
+after a month.
+
+```sh
+openssl req -newkey rsa:2048 -new -nodes -x509 -days 31 -keyout hetty_key.pem -out hetty_cert.pem
+```
+
+The default location which `hetty` will check for the key and CA certificate is under
+`~/.hetty/`, at `hetty_key.pem` and `hetty_cert.pem` respectively. You can move them
+here and `hetty` will detect them automatically. Otherwise, you can specify the
+location of these as arguments to `hetty`.
+
+```
+hetty -key key.pem -cert cert.pem
+```
+
+### Installing CA certificates
+
+In order for your browser to allow traffic to the local Hetty proxy, you may need
+to install these certificates to your local CA store. Otherwise, you may be met
+with errors related to HTTP Strict Transport Security (HSTS). In the real world this
+would be protecting you from man-in-the-middle attacks, but here we **are** the man.
+Let's fix that.
+
+On Ubuntu, you can update your local CA store with the certificate by running the
+following commands:
+
+```sh
+sudo cp ~/.hetty/hetty_cert.pem /usr/local/share/ca-certificates/hetty.crt
+sudo update-ca-certificates
+```
+
+On Windows, you would add your certificate by using the Certificate Manager. You
+can launch that by running the command:
+
+```batch
+certmgr.msc
+```
+
+On macOS, you can add your certificate by using the Keychain Access program. This
+can be found under `Application/Utilities/Keychain Access.app`. After opening this,
+drag the certificate into the app. Next, open the certificate in the app, enter the
+_Trust_ section, and under _When using this certificate_ select _Always Trust_.
+
+_Note: Various Linux distributions may require other steps or commands for updating_
+_their certificate authority. See the documentation relevant to your distribution for_
+_more information on how to update the system to trust your self-signed certificate._
 
 ## Vision and roadmap
 
