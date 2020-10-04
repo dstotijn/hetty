@@ -88,7 +88,7 @@ Usage of ./hetty:
 
 ## Certificate Setup and Installation
 
-In order for Hetty to proxy requests going to HTTPS endpoints, certificates for 
+In order for Hetty to proxy requests going to HTTPS endpoints, a root CA certificate for 
 Hetty will need to be set up. Furthermore, these certificates may need to be
 installed to the host for them to be trusted by your browser. The following steps
 will cover how you can generate your certificate, provide them to hetty, and how
