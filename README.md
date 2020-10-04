@@ -111,6 +111,10 @@ write-up on its mission and roadmap. A short summary/braindump:
 The project is currently under active development. Please star/follow and check
 back soon. 🤗
 
+## Contributing
+
+Please see the [Contribution Guidelines](CONTRIBUTING.md) for details.
+
 ## Acknowledgements
 
 Thanks to the [Hacker101 community on Discord](https://www.hacker101.com/discord)
