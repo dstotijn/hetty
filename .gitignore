@@ -2,4 +2,6 @@
 dist
 hetty
 hetty.bolt
+hetty.db
+*.pem
 *.test
