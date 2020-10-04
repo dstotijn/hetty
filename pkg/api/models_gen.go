@@ -15,7 +15,7 @@ type HTTPHeader struct {
 }
 
 type HTTPRequestLog struct {
-	ID        string           `json:"id"`
+	ID        int64            `json:"id"`
 	URL       string           `json:"url"`
 	Method    HTTPMethod       `json:"method"`
 	Proto     string           `json:"proto"`
@@ -26,7 +26,7 @@ type HTTPRequestLog struct {
 }
 
 type HTTPResponseLog struct {
-	RequestID  string       `json:"requestId"`
+	RequestID  int64        `json:"requestId"`
 	Proto      string       `json:"proto"`
 	Status     string       `json:"status"`
 	StatusCode int          `json:"statusCode"`

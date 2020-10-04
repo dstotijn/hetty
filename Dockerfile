@@ -1,9 +1,10 @@
 ARG GO_VERSION=1.15
-ARG CGO_ENABLED=0
+ARG CGO_ENABLED=1
 ARG NODE_VERSION=14.11
 
 FROM golang:${GO_VERSION}-alpine AS go-builder
 WORKDIR /app
+RUN apk add --no-cache build-base
 COPY go.mod go.sum ./
 RUN go mod download
 COPY cmd ./cmd

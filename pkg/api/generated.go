@@ -68,13 +68,13 @@ type ComplexityRoot struct {
 	}
 
 	Query struct {
-		HTTPRequestLog  func(childComplexity int, id string) int
+		HTTPRequestLog  func(childComplexity int, id int64) int
 		HTTPRequestLogs func(childComplexity int) int
 	}
 }
 
 type QueryResolver interface {
-	HTTPRequestLog(ctx context.Context, id string) (*HTTPRequestLog, error)
+	HTTPRequestLog(ctx context.Context, id int64) (*HTTPRequestLog, error)
 	HTTPRequestLogs(ctx context.Context) ([]HTTPRequestLog, error)
 }
 
@@ -215,7 +215,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.HTTPRequestLog(childComplexity, args["id"].(string)), true
+		return e.complexity.Query.HTTPRequestLog(childComplexity, args["id"].(int64)), true
 
 	case "Query.httpRequestLogs":
 		if e.complexity.Query.HTTPRequestLogs == nil {
@@ -342,9 +342,9 @@ func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs
 func (ec *executionContext) field_Query_httpRequestLog_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 string
+	var arg0 int64
 	if tmp, ok := rawArgs["id"]; ok {
-		arg0, err = ec.unmarshalNID2string(ctx, tmp)
+		arg0, err = ec.unmarshalNID2int64(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -486,9 +486,9 @@ func (ec *executionContext) _HttpRequestLog_id(ctx context.Context, field graphq
 		}
 		return graphql.Null
 	}
-	res := resTmp.(string)
+	res := resTmp.(int64)
 	fc.Result = res
-	return ec.marshalNID2string(ctx, field.Selections, res)
+	return ec.marshalNID2int64(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _HttpRequestLog_url(ctx context.Context, field graphql.CollectedField, obj *HTTPRequestLog) (ret graphql.Marshaler) {
@@ -752,9 +752,9 @@ func (ec *executionContext) _HttpResponseLog_requestId(ctx context.Context, fiel
 		}
 		return graphql.Null
 	}
-	res := resTmp.(string)
+	res := resTmp.(int64)
 	fc.Result = res
-	return ec.marshalNID2string(ctx, field.Selections, res)
+	return ec.marshalNID2int64(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _HttpResponseLog_proto(ctx context.Context, field graphql.CollectedField, obj *HTTPResponseLog) (ret graphql.Marshaler) {
@@ -948,7 +948,7 @@ func (ec *executionContext) _Query_httpRequestLog(ctx context.Context, field gra
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().HTTPRequestLog(rctx, args["id"].(string))
+		return ec.resolvers.Query().HTTPRequestLog(rctx, args["id"].(int64))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -2670,12 +2670,12 @@ func (ec *executionContext) marshalNHttpRequestLog2ᚕgithubᚗcomᚋdstotijnᚋ
 	return ret
 }
 
-func (ec *executionContext) unmarshalNID2string(ctx context.Context, v interface{}) (string, error) {
-	return graphql.UnmarshalID(v)
+func (ec *executionContext) unmarshalNID2int64(ctx context.Context, v interface{}) (int64, error) {
+	return graphql.UnmarshalInt64(v)
 }
 
-func (ec *executionContext) marshalNID2string(ctx context.Context, sel ast.SelectionSet, v string) graphql.Marshaler {
-	res := graphql.MarshalID(v)
+func (ec *executionContext) marshalNID2int64(ctx context.Context, sel ast.SelectionSet, v int64) graphql.Marshaler {
+	res := graphql.MarshalInt64(v)
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "must not be null")

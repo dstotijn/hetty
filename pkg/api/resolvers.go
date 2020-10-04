@@ -6,8 +6,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/google/uuid"
-
 	"github.com/dstotijn/hetty/pkg/reqlog"
 )
 
@@ -38,12 +36,8 @@ func (r *queryResolver) HTTPRequestLogs(ctx context.Context) ([]HTTPRequestLog, 
 	return logs, nil
 }
 
-func (r *queryResolver) HTTPRequestLog(ctx context.Context, id string) (*HTTPRequestLog, error) {
-	reqLogID, err := uuid.Parse(id)
-	if err != nil {
-		return nil, fmt.Errorf("invalid id: %v", err)
-	}
-	log, err := r.RequestLogService.FindRequestLogByID(ctx, reqLogID)
+func (r *queryResolver) HTTPRequestLog(ctx context.Context, id int64) (*HTTPRequestLog, error) {
+	log, err := r.RequestLogService.FindRequestLogByID(ctx, id)
 	if err == reqlog.ErrRequestNotFound {
 		return nil, nil
 	}
@@ -65,7 +59,7 @@ func parseRequestLog(req reqlog.Request) (HTTPRequestLog, error) {
 	}
 
 	log := HTTPRequestLog{
-		ID:        req.ID.String(),
+		ID:        req.ID,
 		URL:       req.Request.URL.String(),
 		Proto:     req.Request.Proto,
 		Method:    method,
@@ -91,7 +85,7 @@ func parseRequestLog(req reqlog.Request) (HTTPRequestLog, error) {
 
 	if req.Response != nil {
 		log.Response = &HTTPResponseLog{
-			RequestID:  req.ID.String(),
+			RequestID:  req.ID,
 			Proto:      req.Response.Response.Proto,
 			Status:     req.Response.Response.Status,
 			StatusCode: req.Response.Response.StatusCode,

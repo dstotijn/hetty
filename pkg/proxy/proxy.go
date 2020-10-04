@@ -12,8 +12,6 @@ import (
 	"net/http/httputil"
 
 	"github.com/dstotijn/hetty/pkg/scope"
-
-	"github.com/google/uuid"
 )
 
 type contextKey int
@@ -56,11 +54,6 @@ func NewProxy(ca *x509.Certificate, key crypto.PrivateKey) (*Proxy, error) {
 }
 
 func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	// Add a unique request ID, to be used for correlating responses to requests.
-	reqID := uuid.New()
-	ctx := context.WithValue(r.Context(), ReqIDKey, reqID)
-	r = r.WithContext(ctx)
-
 	if r.Method == http.MethodConnect {
 		p.handleConnect(w, r)
 		return

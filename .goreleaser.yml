@@ -1,21 +1,48 @@
+env:
+  - GO111MODULE=on
+  - CGO_ENABLED=1
 before:
   hooks:
     - make clean
-    - go mod download
-    - go generate ./...
+    - make embed
 builds:
-  - main: ./cmd/hetty
+  - id: hetty-darwin-amd64
+    main: ./cmd/hetty
+    goarch:
+      - amd64
+    goos:
+      - darwin
     env:
-      - CGO_ENABLED=0
+      - CC=o64-clang
+      - CXX=o64-clang++
+    flags:
+      - -mod=readonly
+    ldflags:
+  - id: hetty-linux-amd64
+    main: ./cmd/hetty
+    goarch:
+      - amd64
     goos:
       - linux
+    flags:
+      - -mod=readonly
+    ldflags:
+  - id: hetty-windows-amd64
+    main: ./cmd/hetty
+    goarch:
+      - amd64
+    goos:
       - windows
-      - darwin
-    hooks:
-      pre: make embed
+    env:
+      - CC=x86_64-w64-mingw32-gcc
+      - CXX=x86_64-w64-mingw32-g++
+    flags:
+      - -mod=readonly
+    ldflags:
+      - -buildmode=exe
 archives:
   - replacements:
-      darwin: Darwin
+      darwin: macOS
       linux: Linux
       windows: Windows
       386: i386

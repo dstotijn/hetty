@@ -25,14 +25,14 @@ const HTTP_REQUEST_LOGS = gql`
 
 function LogsOverview(): JSX.Element {
   const router = useRouter();
-  const detailReqLogId = router.query.id as string;
-  console.log(detailReqLogId);
+  const detailReqLogId =
+    router.query.id && parseInt(router.query.id as string, 10);
 
   const { loading, error, data } = useQuery(HTTP_REQUEST_LOGS, {
     pollInterval: 1000,
   });
 
-  const handleLogClick = (reqId: string) => {
+  const handleLogClick = (reqId: number) => {
     router.push("/proxy/logs?id=" + reqId, undefined, {
       shallow: false,
     });

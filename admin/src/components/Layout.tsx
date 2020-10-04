@@ -154,7 +154,7 @@ export function Layout({ title, page, children }: Props): JSX.Element {
             <MenuIcon />
           </IconButton>
           <Typography variant="h5" noWrap>
-            <span className={title !== "" && classes.titleHighlight}>
+            <span className={title !== "" ? classes.titleHighlight : ""}>
               Hetty://
             </span>
             {title}

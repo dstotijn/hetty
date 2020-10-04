@@ -11,7 +11,7 @@ import (
 
 	rice "github.com/GeertJohan/go.rice"
 	"github.com/dstotijn/hetty/pkg/api"
-	"github.com/dstotijn/hetty/pkg/db/cayley"
+	"github.com/dstotijn/hetty/pkg/db/sqlite"
 	"github.com/dstotijn/hetty/pkg/proxy"
 	"github.com/dstotijn/hetty/pkg/reqlog"
 	"github.com/dstotijn/hetty/pkg/scope"
@@ -33,7 +33,7 @@ var (
 func main() {
 	flag.StringVar(&caCertFile, "cert", "~/.hetty/hetty_cert.pem", "CA certificate filepath. Creates a new CA certificate is file doesn't exist")
 	flag.StringVar(&caKeyFile, "key", "~/.hetty/hetty_key.pem", "CA private key filepath. Creates a new CA private key if file doesn't exist")
-	flag.StringVar(&dbFile, "db", "~/.hetty/hetty.bolt", "Database file path")
+	flag.StringVar(&dbFile, "db", "~/.hetty/hetty.db", "Database file path")
 	flag.StringVar(&addr, "addr", ":8080", "TCP address to listen on, in the form \"host:port\"")
 	flag.StringVar(&adminPath, "adminPath", "", "File path to admin build")
 	flag.Parse()
@@ -59,7 +59,7 @@ func main() {
 		log.Fatalf("[FATAL] Could not create/load CA key pair: %v", err)
 	}
 
-	db, err := cayley.NewDatabase(dbFile)
+	db, err := sqlite.New(dbFile)
 	if err != nil {
 		log.Fatalf("[FATAL] Could not initialize database: %v", err)
 	}

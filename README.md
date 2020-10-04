@@ -59,7 +59,7 @@ on Docker Hub.
 $ docker run \
 -v $HOME/.hetty/hetty_key.pem:/root/.hetty/hetty_key.pem \
 -v $HOME/.hetty/hetty_cert.pem:/root/.hetty/hetty_cert.pem \
--v $HOME/.hetty/hetty.bolt:/root/.hetty/hetty.bolt \
+-v $HOME/.hetty/hetty.db:/root/.hetty/hetty.db \
 -p 127.0.0.1:8080:8080 \
 dstotijn/hetty
 ```
@@ -81,7 +81,7 @@ Usage of ./hetty:
   -cert string
         CA certificate filepath. Creates a new CA certificate is file doesn't exist (default "~/.hetty/hetty_cert.pem")
   -db string
-        Database file path (default "~/.hetty/hetty.bolt")
+        Database file path (default "~/.hetty/hetty.db")
   -key string
         CA private key filepath. Creates a new CA private key if file doesn't exist (default "~/.hetty/hetty_key.pem")
 ```
@@ -103,11 +103,6 @@ write-up on its mission and roadmap. A short summary/braindump:
   it as a CLI tool.
 - Pluggable architecture for the MITM proxy and future modules, making it
   possible for hook into the core engine.
-- I’ve chosen [Cayley](https://cayley.io/) as the graph database (backed by
-  BoltDB storage on disk) for now (not sure if it will work in the long run).
-  The benefit is that Cayley (also written in Go)
-  is embedded as a library. Because of this, the complete application is self contained
-  in a single running binary.
 - Talk to the community, and focus on the features that the majority.
   Less features means less code to maintain.
 
