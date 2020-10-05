@@ -89,7 +89,7 @@ Usage of ./hetty:
 ## Certificate Setup and Installation
 
 In order for Hetty to proxy requests going to HTTPS endpoints, a root CA certificate for 
-Hetty will need to be set up. Furthermore, these certificates may need to be
+Hetty will need to be set up. Furthermore, the CA certificate may need to be
 installed to the host for them to be trusted by your browser. The following steps
 will cover how you can generate your certificate, provide them to hetty, and how
 you can install them in your local CA store.
@@ -99,8 +99,8 @@ _provide guidance on Windows and macOS as well._
 
 ### Generating CA certificates
 
-You can generate CA certificates two different ways. The first is bundled directly
-with hetty, and simplifies the process immensely. The alternative is using OpenSSL
+You can generate a CA keypair two different ways. The first is bundled directly
+with Hetty, and simplifies the process immensely. The alternative is using OpenSSL
 to generate them, which provides more control over expiration time and cryptography
 used, but requires you install the OpenSSL tooling. The first is suggested for any
 beginners trying to get started.
@@ -124,7 +124,8 @@ You can start off by generating a new key and CA certificate which will both exp
 after a month.
 
 ```sh
-openssl req -newkey rsa:2048 -new -nodes -x509 -days 31 -keyout hetty_key.pem -out hetty_cert.pem
+mkdir ~/.hetty
+openssl req -newkey rsa:2048 -new -nodes -x509 -days 31 -keyout ~/.hetty/hetty_key.pem -out ~/.hetty/hetty_cert.pem
 ```
 
 The default location which `hetty` will check for the key and CA certificate is under
@@ -136,7 +137,7 @@ location of these as arguments to `hetty`.
 hetty -key key.pem -cert cert.pem
 ```
 
-### Installing CA certificates
+### Trusting the CA certificate
 
 In order for your browser to allow traffic to the local Hetty proxy, you may need
 to install these certificates to your local CA store. Otherwise, you may be met
