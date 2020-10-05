@@ -16,8 +16,8 @@ const HTTP_REQUEST_LOGS = gql`
       url
       timestamp
       response {
-        status
         statusCode
+        statusReason
       }
     }
   }

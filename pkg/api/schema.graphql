@@ -12,8 +12,8 @@ type HttpRequestLog {
 type HttpResponseLog {
   requestId: ID!
   proto: String!
-  status: String!
   statusCode: Int!
+  statusReason: String!
   body: String
   headers: [HttpHeader!]!
 }

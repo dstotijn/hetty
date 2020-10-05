@@ -8,7 +8,7 @@ interface Props {
   response: {
     proto: string;
     statusCode: number;
-    status: string;
+    statusReason: string;
     headers: Array<{ key: string; value: string }>;
     body?: string;
   };
@@ -42,7 +42,7 @@ function ResponseDetail({ response }: Props): JSX.Element {
               {response.proto}
             </Typography>
           </Typography>{" "}
-          {response.status}
+          {response.statusCode} {response.statusReason}
         </Typography>
       </Box>
 

@@ -5,6 +5,7 @@ package api
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/dstotijn/hetty/pkg/reqlog"
 )
@@ -54,16 +55,19 @@ func (r *queryResolver) HTTPRequestLog(ctx context.Context, id int64) (*HTTPRequ
 
 func parseRequestLog(req reqlog.Request) (HTTPRequestLog, error) {
 	method := HTTPMethod(req.Request.Method)
-	if !method.IsValid() {
+	if method != "" && !method.IsValid() {
 		return HTTPRequestLog{}, fmt.Errorf("request has invalid method: %v", method)
 	}
 
 	log := HTTPRequestLog{
 		ID:        req.ID,
-		URL:       req.Request.URL.String(),
 		Proto:     req.Request.Proto,
 		Method:    method,
 		Timestamp: req.Timestamp,
+	}
+
+	if req.Request.URL != nil {
+		log.URL = req.Request.URL.String()
 	}
 
 	if len(req.Body) > 0 {
@@ -85,10 +89,13 @@ func parseRequestLog(req reqlog.Request) (HTTPRequestLog, error) {
 
 	if req.Response != nil {
 		log.Response = &HTTPResponseLog{
-			RequestID:  req.ID,
+			RequestID:  req.Response.RequestID,
 			Proto:      req.Response.Response.Proto,
-			Status:     req.Response.Response.Status,
 			StatusCode: req.Response.Response.StatusCode,
+		}
+		statusReasonSubs := strings.SplitN(req.Response.Response.Status, " ", 2)
+		if len(statusReasonSubs) == 2 {
+			log.Response.StatusReason = statusReasonSubs[1]
 		}
 		if len(req.Response.Body) > 0 {
 			resBody := string(req.Response.Body)

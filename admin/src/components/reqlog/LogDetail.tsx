@@ -23,8 +23,8 @@ const HTTP_REQUEST_LOG = gql`
           key
           value
         }
-        status
         statusCode
+        statusReason
         body
       }
     }

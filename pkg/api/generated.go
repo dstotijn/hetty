@@ -59,12 +59,12 @@ type ComplexityRoot struct {
 	}
 
 	HTTPResponseLog struct {
-		Body       func(childComplexity int) int
-		Headers    func(childComplexity int) int
-		Proto      func(childComplexity int) int
-		RequestID  func(childComplexity int) int
-		Status     func(childComplexity int) int
-		StatusCode func(childComplexity int) int
+		Body         func(childComplexity int) int
+		Headers      func(childComplexity int) int
+		Proto        func(childComplexity int) int
+		RequestID    func(childComplexity int) int
+		StatusCode   func(childComplexity int) int
+		StatusReason func(childComplexity int) int
 	}
 
 	Query struct {
@@ -191,19 +191,19 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.HTTPResponseLog.RequestID(childComplexity), true
 
-	case "HttpResponseLog.status":
-		if e.complexity.HTTPResponseLog.Status == nil {
-			break
-		}
-
-		return e.complexity.HTTPResponseLog.Status(childComplexity), true
-
 	case "HttpResponseLog.statusCode":
 		if e.complexity.HTTPResponseLog.StatusCode == nil {
 			break
 		}
 
 		return e.complexity.HTTPResponseLog.StatusCode(childComplexity), true
+
+	case "HttpResponseLog.statusReason":
+		if e.complexity.HTTPResponseLog.StatusReason == nil {
+			break
+		}
+
+		return e.complexity.HTTPResponseLog.StatusReason(childComplexity), true
 
 	case "Query.httpRequestLog":
 		if e.complexity.Query.HTTPRequestLog == nil {
@@ -288,8 +288,8 @@ var sources = []*ast.Source{
 type HttpResponseLog {
   requestId: ID!
   proto: String!
-  status: String!
   statusCode: Int!
+  statusReason: String!
   body: String
   headers: [HttpHeader!]!
 }
@@ -791,40 +791,6 @@ func (ec *executionContext) _HttpResponseLog_proto(ctx context.Context, field gr
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _HttpResponseLog_status(ctx context.Context, field graphql.CollectedField, obj *HTTPResponseLog) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "HttpResponseLog",
-		Field:    field,
-		Args:     nil,
-		IsMethod: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Status, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(string)
-	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
-}
-
 func (ec *executionContext) _HttpResponseLog_statusCode(ctx context.Context, field graphql.CollectedField, obj *HTTPResponseLog) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -857,6 +823,40 @@ func (ec *executionContext) _HttpResponseLog_statusCode(ctx context.Context, fie
 	res := resTmp.(int)
 	fc.Result = res
 	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _HttpResponseLog_statusReason(ctx context.Context, field graphql.CollectedField, obj *HTTPResponseLog) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "HttpResponseLog",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.StatusReason, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _HttpResponseLog_body(ctx context.Context, field graphql.CollectedField, obj *HTTPResponseLog) (ret graphql.Marshaler) {
@@ -2237,13 +2237,13 @@ func (ec *executionContext) _HttpResponseLog(ctx context.Context, sel ast.Select
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
-		case "status":
-			out.Values[i] = ec._HttpResponseLog_status(ctx, field, obj)
+		case "statusCode":
+			out.Values[i] = ec._HttpResponseLog_statusCode(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
-		case "statusCode":
-			out.Values[i] = ec._HttpResponseLog_statusCode(ctx, field, obj)
+		case "statusReason":
+			out.Values[i] = ec._HttpResponseLog_statusReason(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}

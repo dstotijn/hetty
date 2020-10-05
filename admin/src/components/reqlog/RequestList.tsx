@@ -128,7 +128,9 @@ function RequestListTable({
                   {response && (
                     <div>
                       <HttpStatusIcon status={response.statusCode} />{" "}
-                      <code>{response.status}</code>
+                      <code>
+                        {response.statusCode} {response.statusReason}
+                      </code>
                     </div>
                   )}
                 </TableCell>

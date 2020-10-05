@@ -8,11 +8,14 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"strconv"
 	"time"
 
 	"github.com/dstotijn/hetty/pkg/reqlog"
 	"github.com/dstotijn/hetty/pkg/scope"
+
+	"github.com/99designs/gqlgen/graphql"
+	sq "github.com/Masterminds/squirrel"
+	"github.com/jmoiron/sqlx"
 
 	// Register sqlite3 for use via database/sql.
 	_ "github.com/mattn/go-sqlite3"
@@ -20,7 +23,14 @@ import (
 
 // Client implements reqlog.Repository.
 type Client struct {
-	db *sql.DB
+	db *sqlx.DB
+}
+
+type httpRequestLogsQuery struct {
+	requestCols        []string
+	requestHeaderCols  []string
+	responseHeaderCols []string
+	joinResponse       bool
 }
 
 // New returns a new Client.
@@ -36,7 +46,7 @@ func New(filename string) (*Client, error) {
 	opts.Set("_foreign_keys", "1")
 
 	dsn := fmt.Sprintf("file:%v?%v", filename, opts.Encode())
-	db, err := sql.Open("sqlite3", dsn)
+	db, err := sqlx.Open("sqlite3", dsn)
 	if err != nil {
 		return nil, err
 	}
@@ -99,213 +109,107 @@ func (c *Client) Close() error {
 	return c.db.Close()
 }
 
+var reqFieldToColumnMap = map[string]string{
+	"proto":     "proto AS req_proto",
+	"url":       "url",
+	"method":    "method",
+	"body":      "body AS req_body",
+	"timestamp": "timestamp AS req_timestamp",
+}
+
+var resFieldToColumnMap = map[string]string{
+	"requestId":    "req_id AS res_req_id",
+	"proto":        "proto AS res_proto",
+	"statusCode":   "status_code",
+	"statusReason": "status_reason",
+	"body":         "body AS res_body",
+	"timestamp":    "timestamp AS res_timestamp",
+}
+
+var headerFieldToColumnMap = map[string]string{
+	"key":   "key",
+	"value": "value",
+}
+
 func (c *Client) FindRequestLogs(
 	ctx context.Context,
 	opts reqlog.FindRequestsOptions,
 	scope *scope.Scope,
 ) (reqLogs []reqlog.Request, err error) {
-	// TODO: Pass GraphQL field collections upstream, so we can query only
-	// requested fields.
-	// TODO: Use opts and scope to filter.
-	reqQuery := `SELECT
-		req.id,
-		req.proto,
-		req.url,
-		req.method,
-		req.body,
-		req.timestamp,
-		res.id,
-		res.proto,
-		res.status_code,
-		res.status_reason,
-		res.body,
-		res.timestamp
-	FROM http_requests req
-	LEFT JOIN http_responses res ON req.id = res.req_id
-	ORDER BY req.id DESC`
+	httpReqLogsQuery := parseHTTPRequestLogsQuery(ctx)
 
-	rows, err := c.db.QueryContext(ctx, reqQuery)
+	reqQuery := sq.
+		Select(httpReqLogsQuery.requestCols...).
+		From("http_requests req").
+		OrderBy("req.id DESC")
+	if httpReqLogsQuery.joinResponse {
+		reqQuery = reqQuery.LeftJoin("http_responses res ON req.id = res.req_id")
+	}
+
+	sql, _, err := reqQuery.ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("sqlite: could not parse query: %v", err)
+	}
+
+	rows, err := c.db.QueryxContext(ctx, sql, nil)
 	if err != nil {
 		return nil, fmt.Errorf("sqlite: could not execute query: %v", err)
 	}
 	defer rows.Close()
 
 	for rows.Next() {
-		var reqLog reqlog.Request
-		var resDTO httpResponse
-		var statusReason *string
-		var rawURL string
-
-		err := rows.Scan(
-			&reqLog.ID,
-			&reqLog.Request.Proto,
-			&rawURL,
-			&reqLog.Request.Method,
-			&reqLog.Body,
-			&reqLog.Timestamp,
-			&resDTO.ID,
-			&resDTO.Proto,
-			&resDTO.StatusCode,
-			&statusReason,
-			&resDTO.Body,
-			&resDTO.Timestamp,
-		)
+		var dto httpRequest
+		err = rows.StructScan(&dto)
 		if err != nil {
 			return nil, fmt.Errorf("sqlite: could not scan row: %v", err)
 		}
-
-		u, err := url.Parse(rawURL)
-		if err != nil {
-			return nil, fmt.Errorf("sqlite: could not parse URL: %v", err)
-		}
-		reqLog.Request.URL = u
-
-		if resDTO.ID != nil {
-			status := strconv.Itoa(*resDTO.StatusCode) + " " + *statusReason
-			reqLog.Response = &reqlog.Response{
-				ID:        *resDTO.ID,
-				RequestID: reqLog.ID,
-				Response: http.Response{
-					Status:     status,
-					StatusCode: *resDTO.StatusCode,
-					Proto:      *resDTO.Proto,
-				},
-				Body:      *resDTO.Body,
-				Timestamp: *resDTO.Timestamp,
-			}
-		}
-
-		reqLogs = append(reqLogs, reqLog)
+		reqLogs = append(reqLogs, dto.toRequestLog())
 	}
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("sqlite: could not iterate over rows: %v", err)
 	}
 	rows.Close()
 
-	reqHeadersStmt, err := c.db.PrepareContext(ctx, `SELECT key, value FROM http_headers WHERE req_id = ?`)
-	if err != nil {
-		return nil, fmt.Errorf("sqlite: could not prepare statement: %v", err)
-	}
-	defer reqHeadersStmt.Close()
-	resHeadersStmt, err := c.db.PrepareContext(ctx, `SELECT key, value FROM http_headers WHERE res_id = ?`)
-	if err != nil {
-		return nil, fmt.Errorf("sqlite: could not prepare statement: %v", err)
-	}
-	defer resHeadersStmt.Close()
-
-	for _, reqLog := range reqLogs {
-		headers, err := findHeaders(ctx, reqHeadersStmt, reqLog.ID)
-		if err != nil {
-			return nil, fmt.Errorf("sqlite: could not query request headers: %v", err)
-		}
-		reqLog.Request.Header = headers
-
-		if reqLog.Response != nil {
-			headers, err := findHeaders(ctx, resHeadersStmt, reqLog.Response.ID)
-			if err != nil {
-				return nil, fmt.Errorf("sqlite: could not query response headers: %v", err)
-			}
-			reqLog.Response.Response.Header = headers
-		}
+	if err := c.queryHeaders(ctx, httpReqLogsQuery, reqLogs); err != nil {
+		return nil, fmt.Errorf("sqlite: could not query headers: %v", err)
 	}
 
 	return reqLogs, nil
 }
 
 func (c *Client) FindRequestLogByID(ctx context.Context, id int64) (reqlog.Request, error) {
-	// TODO: Pass GraphQL field collections upstream, so we can query only
-	// requested fields.
-	reqQuery := `SELECT
-		req.id,
-		req.proto,
-		req.url,
-		req.method,
-		req.body,
-		req.timestamp,
-		res.id,
-		res.proto,
-		res.status_code,
-		res.status_reason,
-		res.body,
-		res.timestamp
-	FROM http_requests req
-	LEFT JOIN http_responses res ON req.id = res.req_id
-	WHERE req_id = ?
-	ORDER BY req.id DESC`
+	httpReqLogsQuery := parseHTTPRequestLogsQuery(ctx)
 
-	var reqLog reqlog.Request
-	var resDTO httpResponse
-	var statusReason *string
-	var rawURL string
+	reqQuery := sq.
+		Select(httpReqLogsQuery.requestCols...).
+		From("http_requests req").
+		Where("req.id = ?")
+	if httpReqLogsQuery.joinResponse {
+		reqQuery = reqQuery.LeftJoin("http_responses res ON req.id = res.req_id")
+	}
 
-	err := c.db.QueryRowContext(ctx, reqQuery, id).Scan(
-		&reqLog.ID,
-		&reqLog.Request.Proto,
-		&rawURL,
-		&reqLog.Request.Method,
-		&reqLog.Body,
-		&reqLog.Timestamp,
-		&resDTO.ID,
-		&resDTO.Proto,
-		&resDTO.StatusCode,
-		&statusReason,
-		&resDTO.Body,
-		&resDTO.Timestamp,
-	)
+	reqSQL, _, err := reqQuery.ToSql()
+	if err != nil {
+		return reqlog.Request{}, fmt.Errorf("sqlite: could not parse query: %v", err)
+	}
+
+	row := c.db.QueryRowxContext(ctx, reqSQL, id)
+	var dto httpRequest
+	err = row.StructScan(&dto)
 	if err == sql.ErrNoRows {
 		return reqlog.Request{}, reqlog.ErrRequestNotFound
 	}
 	if err != nil {
 		return reqlog.Request{}, fmt.Errorf("sqlite: could not scan row: %v", err)
 	}
+	reqLog := dto.toRequestLog()
 
-	u, err := url.Parse(rawURL)
-	if err != nil {
-		return reqlog.Request{}, fmt.Errorf("sqlite: could not parse URL: %v", err)
-	}
-	reqLog.Request.URL = u
-
-	if resDTO.ID != nil {
-		status := strconv.Itoa(*resDTO.StatusCode) + " " + *statusReason
-		reqLog.Response = &reqlog.Response{
-			ID:        *resDTO.ID,
-			RequestID: reqLog.ID,
-			Response: http.Response{
-				Status:     status,
-				StatusCode: *resDTO.StatusCode,
-				Proto:      *resDTO.Proto,
-			},
-			Body:      *resDTO.Body,
-			Timestamp: *resDTO.Timestamp,
-		}
+	reqLogs := []reqlog.Request{reqLog}
+	if err := c.queryHeaders(ctx, httpReqLogsQuery, reqLogs); err != nil {
+		return reqlog.Request{}, fmt.Errorf("sqlite: could not query headers: %v", err)
 	}
 
-	reqHeadersStmt, err := c.db.PrepareContext(ctx, `SELECT key, value FROM http_headers WHERE req_id = ?`)
-	if err != nil {
-		return reqlog.Request{}, fmt.Errorf("sqlite: could not prepare statement: %v", err)
-	}
-	defer reqHeadersStmt.Close()
-	resHeadersStmt, err := c.db.PrepareContext(ctx, `SELECT key, value FROM http_headers WHERE res_id = ?`)
-	if err != nil {
-		return reqlog.Request{}, fmt.Errorf("sqlite: could not prepare statement: %v", err)
-	}
-	defer resHeadersStmt.Close()
-
-	headers, err := findHeaders(ctx, reqHeadersStmt, reqLog.ID)
-	if err != nil {
-		return reqlog.Request{}, fmt.Errorf("sqlite: could not query request headers: %v", err)
-	}
-	reqLog.Request.Header = headers
-
-	if reqLog.Response != nil {
-		headers, err := findHeaders(ctx, resHeadersStmt, reqLog.Response.ID)
-		if err != nil {
-			return reqlog.Request{}, fmt.Errorf("sqlite: could not query response headers: %v", err)
-		}
-		reqLog.Response.Response.Header = headers
-	}
-
-	return reqLog, nil
+	return reqLogs[0], nil
 }
 
 func (c *Client) AddRequestLog(
@@ -321,7 +225,7 @@ func (c *Client) AddRequestLog(
 		Timestamp: timestamp,
 	}
 
-	tx, err := c.db.BeginTx(ctx, nil)
+	tx, err := c.db.BeginTxx(ctx, nil)
 	if err != nil {
 		return nil, fmt.Errorf("sqlite: could not start transaction: %v", err)
 	}
@@ -490,4 +394,104 @@ func findHeaders(ctx context.Context, stmt *sql.Stmt, id int64) (http.Header, er
 	}
 
 	return headers, nil
+}
+
+func parseHTTPRequestLogsQuery(ctx context.Context) httpRequestLogsQuery {
+	var joinResponse bool
+	var reqHeaderCols, resHeaderCols []string
+
+	opCtx := graphql.GetOperationContext(ctx)
+	reqFields := graphql.CollectFieldsCtx(ctx, nil)
+	reqCols := []string{"req.id AS req_id", "res.id AS res_id"}
+
+	for _, reqField := range reqFields {
+		if col, ok := reqFieldToColumnMap[reqField.Name]; ok {
+			reqCols = append(reqCols, "req."+col)
+		}
+		if reqField.Name == "headers" {
+			headerFields := graphql.CollectFields(opCtx, reqField.Selections, nil)
+			for _, headerField := range headerFields {
+				if col, ok := headerFieldToColumnMap[headerField.Name]; ok {
+					reqHeaderCols = append(reqHeaderCols, col)
+				}
+			}
+		}
+		if reqField.Name == "response" {
+			joinResponse = true
+			resFields := graphql.CollectFields(opCtx, reqField.Selections, nil)
+			for _, resField := range resFields {
+				if resField.Name == "headers" {
+					reqCols = append(reqCols, "res.id AS res_id")
+					headerFields := graphql.CollectFields(opCtx, resField.Selections, nil)
+					for _, headerField := range headerFields {
+						if col, ok := headerFieldToColumnMap[headerField.Name]; ok {
+							resHeaderCols = append(resHeaderCols, col)
+						}
+					}
+				}
+				if col, ok := resFieldToColumnMap[resField.Name]; ok {
+					reqCols = append(reqCols, "res."+col)
+				}
+			}
+		}
+	}
+
+	return httpRequestLogsQuery{
+		requestCols:        reqCols,
+		requestHeaderCols:  reqHeaderCols,
+		responseHeaderCols: resHeaderCols,
+		joinResponse:       joinResponse,
+	}
+}
+
+func (c *Client) queryHeaders(
+	ctx context.Context,
+	query httpRequestLogsQuery,
+	reqLogs []reqlog.Request,
+) error {
+	if len(query.requestHeaderCols) > 0 {
+		reqHeadersQuery, _, err := sq.
+			Select(query.requestHeaderCols...).
+			From("http_headers").Where("req_id = ?").
+			ToSql()
+		if err != nil {
+			return fmt.Errorf("could not parse request headers query: %v", err)
+		}
+		reqHeadersStmt, err := c.db.PrepareContext(ctx, reqHeadersQuery)
+		if err != nil {
+			return fmt.Errorf("could not prepare statement: %v", err)
+		}
+		defer reqHeadersStmt.Close()
+		for i := range reqLogs {
+			headers, err := findHeaders(ctx, reqHeadersStmt, reqLogs[i].ID)
+			if err != nil {
+				return fmt.Errorf("could not query request headers: %v", err)
+			}
+			reqLogs[i].Request.Header = headers
+		}
+	}
+
+	if len(query.responseHeaderCols) > 0 {
+		resHeadersQuery, _, err := sq.
+			Select(query.responseHeaderCols...).
+			From("http_headers").Where("res_id = ?").
+			ToSql()
+		if err != nil {
+			return fmt.Errorf("could not parse response headers query: %v", err)
+		}
+		resHeadersStmt, err := c.db.PrepareContext(ctx, resHeadersQuery)
+		if err != nil {
+			return fmt.Errorf("could not prepare statement: %v", err)
+		}
+		defer resHeadersStmt.Close()
+		for i := range reqLogs {
+			headers, err := findHeaders(ctx, resHeadersStmt, reqLogs[i].Response.ID)
+			if err != nil {
+				return fmt.Errorf("could not query response headers: %v", err)
+			}
+			reqLogs[i].Response.Response.Header = headers
+		}
+	}
+
+	return nil
 }

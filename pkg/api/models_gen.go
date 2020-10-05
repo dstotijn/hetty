@@ -26,12 +26,12 @@ type HTTPRequestLog struct {
 }
 
 type HTTPResponseLog struct {
-	RequestID  int64        `json:"requestId"`
-	Proto      string       `json:"proto"`
-	Status     string       `json:"status"`
-	StatusCode int          `json:"statusCode"`
-	Body       *string      `json:"body"`
-	Headers    []HTTPHeader `json:"headers"`
+	RequestID    int64        `json:"requestId"`
+	Proto        string       `json:"proto"`
+	StatusCode   int          `json:"statusCode"`
+	StatusReason string       `json:"statusReason"`
+	Body         *string      `json:"body"`
+	Headers      []HTTPHeader `json:"headers"`
 }
 
 type HTTPMethod string
