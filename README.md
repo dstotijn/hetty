@@ -140,10 +140,7 @@ hetty -key key.pem -cert cert.pem
 ### Trusting the CA certificate
 
 In order for your browser to allow traffic to the local Hetty proxy, you may need
-to install these certificates to your local CA store. Otherwise, you may be met
-with errors related to HTTP Strict Transport Security (HSTS). In the real world this
-would be protecting you from man-in-the-middle attacks, but here we **are** the man.
-Let's fix that.
+to install these certificates to your local CA store.
 
 On Ubuntu, you can update your local CA store with the certificate by running the
 following commands:
