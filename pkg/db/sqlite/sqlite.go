@@ -485,6 +485,9 @@ func (c *Client) queryHeaders(
 		}
 		defer resHeadersStmt.Close()
 		for i := range reqLogs {
+			if reqLogs[i].Response == nil {
+				continue
+			}
 			headers, err := findHeaders(ctx, resHeadersStmt, reqLogs[i].Response.ID)
 			if err != nil {
 				return fmt.Errorf("could not query response headers: %v", err)
