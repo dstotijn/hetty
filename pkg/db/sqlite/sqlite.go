@@ -462,12 +462,12 @@ func (c *Client) queryHeaders(
 			return fmt.Errorf("could not prepare statement: %v", err)
 		}
 		defer reqHeadersStmt.Close()
-		for i := range reqLogs {
-			headers, err := findHeaders(ctx, reqHeadersStmt, reqLogs[i].ID)
+		for _, reqLog := range reqLogs {
+			headers, err := findHeaders(ctx, reqHeadersStmt, reqLog.ID)
 			if err != nil {
 				return fmt.Errorf("could not query request headers: %v", err)
 			}
-			reqLogs[i].Request.Header = headers
+			reqLog.Request.Header = headers
 		}
 	}
 
@@ -484,12 +484,15 @@ func (c *Client) queryHeaders(
 			return fmt.Errorf("could not prepare statement: %v", err)
 		}
 		defer resHeadersStmt.Close()
-		for i := range reqLogs {
-			headers, err := findHeaders(ctx, resHeadersStmt, reqLogs[i].Response.ID)
+		for _, reqLog := range reqLogs {
+			if reqLog.Response == nil {
+				continue
+			}
+			headers, err := findHeaders(ctx, resHeadersStmt, reqLog.Response.ID)
 			if err != nil {
 				return fmt.Errorf("could not query response headers: %v", err)
 			}
-			reqLogs[i].Response.Response.Header = headers
+			reqLog.Response.Response.Header = headers
 		}
 	}
 
