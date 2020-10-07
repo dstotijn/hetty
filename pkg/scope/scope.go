@@ -7,7 +7,7 @@ import (
 )
 
 type Scope struct {
-	mu    sync.Mutex
+	mu    sync.RWMutex
 	rules []Rule
 }
 
@@ -31,6 +31,8 @@ func New(rules []Rule) *Scope {
 }
 
 func (s *Scope) Rules() []Rule {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	return s.rules
 }
 
@@ -42,7 +44,8 @@ func (s *Scope) SetRules(rules []Rule) {
 }
 
 func (s *Scope) Match(req *http.Request, body []byte) bool {
-	// TODO(?): Do we need to lock here as well?
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	for _, rule := range s.rules {
 		if matches := rule.Match(req, body); matches {
 			return true
