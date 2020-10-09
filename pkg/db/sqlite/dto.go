@@ -51,7 +51,7 @@ func (u *reqURL) Scan(value interface{}) error {
 	return nil
 }
 
-func (dto httpRequest) toRequestLog() reqlog.Request {
+func (dto httpRequest) toRequestLog() *reqlog.Request {
 	u := url.URL(dto.URL)
 	reqLog := reqlog.Request{
 		ID: dto.ID,
@@ -78,5 +78,5 @@ func (dto httpRequest) toRequestLog() reqlog.Request {
 		}
 	}
 
-	return reqLog
+	return &reqLog
 }

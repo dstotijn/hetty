@@ -62,7 +62,7 @@ func NewService(cfg Config) *Service {
 	}
 }
 
-func (svc *Service) FindRequests(ctx context.Context, opts FindRequestsOptions) ([]Request, error) {
+func (svc *Service) FindRequests(ctx context.Context, opts FindRequestsOptions) ([]*Request, error) {
 	var scope *scope.Scope
 	if opts.OmitOutOfScope {
 		scope = svc.scope
@@ -71,7 +71,7 @@ func (svc *Service) FindRequests(ctx context.Context, opts FindRequestsOptions) 
 	return svc.repo.FindRequestLogs(ctx, opts, scope)
 }
 
-func (svc *Service) FindRequestLogByID(ctx context.Context, id int64) (Request, error) {
+func (svc *Service) FindRequestLogByID(ctx context.Context, id int64) (*Request, error) {
 	return svc.repo.FindRequestLogByID(ctx, id)
 }
 

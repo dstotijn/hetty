@@ -135,7 +135,7 @@ func (c *Client) FindRequestLogs(
 	ctx context.Context,
 	opts reqlog.FindRequestsOptions,
 	scope *scope.Scope,
-) (reqLogs []reqlog.Request, err error) {
+) (reqLogs []*reqlog.Request, err error) {
 	httpReqLogsQuery := parseHTTPRequestLogsQuery(ctx)
 
 	reqQuery := sq.
@@ -177,7 +177,7 @@ func (c *Client) FindRequestLogs(
 	return reqLogs, nil
 }
 
-func (c *Client) FindRequestLogByID(ctx context.Context, id int64) (reqlog.Request, error) {
+func (c *Client) FindRequestLogByID(ctx context.Context, id int64) (*reqlog.Request, error) {
 	httpReqLogsQuery := parseHTTPRequestLogsQuery(ctx)
 
 	reqQuery := sq.
@@ -190,23 +190,21 @@ func (c *Client) FindRequestLogByID(ctx context.Context, id int64) (reqlog.Reque
 
 	reqSQL, _, err := reqQuery.ToSql()
 	if err != nil {
-		return reqlog.Request{}, fmt.Errorf("sqlite: could not parse query: %v", err)
+		return nil, fmt.Errorf("sqlite: could not parse query: %v", err)
 	}
 
 	row := c.db.QueryRowxContext(ctx, reqSQL, id)
 	var dto httpRequest
 	err = row.StructScan(&dto)
 	if err == sql.ErrNoRows {
-		return reqlog.Request{}, reqlog.ErrRequestNotFound
+		return nil, reqlog.ErrRequestNotFound
 	}
 	if err != nil {
-		return reqlog.Request{}, fmt.Errorf("sqlite: could not scan row: %v", err)
+		return nil, fmt.Errorf("sqlite: could not scan row: %v", err)
 	}
-	reqLog := dto.toRequestLog()
-
-	reqLogs := []reqlog.Request{reqLog}
+	reqLogs := []*reqlog.Request{dto.toRequestLog()}
 	if err := c.queryHeaders(ctx, httpReqLogsQuery, reqLogs); err != nil {
-		return reqlog.Request{}, fmt.Errorf("sqlite: could not query headers: %v", err)
+		return nil, fmt.Errorf("sqlite: could not query headers: %v", err)
 	}
 
 	return reqLogs[0], nil
@@ -447,54 +445,43 @@ func parseHTTPRequestLogsQuery(ctx context.Context) httpRequestLogsQuery {
 func (c *Client) queryHeaders(
 	ctx context.Context,
 	query httpRequestLogsQuery,
-	reqLogs []reqlog.Request,
+	requests []*reqlog.Request,
 ) error {
-	if len(query.requestHeaderCols) > 0 {
-		reqHeadersQuery, _, err := sq.
-			Select(query.requestHeaderCols...).
+
+	q := func(cols []string, response bool) error {
+		if len(cols) == 0 {
+			return nil
+		}
+		headersQuery, _, err := sq.
+			Select(cols...).
 			From("http_headers").Where("req_id = ?").
 			ToSql()
 		if err != nil {
-			return fmt.Errorf("could not parse request headers query: %v", err)
+			return fmt.Errorf("could not parse query: %v", err)
 		}
-		reqHeadersStmt, err := c.db.PrepareContext(ctx, reqHeadersQuery)
+		stmt, err := c.db.PrepareContext(ctx, headersQuery)
 		if err != nil {
 			return fmt.Errorf("could not prepare statement: %v", err)
 		}
-		defer reqHeadersStmt.Close()
-		for _, reqLog := range reqLogs {
-			headers, err := findHeaders(ctx, reqHeadersStmt, reqLog.ID)
+		defer stmt.Close()
+		for _, request := range requests {
+			headers, err := findHeaders(ctx, stmt, request.ID)
 			if err != nil {
 				return fmt.Errorf("could not query request headers: %v", err)
 			}
-			reqLog.Request.Header = headers
-		}
-	}
-
-	if len(query.responseHeaderCols) > 0 {
-		resHeadersQuery, _, err := sq.
-			Select(query.responseHeaderCols...).
-			From("http_headers").Where("res_id = ?").
-			ToSql()
-		if err != nil {
-			return fmt.Errorf("could not parse response headers query: %v", err)
-		}
-		resHeadersStmt, err := c.db.PrepareContext(ctx, resHeadersQuery)
-		if err != nil {
-			return fmt.Errorf("could not prepare statement: %v", err)
-		}
-		defer resHeadersStmt.Close()
-		for _, reqLog := range reqLogs {
-			if reqLog.Response == nil {
-				continue
+			if !response {
+				request.Request.Header = headers
+			} else {
+				request.Response.Response.Header = headers
 			}
-			headers, err := findHeaders(ctx, resHeadersStmt, reqLog.Response.ID)
-			if err != nil {
-				return fmt.Errorf("could not query response headers: %v", err)
-			}
-			reqLog.Response.Response.Header = headers
 		}
+		return nil
 	}
-
+	if err := q(query.requestHeaderCols, false); err != nil {
+		return err
+	}
+	if err := q(query.responseHeaderCols, true); err != nil {
+		return err
+	}
 	return nil
 }

@@ -53,7 +53,7 @@ func (r *queryResolver) HTTPRequestLog(ctx context.Context, id int64) (*HTTPRequ
 	return &req, nil
 }
 
-func parseRequestLog(req reqlog.Request) (HTTPRequestLog, error) {
+func parseRequestLog(req *reqlog.Request) (HTTPRequestLog, error) {
 	method := HTTPMethod(req.Request.Method)
 	if method != "" && !method.IsValid() {
 		return HTTPRequestLog{}, fmt.Errorf("request has invalid method: %v", method)
