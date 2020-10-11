@@ -83,13 +83,13 @@ func LoadOrCreateCA(caKeyFile, caCertFile string) (*x509.Certificate, *rsa.Priva
 	keyDir, _ := filepath.Split(caKeyFile)
 	if keyDir != "" {
 		if _, err := os.Stat(keyDir); os.IsNotExist(err) {
-			os.Mkdir(keyDir, 0755)
+			os.MkdirAll(keyDir, 0755)
 		}
 	}
 	keyDir, _ = filepath.Split(caCertFile)
 	if keyDir != "" {
 		if _, err := os.Stat("keyDir"); os.IsNotExist(err) {
-			os.Mkdir(keyDir, 0755)
+			os.MkdirAll(keyDir, 0755)
 		}
 	}
 

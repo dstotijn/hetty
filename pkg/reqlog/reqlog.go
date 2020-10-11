@@ -19,7 +19,10 @@ type contextKey int
 
 const LogBypassedKey contextKey = 0
 
-var ErrRequestNotFound = errors.New("reqlog: request not found")
+var (
+	ErrRequestNotFound = errors.New("reqlog: request not found")
+	ErrNoProject       = errors.New("reqlog: no project")
+)
 
 type Request struct {
 	ID        int64
@@ -133,6 +136,11 @@ func (svc *Service) RequestModifier(next proxy.RequestModifyFunc) proxy.RequestM
 		}
 
 		reqLog, err := svc.addRequest(req.Context(), *clone, body, now)
+		if err == ErrNoProject {
+			ctx := context.WithValue(req.Context(), LogBypassedKey, true)
+			*req = *req.WithContext(ctx)
+			return
+		}
 		if err != nil {
 			log.Printf("[ERROR] Could not store request log: %v", err)
 			return

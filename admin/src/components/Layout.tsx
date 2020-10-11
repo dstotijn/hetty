@@ -21,12 +21,15 @@ import MenuIcon from "@material-ui/icons/Menu";
 import HomeIcon from "@material-ui/icons/Home";
 import SettingsEthernetIcon from "@material-ui/icons/SettingsEthernet";
 import SendIcon from "@material-ui/icons/Send";
+import FolderIcon from "@material-ui/icons/Folder";
 import ChevronLeftIcon from "@material-ui/icons/ChevronLeft";
 import ChevronRightIcon from "@material-ui/icons/ChevronRight";
 import clsx from "clsx";
 
 export enum Page {
   Home,
+  GetStarted,
+  Projects,
   ProxySetup,
   ProxyLogs,
   Sender,
@@ -231,6 +234,22 @@ export function Layout({ title, page, children }: Props): JSX.Element {
                 </ListItemIcon>
               </Tooltip>
               <ListItemText primary="Sender" />
+            </ListItem>
+          </Link>
+          <Link href="/projects" passHref>
+            <ListItem
+              button
+              component="a"
+              key="projects"
+              selected={page === Page.Projects}
+              className={classes.listItem}
+            >
+              <Tooltip title="Projects">
+                <ListItemIcon className={classes.listItemIcon}>
+                  <FolderIcon />
+                </ListItemIcon>
+              </Tooltip>
+              <ListItemText primary="Projects" />
             </ListItem>
           </Link>
         </List>

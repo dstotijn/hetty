@@ -8,6 +8,10 @@ import (
 	"github.com/dstotijn/hetty/pkg/scope"
 )
 
+type RepositoryProvider interface {
+	Repository() Repository
+}
+
 type Repository interface {
 	FindRequestLogs(ctx context.Context, opts FindRequestsOptions, scope *scope.Scope) ([]Request, error)
 	FindRequestLogByID(ctx context.Context, id int64) (Request, error)

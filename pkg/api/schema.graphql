@@ -23,9 +23,30 @@ type HttpHeader {
   value: String!
 }
 
+type Project {
+  name: String!
+  isActive: Boolean!
+}
+
+type CloseProjectResult {
+  success: Boolean!
+}
+
+type DeleteProjectResult {
+  success: Boolean!
+}
+
 type Query {
   httpRequestLog(id: ID!): HttpRequestLog
   httpRequestLogs: [HttpRequestLog!]!
+  activeProject: Project
+  projects: [Project!]!
+}
+
+type Mutation {
+  openProject(name: String!): Project
+  closeProject: CloseProjectResult!
+  deleteProject(name: String!): DeleteProjectResult!
 }
 
 enum HttpMethod {

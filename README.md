@@ -12,7 +12,7 @@
 - [x] Web interface (Next.js) with proxy log viewer.
 - [ ] Add scope support to the proxy.
 - [ ] Full text search (with regex) in proxy log viewer.
-- [ ] Project management.
+- [x] Project management.
 - [ ] Sender module for sending manual HTTP requests, either from scratch or based
       off requests from the proxy log.
 - [ ] Attacker module for automated sending of HTTP requests. Leverage the concurrency
@@ -56,12 +56,7 @@ Alternatively, you can run Hetty via Docker. See: [`dstotijn/hetty`](https://hub
 on Docker Hub.
 
 ```
-$ docker run \
--v $HOME/.hetty/hetty_key.pem:/root/.hetty/hetty_key.pem \
--v $HOME/.hetty/hetty_cert.pem:/root/.hetty/hetty_cert.pem \
--v $HOME/.hetty/hetty.db:/root/.hetty/hetty.db \
--p 127.0.0.1:8080:8080 \
-dstotijn/hetty
+$ docker run -v $HOME/.hetty:/root/.hetty -p 127.0.0.1:8080:8080 dstotijn/hetty
 ```
 
 ## Usage
@@ -80,15 +75,15 @@ Usage of ./hetty:
         File path to admin build
   -cert string
         CA certificate filepath. Creates a new CA certificate is file doesn't exist (default "~/.hetty/hetty_cert.pem")
-  -db string
-        Database file path (default "~/.hetty/hetty.db")
   -key string
         CA private key filepath. Creates a new CA private key if file doesn't exist (default "~/.hetty/hetty_key.pem")
+  -projects string
+        Projects directory path (default "~/.hetty/projects")
 ```
 
 ## Certificate Setup and Installation
 
-In order for Hetty to proxy requests going to HTTPS endpoints, a root CA certificate for 
+In order for Hetty to proxy requests going to HTTPS endpoints, a root CA certificate for
 Hetty will need to be set up. Furthermore, the CA certificate may need to be
 installed to the host for them to be trusted by your browser. The following steps
 will cover how you can generate your certificate, provide them to hetty, and how
@@ -115,7 +110,7 @@ certificate with hetty, simply run the command with no arguments
 hetty
 ```
 
-You should now have a key and certificate located at  `~/.hetty/hetty_key.pem` and
+You should now have a key and certificate located at `~/.hetty/hetty_key.pem` and
 `~/.hetty/hetty_cert.pem` respectively.
 
 #### Generating CA certificates with OpenSSL

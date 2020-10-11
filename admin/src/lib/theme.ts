@@ -11,6 +11,12 @@ const theme = createMuiTheme({
     secondary: {
       main: teal["A400"],
     },
+    info: {
+      main: teal["A400"],
+    },
+    success: {
+      main: teal["A400"],
+    },
   },
   typography: {
     h2: {

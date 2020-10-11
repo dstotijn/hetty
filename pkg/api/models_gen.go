@@ -9,6 +9,14 @@ import (
 	"time"
 )
 
+type CloseProjectResult struct {
+	Success bool `json:"success"`
+}
+
+type DeleteProjectResult struct {
+	Success bool `json:"success"`
+}
+
 type HTTPHeader struct {
 	Key   string `json:"key"`
 	Value string `json:"value"`
@@ -32,6 +40,11 @@ type HTTPResponseLog struct {
 	StatusReason string       `json:"statusReason"`
 	Body         *string      `json:"body"`
 	Headers      []HTTPHeader `json:"headers"`
+}
+
+type Project struct {
+	Name     string `json:"name"`
+	IsActive bool   `json:"isActive"`
 }
 
 type HTTPMethod string

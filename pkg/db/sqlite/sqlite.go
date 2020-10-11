@@ -3,11 +3,10 @@ package sqlite
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
-	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/dstotijn/hetty/pkg/reqlog"
@@ -33,13 +32,10 @@ type httpRequestLogsQuery struct {
 	joinResponse       bool
 }
 
-// New returns a new Client.
-func New(filename string) (*Client, error) {
-	// Create directory for DB if it doesn't exist yet.
-	if dbDir, _ := filepath.Split(filename); dbDir != "" {
-		if _, err := os.Stat(dbDir); os.IsNotExist(err) {
-			os.Mkdir(dbDir, 0755)
-		}
+// Open opens a database.
+func (c *Client) Open(filename string) error {
+	if c.db != nil {
+		return errors.New("sqlite: database already open")
 	}
 
 	opts := make(url.Values)
@@ -48,24 +44,24 @@ func New(filename string) (*Client, error) {
 	dsn := fmt.Sprintf("file:%v?%v", filename, opts.Encode())
 	db, err := sqlx.Open("sqlite3", dsn)
 	if err != nil {
-		return nil, err
+		return fmt.Errorf("sqlite: could not open database: %v", err)
 	}
 
 	if err := db.Ping(); err != nil {
-		return nil, fmt.Errorf("sqlite: could not ping database: %v", err)
+		return fmt.Errorf("sqlite: could not ping database: %v", err)
 	}
 
-	c := &Client{db: db}
-
-	if err := c.prepareSchema(); err != nil {
-		return nil, fmt.Errorf("sqlite: could not prepare schema: %v", err)
+	if err := prepareSchema(db); err != nil {
+		return fmt.Errorf("sqlite: could not prepare schema: %v", err)
 	}
 
-	return &Client{db: db}, nil
+	c.db = db
+
+	return nil
 }
 
-func (c Client) prepareSchema() error {
-	_, err := c.db.Exec(`CREATE TABLE IF NOT EXISTS http_requests (
+func prepareSchema(db *sqlx.DB) error {
+	_, err := db.Exec(`CREATE TABLE IF NOT EXISTS http_requests (
 		id INTEGER PRIMARY KEY,
 		proto TEXT,
 		url TEXT,
@@ -77,7 +73,7 @@ func (c Client) prepareSchema() error {
 		return fmt.Errorf("could not create http_requests table: %v", err)
 	}
 
-	_, err = c.db.Exec(`CREATE TABLE IF NOT EXISTS http_responses (
+	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS http_responses (
 		id INTEGER PRIMARY KEY,
 		req_id INTEGER REFERENCES http_requests(id) ON DELETE CASCADE,
 		proto TEXT,
@@ -90,7 +86,7 @@ func (c Client) prepareSchema() error {
 		return fmt.Errorf("could not create http_responses table: %v", err)
 	}
 
-	_, err = c.db.Exec(`CREATE TABLE IF NOT EXISTS http_headers (
+	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS http_headers (
 		id INTEGER PRIMARY KEY,
 		req_id INTEGER REFERENCES http_requests(id) ON DELETE CASCADE,
 		res_id INTEGER REFERENCES http_responses(id) ON DELETE CASCADE,
@@ -104,9 +100,16 @@ func (c Client) prepareSchema() error {
 	return nil
 }
 
-// Close uses the underlying database.
+// Close uses the underlying database if it's open.
 func (c *Client) Close() error {
-	return c.db.Close()
+	if c.db == nil {
+		return nil
+	}
+	if err := c.db.Close(); err != nil {
+		return fmt.Errorf("sqlite: could not close database: %v", err)
+	}
+	c.db = nil
+	return nil
 }
 
 var reqFieldToColumnMap = map[string]string{
@@ -136,6 +139,10 @@ func (c *Client) FindRequestLogs(
 	opts reqlog.FindRequestsOptions,
 	scope *scope.Scope,
 ) (reqLogs []reqlog.Request, err error) {
+	if c.db == nil {
+		return nil, reqlog.ErrNoProject
+	}
+
 	httpReqLogsQuery := parseHTTPRequestLogsQuery(ctx)
 
 	reqQuery := sq.
@@ -178,6 +185,9 @@ func (c *Client) FindRequestLogs(
 }
 
 func (c *Client) FindRequestLogByID(ctx context.Context, id int64) (reqlog.Request, error) {
+	if c.db == nil {
+		return reqlog.Request{}, reqlog.ErrNoProject
+	}
 	httpReqLogsQuery := parseHTTPRequestLogsQuery(ctx)
 
 	reqQuery := sq.
@@ -218,6 +228,9 @@ func (c *Client) AddRequestLog(
 	body []byte,
 	timestamp time.Time,
 ) (*reqlog.Request, error) {
+	if c.db == nil {
+		return nil, reqlog.ErrNoProject
+	}
 
 	reqLog := &reqlog.Request{
 		Request:   req,
@@ -289,6 +302,10 @@ func (c *Client) AddResponseLog(
 	body []byte,
 	timestamp time.Time,
 ) (*reqlog.Response, error) {
+	if c.db == nil {
+		return nil, reqlog.ErrNoProject
+	}
+
 	resLog := &reqlog.Response{
 		RequestID: reqID,
 		Response:  res,
@@ -494,4 +511,8 @@ func (c *Client) queryHeaders(
 	}
 
 	return nil
+}
+
+func (c *Client) IsOpen() bool {
+	return c.db != nil
 }

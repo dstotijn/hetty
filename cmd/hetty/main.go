@@ -11,10 +11,9 @@ import (
 
 	rice "github.com/GeertJohan/go.rice"
 	"github.com/dstotijn/hetty/pkg/api"
-	"github.com/dstotijn/hetty/pkg/db/sqlite"
+	"github.com/dstotijn/hetty/pkg/proj"
 	"github.com/dstotijn/hetty/pkg/proxy"
 	"github.com/dstotijn/hetty/pkg/reqlog"
-	"github.com/dstotijn/hetty/pkg/scope"
 
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
@@ -25,7 +24,7 @@ import (
 var (
 	caCertFile string
 	caKeyFile  string
-	dbFile     string
+	projPath   string
 	addr       string
 	adminPath  string
 )
@@ -33,7 +32,7 @@ var (
 func main() {
 	flag.StringVar(&caCertFile, "cert", "~/.hetty/hetty_cert.pem", "CA certificate filepath. Creates a new CA certificate is file doesn't exist")
 	flag.StringVar(&caKeyFile, "key", "~/.hetty/hetty_key.pem", "CA private key filepath. Creates a new CA private key if file doesn't exist")
-	flag.StringVar(&dbFile, "db", "~/.hetty/hetty.db", "Database file path")
+	flag.StringVar(&projPath, "projects", "~/.hetty/projects", "Projects directory path")
 	flag.StringVar(&addr, "addr", ":8080", "TCP address to listen on, in the form \"host:port\"")
 	flag.StringVar(&adminPath, "adminPath", "", "File path to admin build")
 	flag.Parse()
@@ -47,9 +46,9 @@ func main() {
 	if err != nil {
 		log.Fatalf("[FATAL] Could not parse CA private key filepath: %v", err)
 	}
-	dbFile, err := homedir.Expand(dbFile)
+	projPath, err := homedir.Expand(projPath)
 	if err != nil {
-		log.Fatalf("[FATAL] Could not parse CA private key filepath: %v", err)
+		log.Fatalf("[FATAL] Could not parse projects filepath: %v", err)
 	}
 
 	// Load existing CA certificate and key from disk, or generate and write
@@ -59,16 +58,15 @@ func main() {
 		log.Fatalf("[FATAL] Could not create/load CA key pair: %v", err)
 	}
 
-	db, err := sqlite.New(dbFile)
+	projService, err := proj.NewService(projPath)
 	if err != nil {
-		log.Fatalf("[FATAL] Could not initialize database: %v", err)
+		log.Fatalf("[FATAL] Could not create new project service: %v", err)
 	}
-	defer db.Close()
+	defer projService.Close()
 
-	scope := scope.New(nil)
 	reqLogService := reqlog.NewService(reqlog.Config{
-		Scope:      scope,
-		Repository: db,
+		Scope:      projService.Scope,
+		Repository: projService.Database(),
 	})
 
 	p, err := proxy.NewProxy(caCert, caKey)
@@ -103,6 +101,7 @@ func main() {
 	adminRouter.Path("/api/playground/").Handler(playground.Handler("GraphQL Playground", "/api/graphql/"))
 	adminRouter.Path("/api/graphql/").Handler(handler.NewDefaultServer(api.NewExecutableSchema(api.Config{Resolvers: &api.Resolver{
 		RequestLogService: reqLogService,
+		ProjectService:    projService,
 	}})))
 
 	// Admin interface.

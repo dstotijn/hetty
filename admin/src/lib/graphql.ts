@@ -1,6 +1,5 @@
 import { useMemo } from "react";
 import { ApolloClient, HttpLink, InMemoryCache } from "@apollo/client";
-import { concatPagination } from "@apollo/client/utilities";
 
 let apolloClient;
 
@@ -12,10 +11,8 @@ function createApolloClient() {
     }),
     cache: new InMemoryCache({
       typePolicies: {
-        Query: {
-          fields: {
-            allPosts: concatPagination(),
-          },
+        Project: {
+          keyFields: ["name"],
         },
       },
     }),
