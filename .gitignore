@@ -1,3 +1,5 @@
+.release-env
+.vscode
 **/rice-box.go
 sqlite3_mod_regexp.dylib
 dist
