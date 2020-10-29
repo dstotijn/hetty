@@ -11,9 +11,11 @@ import (
 
 	rice "github.com/GeertJohan/go.rice"
 	"github.com/dstotijn/hetty/pkg/api"
+	"github.com/dstotijn/hetty/pkg/db/sqlite"
 	"github.com/dstotijn/hetty/pkg/proj"
 	"github.com/dstotijn/hetty/pkg/proxy"
 	"github.com/dstotijn/hetty/pkg/reqlog"
+	"github.com/dstotijn/hetty/pkg/scope"
 
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
@@ -58,15 +60,23 @@ func main() {
 		log.Fatalf("[FATAL] Could not create/load CA key pair: %v", err)
 	}
 
-	projService, err := proj.NewService(projPath)
+	db, err := sqlite.New(projPath)
+	if err != nil {
+		log.Fatalf("[FATAL] Could not initialize database client: %v", err)
+	}
+
+	projService, err := proj.NewService(db)
 	if err != nil {
 		log.Fatalf("[FATAL] Could not create new project service: %v", err)
 	}
 	defer projService.Close()
 
+	scope := scope.New(db, projService)
+
 	reqLogService := reqlog.NewService(reqlog.Config{
-		Scope:      projService.Scope,
-		Repository: projService.Database(),
+		Scope:          scope,
+		ProjectService: projService,
+		Repository:     db,
 	})
 
 	p, err := proxy.NewProxy(caCert, caKey)
@@ -102,6 +112,7 @@ func main() {
 	adminRouter.Path("/api/graphql/").Handler(handler.NewDefaultServer(api.NewExecutableSchema(api.Config{Resolvers: &api.Resolver{
 		RequestLogService: reqLogService,
 		ProjectService:    projService,
+		ScopeService:      scope,
 	}})))
 
 	// Admin interface.

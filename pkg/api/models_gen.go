@@ -33,6 +33,14 @@ type HTTPRequestLog struct {
 	Response  *HTTPResponseLog `json:"response"`
 }
 
+type HTTPRequestLogFilter struct {
+	OnlyInScope bool `json:"onlyInScope"`
+}
+
+type HTTPRequestLogFilterInput struct {
+	OnlyInScope *bool `json:"onlyInScope"`
+}
+
 type HTTPResponseLog struct {
 	RequestID    int64        `json:"requestId"`
 	Proto        string       `json:"proto"`
@@ -45,6 +53,28 @@ type HTTPResponseLog struct {
 type Project struct {
 	Name     string `json:"name"`
 	IsActive bool   `json:"isActive"`
+}
+
+type ScopeHeader struct {
+	Key   *string `json:"key"`
+	Value *string `json:"value"`
+}
+
+type ScopeHeaderInput struct {
+	Key   *string `json:"key"`
+	Value *string `json:"value"`
+}
+
+type ScopeRule struct {
+	URL    *string      `json:"url"`
+	Header *ScopeHeader `json:"header"`
+	Body   *string      `json:"body"`
+}
+
+type ScopeRuleInput struct {
+	URL    *string           `json:"url"`
+	Header *ScopeHeaderInput `json:"header"`
+	Body   *string           `json:"body"`
 }
 
 type HTTPMethod string

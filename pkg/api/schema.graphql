@@ -28,6 +28,28 @@ type Project {
   isActive: Boolean!
 }
 
+type ScopeRule {
+  url: Regexp
+  header: ScopeHeader
+  body: Regexp
+}
+
+input ScopeRuleInput {
+  url: Regexp
+  header: ScopeHeaderInput
+  body: Regexp
+}
+
+type ScopeHeader {
+  key: Regexp
+  value: Regexp
+}
+
+input ScopeHeaderInput {
+  key: Regexp
+  value: Regexp
+}
+
 type CloseProjectResult {
   success: Boolean!
 }
@@ -36,17 +58,31 @@ type DeleteProjectResult {
   success: Boolean!
 }
 
+input HttpRequestLogFilterInput {
+  onlyInScope: Boolean
+}
+
+type HttpRequestLogFilter {
+  onlyInScope: Boolean!
+}
+
 type Query {
   httpRequestLog(id: ID!): HttpRequestLog
   httpRequestLogs: [HttpRequestLog!]!
+  httpRequestLogFilter: HttpRequestLogFilter
   activeProject: Project
   projects: [Project!]!
+  scope: [ScopeRule!]!
 }
 
 type Mutation {
   openProject(name: String!): Project
   closeProject: CloseProjectResult!
   deleteProject(name: String!): DeleteProjectResult!
+  setScope(scope: [ScopeRuleInput!]!): [ScopeRule!]!
+  setHttpRequestLogFilter(
+    filter: HttpRequestLogFilterInput
+  ): HttpRequestLogFilter
 }
 
 enum HttpMethod {
@@ -62,3 +98,4 @@ enum HttpMethod {
 }
 
 scalar Time
+scalar Regexp

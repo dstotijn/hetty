@@ -1,25 +1,24 @@
 package proj
 
 import (
+	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
-	"os"
-	"path/filepath"
+	"log"
 	"regexp"
-	"strings"
-
-	"github.com/dstotijn/hetty/pkg/db/sqlite"
-	"github.com/dstotijn/hetty/pkg/scope"
+	"sync"
 )
+
+type OnProjectOpenFn func(name string) error
+type OnProjectCloseFn func(name string) error
 
 // Service is used for managing projects.
 type Service struct {
-	dbPath string
-	db     *sqlite.Client
-	name   string
-
-	Scope *scope.Scope
+	repo              Repository
+	activeProject     string
+	onProjectOpenFns  []OnProjectOpenFn
+	onProjectCloseFns []OnProjectCloseFn
+	mu                sync.RWMutex
 }
 
 type Project struct {
@@ -29,33 +28,33 @@ type Project struct {
 
 var (
 	ErrNoProject   = errors.New("proj: no open project")
+	ErrNoSettings  = errors.New("proj: settings not found")
 	ErrInvalidName = errors.New("proj: invalid name, must be alphanumeric or whitespace chars")
 )
 
 var nameRegexp = regexp.MustCompile(`^[\w\d\s]+$`)
 
 // NewService returns a new Service.
-func NewService(dbPath string) (*Service, error) {
-	// Create directory for DBs if it doesn't exist yet.
-	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
-		if err := os.MkdirAll(dbPath, 0755); err != nil {
-			return nil, fmt.Errorf("proj: could not create project directory: %v", err)
-		}
-	}
-
+func NewService(repo Repository) (*Service, error) {
 	return &Service{
-		dbPath: dbPath,
-		db:     &sqlite.Client{},
-		Scope:  scope.New(nil),
+		repo: repo,
 	}, nil
 }
 
 // Close closes the currently open project database (if there is one).
 func (svc *Service) Close() error {
-	if err := svc.db.Close(); err != nil {
+	svc.mu.Lock()
+	defer svc.mu.Unlock()
+
+	closedProject := svc.activeProject
+	if err := svc.repo.Close(); err != nil {
 		return fmt.Errorf("proj: could not close project: %v", err)
 	}
-	svc.name = ""
+
+	svc.activeProject = ""
+
+	svc.emitProjectClosed(closedProject)
+
 	return nil
 }
 
@@ -64,41 +63,37 @@ func (svc *Service) Delete(name string) error {
 	if name == "" {
 		return errors.New("proj: name cannot be empty")
 	}
-	if svc.name == name {
+	if svc.activeProject == name {
 		return fmt.Errorf("proj: project (%v) is active", name)
 	}
 
-	if err := os.Remove(filepath.Join(svc.dbPath, name+".db")); err != nil {
-		return fmt.Errorf("proj: could not remove database file: %v", err)
+	if err := svc.repo.DeleteProject(name); err != nil {
+		return fmt.Errorf("proj: could not delete project: %v", err)
 	}
 
 	return nil
 }
 
-// Database returns the currently open database. If no database is open, it will
-// return `nil`.
-func (svc *Service) Database() *sqlite.Client {
-	return svc.db
-}
-
 // Open opens a database identified with `name`. If a database with this
 // identifier doesn't exist yet, it will be automatically created.
-func (svc *Service) Open(name string) (Project, error) {
+func (svc *Service) Open(ctx context.Context, name string) (Project, error) {
 	if !nameRegexp.MatchString(name) {
 		return Project{}, ErrInvalidName
 	}
-	if err := svc.db.Close(); err != nil {
+
+	svc.mu.Lock()
+	defer svc.mu.Unlock()
+
+	if err := svc.repo.Close(); err != nil {
 		return Project{}, fmt.Errorf("proj: could not close previously open database: %v", err)
 	}
 
-	dbPath := filepath.Join(svc.dbPath, name+".db")
-
-	err := svc.db.Open(dbPath)
-	if err != nil {
+	if err := svc.repo.OpenProject(name); err != nil {
 		return Project{}, fmt.Errorf("proj: could not open database: %v", err)
 	}
 
-	svc.name = name
+	svc.activeProject = name
+	svc.emitProjectOpened()
 
 	return Project{
 		Name:     name,
@@ -107,29 +102,51 @@ func (svc *Service) Open(name string) (Project, error) {
 }
 
 func (svc *Service) ActiveProject() (Project, error) {
-	if !svc.db.IsOpen() {
+	activeProject := svc.activeProject
+	if activeProject == "" {
 		return Project{}, ErrNoProject
 	}
 
 	return Project{
-		Name: svc.name,
+		Name: activeProject,
 	}, nil
 }
 
 func (svc *Service) Projects() ([]Project, error) {
-	files, err := ioutil.ReadDir(svc.dbPath)
+	projects, err := svc.repo.Projects()
 	if err != nil {
-		return nil, fmt.Errorf("proj: could not read projects directory: %v", err)
-	}
-
-	projects := make([]Project, len(files))
-	for i, file := range files {
-		projName := strings.TrimSuffix(file.Name(), ".db")
-		projects[i] = Project{
-			Name:     projName,
-			IsActive: svc.name == projName,
-		}
+		return nil, fmt.Errorf("proj: could not get projects: %v", err)
 	}
 
 	return projects, nil
+}
+
+func (svc *Service) OnProjectOpen(fn OnProjectOpenFn) {
+	svc.mu.Lock()
+	defer svc.mu.Unlock()
+
+	svc.onProjectOpenFns = append(svc.onProjectOpenFns, fn)
+}
+
+func (svc *Service) OnProjectClose(fn OnProjectCloseFn) {
+	svc.mu.Lock()
+	defer svc.mu.Unlock()
+
+	svc.onProjectCloseFns = append(svc.onProjectCloseFns, fn)
+}
+
+func (svc *Service) emitProjectOpened() {
+	for _, fn := range svc.onProjectOpenFns {
+		if err := fn(svc.activeProject); err != nil {
+			log.Printf("[ERROR] Could not execute onProjectOpen function: %v", err)
+		}
+	}
+}
+
+func (svc *Service) emitProjectClosed(name string) {
+	for _, fn := range svc.onProjectCloseFns {
+		if err := fn(name); err != nil {
+			log.Printf("[ERROR] Could not execute onProjectClose function: %v", err)
+		}
+	}
 }

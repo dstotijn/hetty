@@ -10,7 +10,7 @@
 
 - [x] HTTP man-in-the-middle (MITM) proxy and GraphQL server.
 - [x] Web interface (Next.js) with proxy log viewer.
-- [ ] Add scope support to the proxy.
+- [x] Add scope support to the proxy.
 - [ ] Full text search (with regex) in proxy log viewer.
 - [x] Project management.
 - [ ] Sender module for sending manual HTTP requests, either from scratch or based

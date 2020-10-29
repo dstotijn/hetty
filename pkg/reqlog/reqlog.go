@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/dstotijn/hetty/pkg/proj"
 	"github.com/dstotijn/hetty/pkg/proxy"
 	"github.com/dstotijn/hetty/pkg/scope"
 )
@@ -19,9 +20,10 @@ type contextKey int
 
 const LogBypassedKey contextKey = 0
 
+const moduleName = "reqlog"
+
 var (
 	ErrRequestNotFound = errors.New("reqlog: request not found")
-	ErrNoProject       = errors.New("reqlog: no project")
 )
 
 type Request struct {
@@ -42,40 +44,59 @@ type Response struct {
 
 type Service struct {
 	BypassOutOfScopeRequests bool
+	FindReqsFilter           FindRequestsFilter
 
 	scope *scope.Scope
 	repo  Repository
 }
 
-type FindRequestsOptions struct {
-	OmitOutOfScope bool
+type FindRequestsFilter struct {
+	OnlyInScope bool
 }
 
 type Config struct {
 	Scope                    *scope.Scope
 	Repository               Repository
+	ProjectService           *proj.Service
 	BypassOutOfScopeRequests bool
 }
 
 func NewService(cfg Config) *Service {
-	return &Service{
+	svc := &Service{
 		scope:                    cfg.Scope,
 		repo:                     cfg.Repository,
 		BypassOutOfScopeRequests: cfg.BypassOutOfScopeRequests,
 	}
+
+	cfg.ProjectService.OnProjectOpen(func(_ string) error {
+		err := svc.loadSettings()
+		if err == proj.ErrNoSettings {
+			return nil
+		}
+		if err != nil {
+			return fmt.Errorf("reqlog: could not load settings: %v", err)
+		}
+		return nil
+	})
+	cfg.ProjectService.OnProjectClose(func(_ string) error {
+		svc.unloadSettings()
+		return nil
+	})
+
+	return svc
 }
 
-func (svc *Service) FindRequests(ctx context.Context, opts FindRequestsOptions) ([]Request, error) {
-	var scope *scope.Scope
-	if opts.OmitOutOfScope {
-		scope = svc.scope
-	}
-
-	return svc.repo.FindRequestLogs(ctx, opts, scope)
+func (svc *Service) FindRequests(ctx context.Context) ([]Request, error) {
+	return svc.repo.FindRequestLogs(ctx, svc.FindReqsFilter, svc.scope)
 }
 
 func (svc *Service) FindRequestLogByID(ctx context.Context, id int64) (Request, error) {
 	return svc.repo.FindRequestLogByID(ctx, id)
+}
+
+func (svc *Service) SetRequestLogFilter(ctx context.Context, filter FindRequestsFilter) error {
+	svc.FindReqsFilter = filter
+	return svc.repo.UpsertSettings(ctx, "reqlog", svc)
 }
 
 func (svc *Service) addRequest(
@@ -136,7 +157,7 @@ func (svc *Service) RequestModifier(next proxy.RequestModifyFunc) proxy.RequestM
 		}
 
 		reqLog, err := svc.addRequest(req.Context(), *clone, body, now)
-		if err == ErrNoProject {
+		if err == proj.ErrNoProject {
 			ctx := context.WithValue(req.Context(), LogBypassedKey, true)
 			*req = *req.WithContext(ctx)
 			return
@@ -183,4 +204,13 @@ func (svc *Service) ResponseModifier(next proxy.ResponseModifyFunc) proxy.Respon
 
 		return nil
 	}
+}
+
+func (svc *Service) loadSettings() error {
+	return svc.repo.FindSettingsByModule(context.Background(), moduleName, svc)
+}
+
+func (svc *Service) unloadSettings() {
+	svc.BypassOutOfScopeRequests = false
+	svc.FindReqsFilter = FindRequestsFilter{}
 }

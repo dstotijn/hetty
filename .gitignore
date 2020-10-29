@@ -1,4 +1,5 @@
 **/rice-box.go
+sqlite3_mod_regexp.dylib
 dist
 hetty
 hetty.bolt

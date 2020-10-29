@@ -120,6 +120,9 @@ function ProjectList(): JSX.Element {
             });
             return DELETE;
           },
+          httpRequestLogFilter(_, { DELETE }) {
+            return DELETE;
+          },
         },
       });
     },
@@ -134,6 +137,9 @@ function ProjectList(): JSX.Element {
             return null;
           },
           projects(_, { DELETE }) {
+            return DELETE;
+          },
+          httpRequestLogFilter(_, { DELETE }) {
             return DELETE;
           },
         },

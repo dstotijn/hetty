@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "export": "next build && next export -o dist"
+    "export": "rm -rf .next && next build && next export -o dist"
   },
   "dependencies": {
     "@apollo/client": "^3.2.0",

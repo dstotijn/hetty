@@ -1,6 +1,7 @@
 env:
   - GO111MODULE=on
   - CGO_ENABLED=1
+  - CGO_CFLAGS=-I/go/pkg/mod/github.com/mattn/go-sqlite3@v1.14.4
 before:
   hooks:
     - make clean
@@ -15,6 +16,7 @@ builds:
     env:
       - CC=o64-clang
       - CXX=o64-clang++
+      - CGO_LDFLAGS=-Wl,-undefined,dynamic_lookup
     flags:
       - -mod=readonly
     ldflags:
@@ -24,22 +26,27 @@ builds:
       - amd64
     goos:
       - linux
-    flags:
-      - -mod=readonly
-    ldflags:
-  - id: hetty-windows-amd64
-    main: ./cmd/hetty
-    goarch:
-      - amd64
-    goos:
-      - windows
     env:
-      - CC=x86_64-w64-mingw32-gcc
-      - CXX=x86_64-w64-mingw32-g++
+      - CGO_CFLAGS=-I/go/pkg/mod/github.com/mattn/go-sqlite3@v1.14.4
+      - CGO_LDFLAGS=-Wl,--unresolved-symbols=ignore-in-object-files
     flags:
       - -mod=readonly
     ldflags:
-      - -buildmode=exe
+  # - id: hetty-windows-amd64
+  #   main: ./cmd/hetty
+  #   goarch:
+  #     - amd64
+  #   goos:
+  #     - windows
+  #   env:
+  #     - CC=x86_64-w64-mingw32-gcc
+  #     - CXX=x86_64-w64-mingw32-g++
+  #     - CGO_CFLAGS=-I/go/pkg/mod/github.com/mattn/go-sqlite3@v1.14.4
+  #     - CGO_LDFLAGS=-Wl,--unresolved-symbols=ignore-in-object-files # Not working :(
+  #   flags:
+  #     - -mod=readonly
+  #   ldflags:
+  #     - -buildmode=exe
 archives:
   - replacements:
       darwin: macOS

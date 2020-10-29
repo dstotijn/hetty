@@ -12,7 +12,8 @@ embed:
 .PHONY: embed
 
 build: embed
-	env CGO_ENABLED=1 go build ./cmd/hetty
+	env CGO_ENABLED=1 CGO_CFLAGS="-DUSE_LIBSQLITE3" CGO_LDFLAGS="-Wl,-undefined,dynamic_lookup" \
+		go build -tags libsqlite3 ./cmd/hetty
 .PHONY: build
 
 clean:
