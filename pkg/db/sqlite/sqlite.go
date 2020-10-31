@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -21,13 +22,21 @@ import (
 	"github.com/99designs/gqlgen/graphql"
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jmoiron/sqlx"
-
-	// Register `sqlite3` driver.
-	_ "github.com/mattn/go-sqlite3"
-
-	// Register `regexp()` function.
-	_ "github.com/dstotijn/hetty/pkg/db/sqlite/regexp"
+	"github.com/mattn/go-sqlite3"
 )
+
+var regexpFn = func(pattern string, value interface{}) (bool, error) {
+	switch v := value.(type) {
+	case string:
+		return regexp.MatchString(pattern, v)
+	case int64:
+		return regexp.MatchString(pattern, string(v))
+	case []byte:
+		return regexp.Match(pattern, v)
+	default:
+		return false, fmt.Errorf("unsupported type %T", v)
+	}
+}
 
 // Client implements reqlog.Repository.
 type Client struct {
@@ -41,6 +50,17 @@ type httpRequestLogsQuery struct {
 	requestHeaderCols  []string
 	responseHeaderCols []string
 	joinResponse       bool
+}
+
+func init() {
+	sql.Register("sqlite3_with_regexp", &sqlite3.SQLiteDriver{
+		ConnectHook: func(conn *sqlite3.SQLiteConn) error {
+			if err := conn.RegisterFunc("regexp", regexpFn, false); err != nil {
+				return err
+			}
+			return nil
+		},
+	})
 }
 
 func New(dbPath string) (*Client, error) {
@@ -65,7 +85,7 @@ func (c *Client) OpenProject(name string) error {
 
 	dbPath := filepath.Join(c.dbPath, name+".db")
 	dsn := fmt.Sprintf("file:%v?%v", dbPath, opts.Encode())
-	db, err := sqlx.Open("sqlite3", dsn)
+	db, err := sqlx.Open("sqlite3_with_regexp", dsn)
 	if err != nil {
 		return fmt.Errorf("sqlite: could not open database: %v", err)
 	}
@@ -218,7 +238,7 @@ func (c *Client) FindRequestLogs(
 		var ruleExpr []sq.Sqlizer
 		for _, rule := range scope.Rules() {
 			if rule.URL != nil {
-				ruleExpr = append(ruleExpr, sq.Expr("req.url regexp ?", rule.URL.String()))
+				ruleExpr = append(ruleExpr, sq.Expr("regexp(?, req.url)", rule.URL.String()))
 			}
 		}
 		if len(ruleExpr) > 0 {

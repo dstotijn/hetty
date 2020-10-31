@@ -1,11 +1,12 @@
 env:
   - GO111MODULE=on
   - CGO_ENABLED=1
-  - CGO_CFLAGS=-I/go/pkg/mod/github.com/mattn/go-sqlite3@v1.14.4
+
 before:
   hooks:
     - make clean
     - make embed
+
 builds:
   - id: hetty-darwin-amd64
     main: ./cmd/hetty
@@ -16,48 +17,50 @@ builds:
     env:
       - CC=o64-clang
       - CXX=o64-clang++
-      - CGO_LDFLAGS=-Wl,-undefined,dynamic_lookup
     flags:
       - -mod=readonly
-    ldflags:
+
   - id: hetty-linux-amd64
     main: ./cmd/hetty
     goarch:
       - amd64
     goos:
       - linux
+    flags:
+      - -mod=readonly
+
+  - id: hetty-windows-amd64
+    main: ./cmd/hetty
+    goarch:
+      - amd64
+    goos:
+      - windows
     env:
-      - CGO_CFLAGS=-I/go/pkg/mod/github.com/mattn/go-sqlite3@v1.14.4
-      - CGO_LDFLAGS=-Wl,--unresolved-symbols=ignore-in-object-files
+      - CC=x86_64-w64-mingw32-gcc
+      - CXX=x86_64-w64-mingw32-g++
     flags:
       - -mod=readonly
     ldflags:
-  # - id: hetty-windows-amd64
-  #   main: ./cmd/hetty
-  #   goarch:
-  #     - amd64
-  #   goos:
-  #     - windows
-  #   env:
-  #     - CC=x86_64-w64-mingw32-gcc
-  #     - CXX=x86_64-w64-mingw32-g++
-  #     - CGO_CFLAGS=-I/go/pkg/mod/github.com/mattn/go-sqlite3@v1.14.4
-  #     - CGO_LDFLAGS=-Wl,--unresolved-symbols=ignore-in-object-files # Not working :(
-  #   flags:
-  #     - -mod=readonly
-  #   ldflags:
-  #     - -buildmode=exe
+      - -buildmode=exe
+
 archives:
-  - replacements:
-      darwin: macOS
-      linux: Linux
-      windows: Windows
-      386: i386
-      amd64: x86_64
+  -
+    replacements:
+        darwin: macOS
+        linux: Linux
+        windows: Windows
+        386: i386
+        amd64: x86_64
+    format_overrides:
+        - goos: windows
+          format: zip
+
 checksum:
   name_template: "checksums.txt"
+
 snapshot:
   name_template: "{{ .Tag }}-next"
+
 changelog:
   sort: asc
   filters:

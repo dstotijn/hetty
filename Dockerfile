@@ -2,17 +2,14 @@ ARG GO_VERSION=1.15
 ARG CGO_ENABLED=1
 ARG NODE_VERSION=14.11
 
-FROM golang:${GO_VERSION} AS go-builder
+FROM golang:${GO_VERSION}-alpine AS go-builder
 WORKDIR /app
-RUN apt-get update && \
-    apt-get install -y build-essential
+RUN apk add --no-cache build-base
 COPY go.mod go.sum ./
 RUN go mod download
 COPY cmd ./cmd
 COPY pkg ./pkg
-ENV CGO_CFLAGS=-I/go/pkg/mod/github.com/mattn/go-sqlite3@v1.14.4
-ENV CGO_LDFLAGS=-Wl,--unresolved-symbols=ignore-in-object-files
-RUN go build -o hetty ./cmd/hetty
+RUN go build ./cmd/hetty
 
 FROM node:${NODE_VERSION}-alpine AS node-builder
 WORKDIR /app
@@ -22,7 +19,7 @@ COPY admin/ .
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN yarn run export
 
-FROM debian:buster-slim
+FROM alpine:3.12
 WORKDIR /app
 COPY --from=go-builder /app/hetty .
 COPY --from=node-builder /app/dist admin
