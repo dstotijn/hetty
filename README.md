@@ -1,70 +1,77 @@
-<img src="https://i.imgur.com/AT71SBq.png" width="346" />
+<h1>
+  <a href="https://github.com/dstotijn/hetty">
+    <img src="https://hetty.xyz/assets/logo.png" width="293">
+  </a>
+</h1>
 
-> Hetty is an HTTP toolkit for security research. It aims to become an open source
-> alternative to commercial software like Burp Suite Pro, with powerful features
-> tailored to the needs of the infosec and bug bounty community.
+[![Latest GitHub release](https://img.shields.io/github/v/release/dstotijn/hetty?color=18BA91&style=flat-square)](https://github.com/dstotijn/hetty/releases/latest)
+![GitHub download count](https://img.shields.io/github/downloads/dstotijn/hetty/total?color=18BA91&style=flat-square)
+[![GitHub](https://img.shields.io/github/license/dstotijn/hetty?color=18BA91&style=flat-square)](https://github.com/dstotijn/hetty/blob/master/LICENSE)
 
-<img src="https://i.imgur.com/ZZ6o83X.png">
+**Hetty** is an HTTP toolkit for security research. It aims to become an open
+source alternative to commercial software like Burp Suite Pro, with powerful
+features tailored to the needs of the infosec and bug bounty community.
 
-## Features/to do
+<img src="https://hetty.xyz/assets/hetty_v0.2.0_header.png">
 
-- [x] HTTP man-in-the-middle (MITM) proxy and GraphQL server.
-- [x] Web interface (Next.js) with proxy log viewer.
-- [x] Add scope support to the proxy.
-- [ ] Full text search (with regex) in proxy log viewer.
-- [x] Project management.
-- [ ] Sender module for sending manual HTTP requests, either from scratch or based
-      off requests from the proxy log.
-- [ ] Attacker module for automated sending of HTTP requests. Leverage the concurrency
-      features of Go and its `net/http` package to make it blazingly fast.
+## Features
+
+- Man-in-the-middle (MITM) HTTP/1.1 proxy with logs
+- Project based database storage (SQLite)
+- Scope support
+- Headless management API using GraphQL
+- Embedded web interface (Next.js)
+
+ℹ️ Hetty is in early development. Additional features are planned
+for a `v1.0` release. Please see the <a href="https://github.com/dstotijn/hetty/projects/1">backlog</a>
+for details.
 
 ## Installation
 
-Hetty is packaged on GitHub as a single binary, with the web interface resources
-embedded.
+Hetty compiles to a self-contained binary, with an embedded SQLite database
+and web based admin interface.
 
-👉 You can find downloads for Linux, macOS and Windows on the [releases page](https://github.com/dstotijn/hetty/releases).
+### Install pre-built release (recommended)
 
-### Alternatives:
+👉 Downloads for Linux, macOS and Windows are available on the [releases page](https://github.com/dstotijn/hetty/releases).
 
-**Build from source**
+### Build from source
 
-```
-$ GO111MODULE=auto go get -u -v github.com/dstotijn/hetty/cmd/hetty
-```
-
-Then export the Next.js frontend app:
+Hetty depends on SQLite (via [mattn/go-sqlite3](https://github.com/mattn/go-sqlite3))
+and needs `cgo` to compile.
 
 ```
-$ cd admin
-$ yarn install
-$ yarn export
+$ GO111MODULE=auto CGO_ENABLED=1 go get -u github.com/dstotijn/hetty/cmd/hetty
 ```
 
-This will ensure a folder `./admin/dist` exists.
-Then, you can bundle the frontend app using `rice`.
-The easiest way to do this is via a supplied `Makefile` command in the root of
-the project:
+### Docker
+
+A Docker image is available on Docker Hub: [`dstotijn/hetty`](https://hub.docker.com/r/dstotijn/hetty).
+For persistent storage of CA certificates and project databases, mount a volume:
 
 ```
-make build
-```
-
-**Docker**
-
-Alternatively, you can run Hetty via Docker. See: [`dstotijn/hetty`](https://hub.docker.com/r/dstotijn/hetty)
-on Docker Hub.
-
-```
-$ docker run -v $HOME/.hetty:/root/.hetty -p 127.0.0.1:8080:8080 dstotijn/hetty
+$ mkdir -p $HOME/.hetty
+$ docker run -v $HOME/.hetty:/root/.hetty -p 8080:8080 dstotijn/hetty
 ```
 
 ## Usage
 
-Hetty is packaged as a single binary, with the web interface resources embedded.
-When the program is run, it listens by default on `:8080` and is accessible via
+When Hetty is run, by default it listens on `:8080` and is accessible via
 http://localhost:8080. Depending on incoming HTTP requests, it either acts as a
-MITM proxy, or it serves the GraphQL API and web interface (Next.js).
+MITM proxy, or it serves the API and web interface.
+
+By default, project database files and CA certificates are stored in a `.hetty`
+directory under the user's home directory (`$HOME` on Linux/macOS, `%USERPROFILE%`
+on Windows).
+
+To start, ensure `hetty` (downloaded from a release, or manually built) is in your
+`$PATH` and run:
+
+```
+$ hetty
+```
+
+An overview of configuration flags:
 
 ```
 $ hetty -h
@@ -80,6 +87,16 @@ Usage of ./hetty:
   -projects string
         Projects directory path (default "~/.hetty/projects")
 ```
+
+You should see:
+
+```
+2020/11/01 14:47:10 [INFO] Running server on :8080 ...
+```
+
+Then, visit [http://localhost:8080](http://localhost:8080) to get started.
+
+ℹ️ Detailed documentation is under development and will be available soon.
 
 ## Certificate Setup and Installation
 
@@ -163,38 +180,40 @@ _more information on how to update the system to trust your self-signed certific
 
 ## Vision and roadmap
 
-The project has just gotten underway, and as such I haven’t had time yet to do a
-write-up on its mission and roadmap. A short summary/braindump:
-
 - Fast core/engine, built with Go, with a minimal memory footprint.
-- GraphQL server to interact with the backend.
-- Easy to use web interface, built with Next.js and Material UI.
+- Easy to use admin interface, built with Next.js and Material UI.
+- Headless management, via GraphQL API.
 - Extensibility is top of mind. All modules are written as Go packages, to
-  be used by the main `hetty` program, but also usable as libraries for other software.
-  Aside from the GraphQL server, it should (eventually) be possible to also use
-  it as a CLI tool.
-- Pluggable architecture for the MITM proxy and future modules, making it
-  possible for hook into the core engine.
-- Talk to the community, and focus on the features that the majority.
-  Less features means less code to maintain.
+  be used by Hetty, but also as libraries by other software.
+- Pluggable architecture for MITM proxy, projects, scope. It should be possible.
+  to build a plugin system in the (near) future.
+- Based on feedback and real-world usage of pentesters and bug bounty hunters.
+- Aim for a relatively small core feature set that the majority of security researchers need.
 
-## Status
+## Support
 
-The project is currently under active development. Please star/follow and check
-back soon. 🤗
+Use [issues](https://github.com/dstotijn/hetty/issues) for bug reports and
+feature requests, and [discussions](https://github.com/dstotijn/hetty/discussions)
+for questions and troubleshooting.
+
+## Community
+
+💬 [Join the Hetty Discord server](https://discord.gg/3HVsj5pTFP).
 
 ## Contributing
 
-Please see the [Contribution Guidelines](CONTRIBUTING.md) for details.
+Want to contribute? Great! Please check the [Contribution Guidelines](CONTRIBUTING.md)
+for details.
 
 ## Acknowledgements
 
-Thanks to the [Hacker101 community on Discord](https://www.hacker101.com/discord)
-for all the encouragement to actually start building this thing!
+- Thanks to the [Hacker101 community on Discord](https://www.hacker101.com/discord)
+  for all the encouragement and feedback.
+- The font used in the logo and admin interface is [JetBrains Mono](https://www.jetbrains.com/lp/mono/).
 
 ## License
 
-[MIT](LICENSE)
+[MIT License](LICENSE)
 
 ---
 
