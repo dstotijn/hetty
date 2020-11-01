@@ -9,6 +9,7 @@ COPY go.mod go.sum ./
 RUN go mod download
 COPY cmd ./cmd
 COPY pkg ./pkg
+RUN rm -f cmd/hetty/rice-box.go
 RUN go build ./cmd/hetty
 
 FROM node:${NODE_VERSION}-alpine AS node-builder

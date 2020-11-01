@@ -2,11 +2,6 @@ env:
   - GO111MODULE=on
   - CGO_ENABLED=1
 
-before:
-  hooks:
-    - make clean
-    - make embed
-
 builds:
   - id: hetty-darwin-amd64
     main: ./cmd/hetty

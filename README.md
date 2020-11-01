@@ -37,11 +37,23 @@ and web based admin interface.
 
 ### Build from source
 
+#### Prerequisites
+
+- [Go](https://golang.org/)
+- [Yarn](https://yarnpkg.com/)
+- [go.rice](https://github.com/GeertJohan/go.rice)
+
 Hetty depends on SQLite (via [mattn/go-sqlite3](https://github.com/mattn/go-sqlite3))
-and needs `cgo` to compile.
+and needs `cgo` to compile. Additionally, the static resources for the admin interface
+(Next.js) need to be generated via [Yarn](https://yarnpkg.com/) and embedded in
+a `.go` file with [go.rice](https://github.com/GeertJohan/go.rice) beforehand.
+
+Clone the repository and use the `build` make target to create a binary:
 
 ```
-$ GO111MODULE=auto CGO_ENABLED=1 go get -u github.com/dstotijn/hetty/cmd/hetty
+$ git clone git@github.com:dstotijn/hetty.git
+$ cd hetty
+$ make build
 ```
 
 ### Docker
