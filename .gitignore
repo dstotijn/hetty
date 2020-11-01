@@ -1,10 +1,7 @@
 .release-env
 .vscode
 **/rice-box.go
-sqlite3_mod_regexp.dylib
 dist
 hetty
-hetty.bolt
-hetty.db
 *.pem
 *.test
