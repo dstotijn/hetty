@@ -7,6 +7,7 @@
 [![Latest GitHub release](https://img.shields.io/github/v/release/dstotijn/hetty?color=18BA91&style=flat-square)](https://github.com/dstotijn/hetty/releases/latest)
 ![GitHub download count](https://img.shields.io/github/downloads/dstotijn/hetty/total?color=18BA91&style=flat-square)
 [![GitHub](https://img.shields.io/github/license/dstotijn/hetty?color=18BA91&style=flat-square)](https://github.com/dstotijn/hetty/blob/master/LICENSE)
+[![Documentation](https://img.shields.io/badge/hetty-docs-18BA91?style=flat-square)](https://hetty.xyz/)
 
 **Hetty** is an HTTP toolkit for security research. It aims to become an open
 source alternative to commercial software like Burp Suite Pro, with powerful
@@ -25,6 +26,10 @@ features tailored to the needs of the infosec and bug bounty community.
 ℹ️ Hetty is in early development. Additional features are planned
 for a `v1.0` release. Please see the <a href="https://github.com/dstotijn/hetty/projects/1">backlog</a>
 for details.
+
+## Documentation
+
+📖 [Read the docs.](https://hetty.xyz/)
 
 ## Installation
 
