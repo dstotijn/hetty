@@ -36,7 +36,7 @@ module.exports = {
   themeConfig: {
     repo: "dstotijn/hetty",
     editLinks: true,
-    docsDir: "docs",
+    docsDir: "docs/src",
     editLinkText: "",
     lastUpdated: true,
     logo: "/assets/logo.png",

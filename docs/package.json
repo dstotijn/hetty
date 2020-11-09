@@ -7,7 +7,7 @@
     "name": "David Stotijn",
     "email": "dstotijn@gmail.com"
   },
-  "repository": "github.com/dstotijn/hetty/hetty-docs",
+  "repository": "github.com/dstotijn/hetty/docs",
   "scripts": {
     "dev": "vuepress dev src",
     "build": "vuepress build src"
