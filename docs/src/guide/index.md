@@ -12,7 +12,7 @@ sidebarDepth: 0
 source alternative to commercial software like Burp Suite Pro, with powerful
 features tailored to the needs of the infosec and bug bounty community.
 
-![Hetty proxy logs screenshot](./hetty_v0.2.0_header.png)
+![Hetty proxy logs screenshot](./hetty_v0.2.0_header.png =1280x)
 
 ## Features
 
