@@ -11,6 +11,27 @@ module.exports = {
       "meta",
       { name: "apple-mobile-web-app-status-bar-style", content: "black" },
     ],
+    [
+      "meta",
+      {
+        property: "og:title",
+        content: "Hetty",
+      },
+    ],
+    [
+      "meta",
+      {
+        property: "og:description",
+        content: "An HTTP toolkit for security research.",
+      },
+    ],
+    [
+      "meta",
+      {
+        property: "og:image",
+        content: "https://hetty.xyz/assets/hetty_v0.2.0_header.png",
+      },
+    ],
   ],
   themeConfig: {
     repo: "dstotijn/hetty",
