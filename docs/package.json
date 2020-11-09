@@ -1,0 +1,21 @@
+{
+  "name": "hetty-docs",
+  "version": "0.1.0",
+  "description": "An HTTP toolkit for security research.",
+  "main": "index.js",
+  "authors": {
+    "name": "David Stotijn",
+    "email": "dstotijn@gmail.com"
+  },
+  "repository": "github.com/dstotijn/hetty/hetty-docs",
+  "scripts": {
+    "dev": "vuepress dev src",
+    "build": "vuepress build src"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "markdown-it-imsize": "^2.0.1",
+    "vuepress": "^1.5.3"
+  },
+  "dependencies": {}
+}
