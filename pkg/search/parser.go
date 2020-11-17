@@ -9,10 +9,10 @@ type precedence int
 const (
 	_ precedence = iota
 	precLowest
+	precEq
 	precAnd
 	precOr
 	precNot
-	precEq
 	precLessGreater
 	precPrefix
 	precGroup
@@ -218,8 +218,19 @@ func parseGroupedExpression(p *Parser) (Expression, error) {
 		return nil, fmt.Errorf("could not parse grouped expression: %v", err)
 	}
 
-	if err := p.expectPeek(TokParenClose); err != nil {
-		return nil, err
+	for p.nextToken(); !p.curTokenIs(TokParenClose); p.nextToken() {
+		if p.curTokenIs(TokEOF) {
+			return nil, fmt.Errorf("unexpected EOF: unmatched parentheses")
+		}
+		right, err := p.parseExpression(precLowest)
+		if err != nil {
+			return nil, fmt.Errorf("could not parse expression: %v", err)
+		}
+		expr = &InfixExpression{
+			Operator: TokOpAnd,
+			Left:     expr,
+			Right:    right,
+		}
 	}
 
 	return expr, nil

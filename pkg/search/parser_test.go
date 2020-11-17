@@ -154,6 +154,16 @@ func TestParseQuery(t *testing.T) {
 			expectedError: nil,
 		},
 		{
+			name:  "implicit boolean expression nested in group",
+			input: "(foo bar)",
+			expectedExpression: &InfixExpression{
+				Operator: TokOpAnd,
+				Left:     &StringLiteral{Value: "foo"},
+				Right:    &StringLiteral{Value: "bar"},
+			},
+			expectedError: nil,
+		},
+		{
 			name:  "implicit and explicit boolean expression with string literal operands",
 			input: "foo bar OR baz yolo",
 			expectedExpression: &InfixExpression{
