@@ -215,6 +215,18 @@ var headerFieldToColumnMap = map[string]string{
 	"value": "value",
 }
 
+func (c *Client) ClearRequestLogs(ctx context.Context) error {
+	tx := c.db.MustBegin()
+	tx.MustExec("DELETE FROM http_headers")
+	tx.MustExec("DELETE FROM http_requests")
+	tx.MustExec("DELETE FROM http_responses")
+	err := tx.Commit()
+	if err != nil {
+		return fmt.Errorf("sqlite: could not delete requests: %v", err)
+	}
+	return nil
+}
+
 func (c *Client) FindRequestLogs(
 	ctx context.Context,
 	filter reqlog.FindRequestsFilter,

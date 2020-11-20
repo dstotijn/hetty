@@ -209,6 +209,13 @@ func (r *mutationResolver) DeleteProject(ctx context.Context, name string) (*Del
 	}, nil
 }
 
+func (r *mutationResolver) ClearRequestLog(ctx context.Context) (*ClearRequestLogResult, error) {
+	if err := r.RequestLogService.ClearRequests(ctx); err != nil {
+		return nil, fmt.Errorf("could not clear request log: %v", err)
+	}
+	return &ClearRequestLogResult{true}, nil
+}
+
 func (r *mutationResolver) SetScope(ctx context.Context, input []ScopeRuleInput) ([]ScopeRule, error) {
 	rules := make([]scope.Rule, len(input))
 	for i, rule := range input {

@@ -9,6 +9,10 @@ import (
 	"time"
 )
 
+type ClearRequestLogResult struct {
+	Success bool `json:"success"`
+}
+
 type CloseProjectResult struct {
 	Success bool `json:"success"`
 }
