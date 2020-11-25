@@ -21,8 +21,7 @@ import React, { useRef, useState } from "react";
 import { gql, useMutation, useQuery } from "@apollo/client";
 import { withoutTypename } from "../../lib/omitTypename";
 import { Alert } from "@material-ui/lab";
-import { HTTP_REQUEST_LOGS } from "./hooks/useHttpRequestLogs";
-import { useHttpClearRequestLogs } from "./hooks/useClearHttpRequestLogs";
+import { useClearHTTPRequestLog } from "./hooks/useClearHTTPRequestLog";
 
 const FILTER = gql`
   query HttpRequestLogFilter {
@@ -98,7 +97,10 @@ function Search(): JSX.Element {
     },
   });
 
-  const [clearRequestLog, clearRequestLogResult] = useHttpClearRequestLogs();
+  const [
+    clearHTTPRequestLog,
+    clearHTTPRequestLogResult,
+  ] = useClearHTTPRequestLog();
 
   const filterRef = useRef<HTMLElement | null>();
   const [filterOpen, setFilterOpen] = useState(false);
@@ -120,7 +122,7 @@ function Search(): JSX.Element {
       <Error prefix="Error setting filter" error={setFilterErr} />
       <Error
         prefix="Error clearing all HTTP logs"
-        error={clearRequestLogResult.error}
+        error={clearHTTPRequestLogResult.error}
       />
       <Box style={{ display: "flex", flex: 1 }}>
         <ClickAwayListener onClickAway={handleClickAway}>
@@ -195,7 +197,7 @@ function Search(): JSX.Element {
         </ClickAwayListener>
         <Box style={{ marginLeft: "auto" }}>
           <Tooltip title="Clear all">
-            <IconButton onClick={() => clearRequestLog()}>
+            <IconButton onClick={() => clearHTTPRequestLog()}>
               <DeleteIcon />
             </IconButton>
           </Tooltip>

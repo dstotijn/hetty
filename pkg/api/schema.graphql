@@ -58,7 +58,7 @@ type DeleteProjectResult {
   success: Boolean!
 }
 
-type ClearRequestLogResult {
+type ClearHTTPRequestLogResult {
   success: Boolean!
 }
 
@@ -83,7 +83,7 @@ type Mutation {
   openProject(name: String!): Project
   closeProject: CloseProjectResult!
   deleteProject(name: String!): DeleteProjectResult!
-  clearRequestLog: ClearRequestLogResult!
+  clearHTTPRequestLog: ClearHTTPRequestLogResult!
   setScope(scope: [ScopeRuleInput!]!): [ScopeRule!]!
   setHttpRequestLogFilter(
     filter: HttpRequestLogFilterInput

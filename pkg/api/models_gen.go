@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-type ClearRequestLogResult struct {
+type ClearHTTPRequestLogResult struct {
 	Success bool `json:"success"`
 }
 

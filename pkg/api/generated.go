@@ -43,7 +43,7 @@ type DirectiveRoot struct {
 }
 
 type ComplexityRoot struct {
-	ClearRequestLogResult struct {
+	ClearHTTPRequestLogResult struct {
 		Success func(childComplexity int) int
 	}
 
@@ -85,7 +85,7 @@ type ComplexityRoot struct {
 	}
 
 	Mutation struct {
-		ClearRequestLog         func(childComplexity int) int
+		ClearHTTPRequestLog     func(childComplexity int) int
 		CloseProject            func(childComplexity int) int
 		DeleteProject           func(childComplexity int, name string) int
 		OpenProject             func(childComplexity int, name string) int
@@ -123,7 +123,7 @@ type MutationResolver interface {
 	OpenProject(ctx context.Context, name string) (*Project, error)
 	CloseProject(ctx context.Context) (*CloseProjectResult, error)
 	DeleteProject(ctx context.Context, name string) (*DeleteProjectResult, error)
-	ClearRequestLog(ctx context.Context) (*ClearRequestLogResult, error)
+	ClearHTTPRequestLog(ctx context.Context) (*ClearHTTPRequestLogResult, error)
 	SetScope(ctx context.Context, scope []ScopeRuleInput) ([]ScopeRule, error)
 	SetHTTPRequestLogFilter(ctx context.Context, filter *HTTPRequestLogFilterInput) (*HTTPRequestLogFilter, error)
 }
@@ -151,12 +151,12 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 	_ = ec
 	switch typeName + "." + field {
 
-	case "ClearRequestLogResult.success":
-		if e.complexity.ClearRequestLogResult.Success == nil {
+	case "ClearHTTPRequestLogResult.success":
+		if e.complexity.ClearHTTPRequestLogResult.Success == nil {
 			break
 		}
 
-		return e.complexity.ClearRequestLogResult.Success(childComplexity), true
+		return e.complexity.ClearHTTPRequestLogResult.Success(childComplexity), true
 
 	case "CloseProjectResult.success":
 		if e.complexity.CloseProjectResult.Success == nil {
@@ -291,12 +291,12 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.HTTPResponseLog.StatusReason(childComplexity), true
 
-	case "Mutation.clearRequestLog":
-		if e.complexity.Mutation.ClearRequestLog == nil {
+	case "Mutation.clearHTTPRequestLog":
+		if e.complexity.Mutation.ClearHTTPRequestLog == nil {
 			break
 		}
 
-		return e.complexity.Mutation.ClearRequestLog(childComplexity), true
+		return e.complexity.Mutation.ClearHTTPRequestLog(childComplexity), true
 
 	case "Mutation.closeProject":
 		if e.complexity.Mutation.CloseProject == nil {
@@ -570,11 +570,11 @@ type CloseProjectResult {
 }
 
 type DeleteProjectResult {
-    success: Boolean!
+  success: Boolean!
 }
 
-type ClearRequestLogResult {
-    success: Boolean!
+type ClearHTTPRequestLogResult {
+  success: Boolean!
 }
 
 input HttpRequestLogFilterInput {
@@ -598,7 +598,7 @@ type Mutation {
   openProject(name: String!): Project
   closeProject: CloseProjectResult!
   deleteProject(name: String!): DeleteProjectResult!
-  clearRequestLog: ClearRequestLogResult!
+  clearHTTPRequestLog: ClearHTTPRequestLogResult!
   setScope(scope: [ScopeRuleInput!]!): [ScopeRule!]!
   setHttpRequestLogFilter(
     filter: HttpRequestLogFilterInput
@@ -755,7 +755,7 @@ func (ec *executionContext) field___Type_fields_args(ctx context.Context, rawArg
 
 // region    **************************** field.gotpl *****************************
 
-func (ec *executionContext) _ClearRequestLogResult_success(ctx context.Context, field graphql.CollectedField, obj *ClearRequestLogResult) (ret graphql.Marshaler) {
+func (ec *executionContext) _ClearHTTPRequestLogResult_success(ctx context.Context, field graphql.CollectedField, obj *ClearHTTPRequestLogResult) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -763,7 +763,7 @@ func (ec *executionContext) _ClearRequestLogResult_success(ctx context.Context, 
 		}
 	}()
 	fc := &graphql.FieldContext{
-		Object:     "ClearRequestLogResult",
+		Object:     "ClearHTTPRequestLogResult",
 		Field:      field,
 		Args:       nil,
 		IsMethod:   false,
@@ -1562,7 +1562,7 @@ func (ec *executionContext) _Mutation_deleteProject(ctx context.Context, field g
 	return ec.marshalNDeleteProjectResult2ᚖgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐDeleteProjectResult(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Mutation_clearRequestLog(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+func (ec *executionContext) _Mutation_clearHTTPRequestLog(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -1580,7 +1580,7 @@ func (ec *executionContext) _Mutation_clearRequestLog(ctx context.Context, field
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().ClearRequestLog(rctx)
+		return ec.resolvers.Mutation().ClearHTTPRequestLog(rctx)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -1592,9 +1592,9 @@ func (ec *executionContext) _Mutation_clearRequestLog(ctx context.Context, field
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*ClearRequestLogResult)
+	res := resTmp.(*ClearHTTPRequestLogResult)
 	fc.Result = res
-	return ec.marshalNClearRequestLogResult2ᚖgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐClearRequestLogResult(ctx, field.Selections, res)
+	return ec.marshalNClearHTTPRequestLogResult2ᚖgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐClearHTTPRequestLogResult(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Mutation_setScope(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -3366,19 +3366,19 @@ func (ec *executionContext) unmarshalInputScopeRuleInput(ctx context.Context, ob
 
 // region    **************************** object.gotpl ****************************
 
-var clearRequestLogResultImplementors = []string{"ClearRequestLogResult"}
+var clearHTTPRequestLogResultImplementors = []string{"ClearHTTPRequestLogResult"}
 
-func (ec *executionContext) _ClearRequestLogResult(ctx context.Context, sel ast.SelectionSet, obj *ClearRequestLogResult) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, clearRequestLogResultImplementors)
+func (ec *executionContext) _ClearHTTPRequestLogResult(ctx context.Context, sel ast.SelectionSet, obj *ClearHTTPRequestLogResult) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, clearHTTPRequestLogResultImplementors)
 
 	out := graphql.NewFieldSet(fields)
 	var invalids uint32
 	for i, field := range fields {
 		switch field.Name {
 		case "__typename":
-			out.Values[i] = graphql.MarshalString("ClearRequestLogResult")
+			out.Values[i] = graphql.MarshalString("ClearHTTPRequestLogResult")
 		case "success":
-			out.Values[i] = ec._ClearRequestLogResult_success(ctx, field, obj)
+			out.Values[i] = ec._ClearHTTPRequestLogResult_success(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
@@ -3638,8 +3638,8 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
-		case "clearRequestLog":
-			out.Values[i] = ec._Mutation_clearRequestLog(ctx, field)
+		case "clearHTTPRequestLog":
+			out.Values[i] = ec._Mutation_clearHTTPRequestLog(ctx, field)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
@@ -4112,18 +4112,18 @@ func (ec *executionContext) marshalNBoolean2bool(ctx context.Context, sel ast.Se
 	return res
 }
 
-func (ec *executionContext) marshalNClearRequestLogResult2githubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐClearRequestLogResult(ctx context.Context, sel ast.SelectionSet, v ClearRequestLogResult) graphql.Marshaler {
-	return ec._ClearRequestLogResult(ctx, sel, &v)
+func (ec *executionContext) marshalNClearHTTPRequestLogResult2githubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐClearHTTPRequestLogResult(ctx context.Context, sel ast.SelectionSet, v ClearHTTPRequestLogResult) graphql.Marshaler {
+	return ec._ClearHTTPRequestLogResult(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNClearRequestLogResult2ᚖgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐClearRequestLogResult(ctx context.Context, sel ast.SelectionSet, v *ClearRequestLogResult) graphql.Marshaler {
+func (ec *executionContext) marshalNClearHTTPRequestLogResult2ᚖgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐClearHTTPRequestLogResult(ctx context.Context, sel ast.SelectionSet, v *ClearHTTPRequestLogResult) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "must not be null")
 		}
 		return graphql.Null
 	}
-	return ec._ClearRequestLogResult(ctx, sel, v)
+	return ec._ClearHTTPRequestLogResult(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNCloseProjectResult2githubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐCloseProjectResult(ctx context.Context, sel ast.SelectionSet, v CloseProjectResult) graphql.Marshaler {
