@@ -216,6 +216,9 @@ var headerFieldToColumnMap = map[string]string{
 }
 
 func (c *Client) ClearRequestLogs(ctx context.Context) error {
+	if c.db == nil {
+		return proj.ErrNoProject
+	}
 	_, err := c.db.Exec("DELETE FROM http_requests")
 	if err != nil {
 		return fmt.Errorf("sqlite: could not delete requests: %v", err)
