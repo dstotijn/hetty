@@ -22,6 +22,10 @@ import { gql, useMutation, useQuery } from "@apollo/client";
 import { withoutTypename } from "../../lib/omitTypename";
 import { Alert } from "@material-ui/lab";
 import { useClearHTTPRequestLog } from "./hooks/useClearHTTPRequestLog";
+import {
+  ConfirmationDialog,
+  useConfirmationDialog,
+} from "./ConfirmationDialog";
 
 const FILTER = gql`
   query HttpRequestLogFilter {
@@ -101,6 +105,7 @@ function Search(): JSX.Element {
     clearHTTPRequestLog,
     clearHTTPRequestLogResult,
   ] = useClearHTTPRequestLog();
+  const clearHTTPConfirmationDialog = useConfirmationDialog();
 
   const filterRef = useRef<HTMLElement | null>();
   const [filterOpen, setFilterOpen] = useState(false);
@@ -197,12 +202,19 @@ function Search(): JSX.Element {
         </ClickAwayListener>
         <Box style={{ marginLeft: "auto" }}>
           <Tooltip title="Clear all">
-            <IconButton onClick={() => clearHTTPRequestLog()}>
+            <IconButton onClick={clearHTTPConfirmationDialog.open}>
               <DeleteIcon />
             </IconButton>
           </Tooltip>
         </Box>
       </Box>
+      <ConfirmationDialog
+        isOpen={clearHTTPConfirmationDialog.isOpen}
+        onClose={clearHTTPConfirmationDialog.close}
+        onConfirm={clearHTTPRequestLog}
+      >
+        All proxy logs are going to be removed. This action cannot be undone.
+      </ConfirmationDialog>
     </Box>
   );
 }
