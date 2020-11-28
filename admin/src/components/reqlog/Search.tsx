@@ -16,10 +16,16 @@ import {
 import IconButton from "@material-ui/core/IconButton";
 import SearchIcon from "@material-ui/icons/Search";
 import FilterListIcon from "@material-ui/icons/FilterList";
+import DeleteIcon from "@material-ui/icons/Delete";
 import React, { useRef, useState } from "react";
-import { gql, useApolloClient, useMutation, useQuery } from "@apollo/client";
+import { gql, useMutation, useQuery } from "@apollo/client";
 import { withoutTypename } from "../../lib/omitTypename";
 import { Alert } from "@material-ui/lab";
+import { useClearHTTPRequestLog } from "./hooks/useClearHTTPRequestLog";
+import {
+  ConfirmationDialog,
+  useConfirmationDialog,
+} from "./ConfirmationDialog";
 
 const FILTER = gql`
   query HttpRequestLogFilter {
@@ -79,15 +85,14 @@ function Search(): JSX.Element {
     FILTER
   );
 
-  const client = useApolloClient();
   const [
     setFilterMutate,
     { error: setFilterErr, loading: setFilterLoading },
   ] = useMutation<{
     setHttpRequestLogFilter: SearchFilter | null;
   }>(SET_FILTER, {
-    update(_, { data: { setHttpRequestLogFilter } }) {
-      client.writeQuery({
+    update(cache, { data: { setHttpRequestLogFilter } }) {
+      cache.writeQuery({
         query: FILTER,
         data: {
           httpRequestLogFilter: setHttpRequestLogFilter,
@@ -95,6 +100,12 @@ function Search(): JSX.Element {
       });
     },
   });
+
+  const [
+    clearHTTPRequestLog,
+    clearHTTPRequestLogResult,
+  ] = useClearHTTPRequestLog();
+  const clearHTTPConfirmationDialog = useConfirmationDialog();
 
   const filterRef = useRef<HTMLElement | null>();
   const [filterOpen, setFilterOpen] = useState(false);
@@ -111,90 +122,112 @@ function Search(): JSX.Element {
   };
 
   return (
-    <ClickAwayListener onClickAway={handleClickAway}>
-      <Box style={{ display: "inline-block" }}>
-        {filterErr && (
-          <Box mb={4}>
-            <Alert severity="error">
-              Error fetching filter: {filterErr.message}
-            </Alert>
-          </Box>
-        )}
-        {setFilterErr && (
-          <Box mb={4}>
-            <Alert severity="error">
-              Error setting filter: {setFilterErr.message}
-            </Alert>
-          </Box>
-        )}
-        <Paper
-          component="form"
-          onSubmit={handleSubmit}
-          ref={filterRef}
-          className={classes.root}
-        >
-          <Tooltip title="Toggle filter options">
-            <IconButton
-              className={classes.iconButton}
-              onClick={() => setFilterOpen(!filterOpen)}
-              style={{
-                color:
-                  filter?.httpRequestLogFilter !== null
-                    ? theme.palette.secondary.main
-                    : "inherit",
-              }}
-            >
-              {filterLoading || setFilterLoading ? (
-                <CircularProgress className={classes.filterLoading} size={23} />
-              ) : (
-                <FilterListIcon />
-              )}
-            </IconButton>
-          </Tooltip>
-          <InputBase
-            className={classes.input}
-            placeholder="Search proxy logs…"
-            onFocus={() => setFilterOpen(true)}
-          />
-          <Tooltip title="Search">
-            <IconButton type="submit" className={classes.iconButton}>
-              <SearchIcon />
-            </IconButton>
-          </Tooltip>
-        </Paper>
-
-        <Popper
-          className={classes.filterPopper}
-          open={filterOpen}
-          anchorEl={filterRef.current}
-          placement="bottom-start"
-        >
-          <Paper className={classes.filterOptions}>
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={
-                    filter?.httpRequestLogFilter?.onlyInScope ? true : false
-                  }
-                  disabled={filterLoading || setFilterLoading}
-                  onChange={(e) =>
-                    setFilterMutate({
-                      variables: {
-                        filter: {
-                          ...withoutTypename(filter?.httpRequestLogFilter),
-                          onlyInScope: e.target.checked,
-                        },
-                      },
-                    })
-                  }
-                />
-              }
-              label="Only show in-scope requests"
+    <Box>
+      <Error prefix="Error fetching filter" error={filterErr} />
+      <Error prefix="Error setting filter" error={setFilterErr} />
+      <Error
+        prefix="Error clearing all HTTP logs"
+        error={clearHTTPRequestLogResult.error}
+      />
+      <Box style={{ display: "flex", flex: 1 }}>
+        <ClickAwayListener onClickAway={handleClickAway}>
+          <Paper
+            component="form"
+            onSubmit={handleSubmit}
+            ref={filterRef}
+            className={classes.root}
+          >
+            <Tooltip title="Toggle filter options">
+              <IconButton
+                className={classes.iconButton}
+                onClick={() => setFilterOpen(!filterOpen)}
+                style={{
+                  color:
+                    filter?.httpRequestLogFilter !== null
+                      ? theme.palette.secondary.main
+                      : "inherit",
+                }}
+              >
+                {filterLoading || setFilterLoading ? (
+                  <CircularProgress
+                    className={classes.filterLoading}
+                    size={23}
+                  />
+                ) : (
+                  <FilterListIcon />
+                )}
+              </IconButton>
+            </Tooltip>
+            <InputBase
+              className={classes.input}
+              placeholder="Search proxy logs…"
+              onFocus={() => setFilterOpen(true)}
             />
+            <Tooltip title="Search">
+              <IconButton type="submit" className={classes.iconButton}>
+                <SearchIcon />
+              </IconButton>
+            </Tooltip>
+            <Popper
+              className={classes.filterPopper}
+              open={filterOpen}
+              anchorEl={filterRef.current}
+              placement="bottom-start"
+            >
+              <Paper className={classes.filterOptions}>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={
+                        filter?.httpRequestLogFilter?.onlyInScope ? true : false
+                      }
+                      disabled={filterLoading || setFilterLoading}
+                      onChange={(e) =>
+                        setFilterMutate({
+                          variables: {
+                            filter: {
+                              ...withoutTypename(filter?.httpRequestLogFilter),
+                              onlyInScope: e.target.checked,
+                            },
+                          },
+                        })
+                      }
+                    />
+                  }
+                  label="Only show in-scope requests"
+                />
+              </Paper>
+            </Popper>
           </Paper>
-        </Popper>
+        </ClickAwayListener>
+        <Box style={{ marginLeft: "auto" }}>
+          <Tooltip title="Clear all">
+            <IconButton onClick={clearHTTPConfirmationDialog.open}>
+              <DeleteIcon />
+            </IconButton>
+          </Tooltip>
+        </Box>
       </Box>
-    </ClickAwayListener>
+      <ConfirmationDialog
+        isOpen={clearHTTPConfirmationDialog.isOpen}
+        onClose={clearHTTPConfirmationDialog.close}
+        onConfirm={clearHTTPRequestLog}
+      >
+        All proxy logs are going to be removed. This action cannot be undone.
+      </ConfirmationDialog>
+    </Box>
+  );
+}
+
+function Error(props: { prefix: string; error?: Error }) {
+  if (!props.error) return null;
+
+  return (
+    <Box mb={4}>
+      <Alert severity="error">
+        {props.prefix}: {props.error.message}
+      </Alert>
+    </Box>
   );
 }
 

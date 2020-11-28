@@ -1,41 +1,24 @@
 import { useRouter } from "next/router";
-import { gql, useQuery } from "@apollo/client";
 import Link from "next/link";
 import {
   Box,
-  Typography,
   CircularProgress,
   Link as MaterialLink,
+  Typography,
 } from "@material-ui/core";
 import Alert from "@material-ui/lab/Alert";
 
 import RequestList from "./RequestList";
 import LogDetail from "./LogDetail";
 import CenteredPaper from "../CenteredPaper";
-
-const HTTP_REQUEST_LOGS = gql`
-  query HttpRequestLogs {
-    httpRequestLogs {
-      id
-      method
-      url
-      timestamp
-      response {
-        statusCode
-        statusReason
-      }
-    }
-  }
-`;
+import { useHttpRequestLogs } from "./hooks/useHttpRequestLogs";
 
 function LogsOverview(): JSX.Element {
   const router = useRouter();
   const detailReqLogId =
     router.query.id && parseInt(router.query.id as string, 10);
 
-  const { loading, error, data } = useQuery(HTTP_REQUEST_LOGS, {
-    pollInterval: 1000,
-  });
+  const { loading, error, data } = useHttpRequestLogs();
 
   const handleLogClick = (reqId: number) => {
     router.push("/proxy/logs?id=" + reqId, undefined, {

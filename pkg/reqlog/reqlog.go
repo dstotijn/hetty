@@ -99,6 +99,10 @@ func (svc *Service) SetRequestLogFilter(ctx context.Context, filter FindRequests
 	return svc.repo.UpsertSettings(ctx, "reqlog", svc)
 }
 
+func (svc *Service) ClearRequests(ctx context.Context) error {
+	return svc.repo.ClearRequestLogs(ctx)
+}
+
 func (svc *Service) addRequest(
 	ctx context.Context,
 	req http.Request,
