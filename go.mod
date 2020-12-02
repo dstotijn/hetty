@@ -14,4 +14,5 @@ require (
 	github.com/mitchellh/mapstructure v1.1.2 // indirect
 	github.com/vektah/gqlparser/v2 v2.1.0
 	google.golang.org/appengine v1.6.6 // indirect
+	gopkg.in/yaml.v2 v2.4.0
 )

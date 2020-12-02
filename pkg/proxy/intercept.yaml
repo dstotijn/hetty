@@ -1,0 +1,3 @@
+responses:
+  - url: http://www.ue.wroc.pl/
+    body: <h1>Hello!</h1>
