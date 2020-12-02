@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/tls"
 	"flag"
 	"log"
@@ -27,6 +28,7 @@ var (
 	caCertFile string
 	caKeyFile  string
 	projPath   string
+	projName   string
 	addr       string
 	adminPath  string
 )
@@ -35,6 +37,7 @@ func main() {
 	flag.StringVar(&caCertFile, "cert", "~/.hetty/hetty_cert.pem", "CA certificate filepath. Creates a new CA certificate is file doesn't exist")
 	flag.StringVar(&caKeyFile, "key", "~/.hetty/hetty_key.pem", "CA private key filepath. Creates a new CA private key if file doesn't exist")
 	flag.StringVar(&projPath, "projects", "~/.hetty/projects", "Projects directory path")
+	flag.StringVar(&projName, "project", "", "Project to open on start")
 	flag.StringVar(&addr, "addr", ":8080", "TCP address to listen on, in the form \"host:port\"")
 	flag.StringVar(&adminPath, "adminPath", "", "File path to admin build")
 	flag.Parse()
@@ -70,6 +73,10 @@ func main() {
 		log.Fatalf("[FATAL] Could not create new project service: %v", err)
 	}
 	defer projService.Close()
+
+	if projName != "" {
+		projService.Open(context.Background(), projName)
+	}
 
 	scope := scope.New(db, projService)
 
