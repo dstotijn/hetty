@@ -75,7 +75,10 @@ func main() {
 	defer projService.Close()
 
 	if projName != "" {
-		projService.Open(context.Background(), projName)
+		_, err = projService.Open(context.Background(), projName)
+		if err != nil {
+			log.Fatalf("[FATAL] Could not open project: %v", err)
+		}
 	}
 
 	scope := scope.New(db, projService)
