@@ -48,8 +48,8 @@ func changeBody(res *http.Response, modifer func(body []byte) []byte) error {
 }
 
 type Entry struct {
-	URL  string `yaml:"url"`
-	Body string `yaml:"body"`
+	URL  string
+	Body string
 }
 
 // TODO: create instance with responses as state
