@@ -48,7 +48,7 @@ func changeBody(res *http.Response, modifer func(body []byte) []byte) error {
 	return nil
 }
 
-type Entry struct {
+type ResponseEntry struct {
 	UrlEquals     string `yaml:"url_equals"`
 	UrlStartsWith string `yaml:"url_starts_with"`
 	UrlEndsWith   string `yaml:"url_ends_with"`
@@ -58,56 +58,50 @@ type Entry struct {
 // TODO: create instance with responses as state
 
 type Intercept struct {
-	responses []Entry
+	responses []ResponseEntry
 }
 
 func NewIntercep() (*Intercept, error) {
-	var entries struct {
-		Responses []Entry
-	}
+	return &Intercept{}, nil
+}
 
+func (intercept *Intercept) updateYamlEntries() error {
 	path, _ := filepath.Abs("./pkg/proxy/intercept.yaml")
 	fmt.Println(path)
 	fileContent, err := ioutil.ReadFile(path)
 	if err != nil {
-		return nil, fmt.Errorf("intercept: error reading intercept.yaml: %v", err)
+		return fmt.Errorf("intercept: error reading intercept.yaml: %v", err)
 	}
-	err = yaml.Unmarshal(fileContent, &entries)
+	err = yaml.Unmarshal(fileContent, struct{ Responses *[]ResponseEntry }{Responses: &intercept.responses})
 	if err != nil {
-		return nil, fmt.Errorf("intercept: error parsing intercept.yaml: %v", err)
+		return fmt.Errorf("intercept: error parsing intercept.yaml: %v", err)
 	}
-
-	return &Intercept{responses: entries.Responses}, nil
+	return nil
 }
 
-func (intercept *Intercept) ResponseInterceptorFromYAML(next ResponseModifyFunc) ResponseModifyFunc {
+func (intercept *Intercept) ResponseInterceptorFromYaml(next ResponseModifyFunc) ResponseModifyFunc {
 	return func(res *http.Response) error {
 		if err := next(res); err != nil {
 			return err
 		}
 
+		err := intercept.updateYamlEntries()
+		if err != nil {
+			return err
+		}
+
 		for _, response := range intercept.responses {
-			replaceBody := func() {
+			url := res.Request.URL.String()
+
+			if url == response.UrlEquals ||
+				(response.UrlStartsWith != "" && strings.HasPrefix(url, response.UrlStartsWith)) ||
+				(response.UrlEndsWith != "" && strings.HasSuffix(url, response.UrlEndsWith)) {
 				err := changeBody(res, func(b []byte) []byte {
 					return []byte(response.Body)
 				})
 				if err != nil {
 					panic(err)
 				}
-			}
-
-			url := res.Request.URL.String()
-
-			if url == response.UrlEquals {
-				replaceBody()
-			}
-
-			if response.UrlStartsWith != "" && strings.HasPrefix(url, response.UrlStartsWith) {
-				replaceBody()
-			}
-
-			if response.UrlEndsWith != "" && strings.HasSuffix(url, response.UrlEndsWith) {
-				replaceBody()
 			}
 		}
 

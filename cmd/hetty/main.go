@@ -100,7 +100,7 @@ func main() {
 	}
 
 	// TODO: Consider moving to proxy.NewProxy
-	p.UseResponseModifier(interept.ResponseInterceptorFromYAML)
+	p.UseResponseModifier(interept.ResponseInterceptorFromYaml)
 
 	var adminHandler http.Handler
 	if adminPath == "" {
