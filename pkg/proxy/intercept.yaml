@@ -5,5 +5,7 @@ responses:
   - url_starts_with: http://www.ue.wroc.pl/uczelnia
     body: <h1>Hello Uczelnia</h1>
 
-  - url_ends_with: ?q=2
-    body: <h1>Hello Konferencje</h1>
+  - url_ends_with: .png
+    status: 302
+    headers:
+      Location: https://niebezpiecznik.pl/wp-content/uploads/2018/08/nordvpn.png

@@ -53,6 +53,8 @@ type ResponseEntry struct {
 	UrlStartsWith string `yaml:"url_starts_with"`
 	UrlEndsWith   string `yaml:"url_ends_with"`
 	Body          string
+	Status        int
+	Headers       map[string]string `yaml:"headers,omitempty"`
 }
 
 // TODO: create instance with responses as state
@@ -67,7 +69,6 @@ func NewIntercep() (*Intercept, error) {
 
 func (intercept *Intercept) updateYamlEntries() error {
 	path, _ := filepath.Abs("./pkg/proxy/intercept.yaml")
-	fmt.Println(path)
 	fileContent, err := ioutil.ReadFile(path)
 	if err != nil {
 		return fmt.Errorf("intercept: error reading intercept.yaml: %v", err)
@@ -91,16 +92,30 @@ func (intercept *Intercept) ResponseInterceptorFromYaml(next ResponseModifyFunc)
 		}
 
 		for _, response := range intercept.responses {
+
 			url := res.Request.URL.String()
 
 			if url == response.UrlEquals ||
 				(response.UrlStartsWith != "" && strings.HasPrefix(url, response.UrlStartsWith)) ||
 				(response.UrlEndsWith != "" && strings.HasSuffix(url, response.UrlEndsWith)) {
-				err := changeBody(res, func(b []byte) []byte {
-					return []byte(response.Body)
-				})
-				if err != nil {
-					panic(err)
+
+				if response.Body != "" {
+					err := changeBody(res, func(b []byte) []byte {
+						return []byte(response.Body)
+					})
+					if err != nil {
+						panic(err)
+					}
+				}
+
+				if len(response.Headers) != 0 {
+					for key, value := range response.Headers {
+						res.Header.Set(key, value)
+					}
+				}
+
+				if response.Status != 0 {
+					res.StatusCode = response.Status
 				}
 			}
 		}
