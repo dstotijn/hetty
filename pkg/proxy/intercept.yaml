@@ -1,3 +1,9 @@
 responses:
-  - url: http://www.ue.wroc.pl/
+  - url_equals: http://www.ue.wroc.pl/
     body: <h1>Hello!</h1>
+
+  - url_starts_with: http://www.ue.wroc.pl/uczelnia
+    body: <h1>Hello Uczelnia</h1>
+
+  - url_ends_with: konferencje
+    body: <h1>Hello Konferencje</h1>
