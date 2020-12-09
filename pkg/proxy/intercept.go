@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"path/filepath"
+	"strconv"
 	"strings"
 )
 
@@ -22,9 +23,7 @@ func changeBody(res *http.Response, modifer func(body []byte) []byte) error {
 	if contentEncoding == "" {
 		newBody := modifer(body)
 		res.Body = ioutil.NopCloser(bytes.NewBuffer(newBody))
-	}
-
-	if contentEncoding == "gzip" {
+	} else if contentEncoding == "gzip" {
 		// TMP!
 		//res.Body = ioutil.NopCloser(bytes.NewBuffer(body))
 
@@ -35,14 +34,30 @@ func changeBody(res *http.Response, modifer func(body []byte) []byte) error {
 		defer gzipReader.Close()
 		body, err = ioutil.ReadAll(gzipReader)
 
-		// TODO: Gzip this body
-		newBody := modifer(body)
-		res.Header.Set("Content-Encoding", "")
-		res.Body = ioutil.NopCloser(bytes.NewBuffer(newBody))
-
 		if err != nil {
 			return fmt.Errorf("Could not read gzipped response body: %v", err)
 		}
+
+		newBody := modifer(body)
+		var gzipBodyBuffer bytes.Buffer
+		gzipWriter := gzip.NewWriter(&gzipBodyBuffer)
+		if _, err := gzipWriter.Write(newBody); err != nil {
+			return fmt.Errorf("Could not write gzip body: %v", err)
+		}
+		if err := gzipWriter.Close(); err != nil {
+			return fmt.Errorf("Could not close gzip body writer: %v", err)
+		}
+
+		res.Body = ioutil.NopCloser(&gzipBodyBuffer)
+		res.Header.Set("Content-Length", strconv.Itoa(gzipBodyBuffer.Len()))
+
+	} else if contentEncoding == "br" {
+		// TODO: Handle brotli properly
+		newBody := modifer(body)
+		res.Body = ioutil.NopCloser(bytes.NewBuffer(newBody))
+		res.Header.Del("Content-Encoding")
+	} else {
+		return fmt.Errorf("Unknown encoding: %v", contentEncoding)
 	}
 
 	return nil
@@ -102,6 +117,7 @@ func (intercept *Intercept) ResponseInterceptorFromYaml(next ResponseModifyFunc)
 				if response.Body != "" {
 					err := changeBody(res, func(b []byte) []byte {
 						return []byte(response.Body)
+						//return append([]byte(response.Body), b...)
 					})
 					if err != nil {
 						panic(err)

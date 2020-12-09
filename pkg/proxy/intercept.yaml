@@ -1,11 +1,20 @@
 responses:
-  - url_equals: http://www.ue.wroc.pl/?q=1
-    body: <h1>Hello!</h1>
+#  - url_equals: http://www.ue.wroc.pl/?q=1
+#    body: <h1>Hello!</h1>
 
-  - url_starts_with: http://www.ue.wroc.pl/uczelnia
-    body: <h1>Hello Uczelnia</h1>
+#  - url_starts_with: http://www.ue.wroc.pl/uczelnia
+#    body: <h1>Hello Uczelnia</h1>
 
-  - url_ends_with: .png
-    status: 302
+#  - url_ends_with: .png
+#    status: 302
+#    headers:
+#      Location: https://niebezpiecznik.pl/wp-content/uploads/2018/08/nordvpn.png
+
+#  - url_starts_with: http
+#    headers:
+#      X-Proxy: hetty
+
+  - url_ends_with: .js
+    body: "alert(1);"
     headers:
-      Location: https://niebezpiecznik.pl/wp-content/uploads/2018/08/nordvpn.png
+      X-Proxy: hetty
