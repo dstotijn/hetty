@@ -93,14 +93,15 @@ func main() {
 	p.UseRequestModifier(reqLogService.RequestModifier)
 	p.UseResponseModifier(reqLogService.ResponseModifier)
 
-	interept, err := proxy.NewIntercep()
+	interept, err := proxy.NewIntercept(proxy.GetRequestsFromYaml, proxy.GetResponsesFromYaml)
 
 	if err != nil {
 		log.Fatalf("[FATAL] Could not create Interceptor: %v", err)
 	}
 
 	// TODO: Consider moving to proxy.NewProxy
-	p.UseResponseModifier(interept.ResponseInterceptorFromYaml)
+	//p.UseRequestModifier(interept.RequestInterceptor)
+	p.UseResponseModifier(interept.ResponseInterceptor)
 
 	var adminHandler http.Handler
 	if adminPath == "" {

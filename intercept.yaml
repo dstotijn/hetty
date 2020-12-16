@@ -1,6 +1,6 @@
 responses:
-#  - url_equals: http://www.ue.wroc.pl/?q=1
-#    body: <h1>Hello!</h1>
+  - url_equals: http://www.ue.wroc.pl/?q=1
+    body: <h1>Hello!</h1>
 
 #  - url_starts_with: http://www.ue.wroc.pl/uczelnia
 #    body: <h1>Hello Uczelnia</h1>
@@ -14,7 +14,7 @@ responses:
 #    headers:
 #      X-Proxy: hetty
 
-  - url_ends_with: .js
-    body: "alert(1);"
-    headers:
-      X-Proxy: hetty
+#  - url_ends_with: .js
+#    body: "alert(1);"
+#    headers:
+#      X-Proxy: hetty

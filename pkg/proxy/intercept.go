@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"path/filepath"
 	"strconv"
@@ -63,6 +64,14 @@ func changeBody(res *http.Response, modifer func(body []byte) []byte) error {
 	return nil
 }
 
+type RequestEntry struct {
+	UrlEquals     string `yaml:"url_equals"`
+	UrlStartsWith string `yaml:"url_starts_with"`
+	UrlEndsWith   string `yaml:"url_ends_with"`
+	Body          string
+	Headers       map[string]string `yaml:"headers,omitempty"`
+}
+
 type ResponseEntry struct {
 	UrlEquals     string `yaml:"url_equals"`
 	UrlStartsWith string `yaml:"url_starts_with"`
@@ -72,41 +81,95 @@ type ResponseEntry struct {
 	Headers       map[string]string `yaml:"headers,omitempty"`
 }
 
-// TODO: create instance with responses as state
-
 type Intercept struct {
-	responses []ResponseEntry
+	getRequests  func() ([]RequestEntry, error)
+	getResponses func() ([]ResponseEntry, error)
 }
 
-func NewIntercep() (*Intercept, error) {
-	return &Intercept{}, nil
+func NewIntercept(
+	getRequests func() ([]RequestEntry, error),
+	getResponses func() ([]ResponseEntry, error),
+) (*Intercept, error) {
+	return &Intercept{
+		getRequests:  getRequests,
+		getResponses: getResponses,
+	}, nil
 }
 
-func (intercept *Intercept) updateYamlEntries() error {
-	path, _ := filepath.Abs("./pkg/proxy/intercept.yaml")
+func GetRequestsFromYaml() ([]RequestEntry, error) {
+	return []RequestEntry{}, nil
+}
+
+func GetResponsesFromYaml() ([]ResponseEntry, error) {
+	var responses []ResponseEntry
+	path, _ := filepath.Abs("./intercept.yaml")
 	fileContent, err := ioutil.ReadFile(path)
 	if err != nil {
-		return fmt.Errorf("intercept: error reading intercept.yaml: %v", err)
+		return nil, fmt.Errorf("intercept: error reading intercept.yaml: %v", err)
 	}
-	err = yaml.Unmarshal(fileContent, struct{ Responses *[]ResponseEntry }{Responses: &intercept.responses})
+	err = yaml.Unmarshal(fileContent, struct{ Responses *[]ResponseEntry }{Responses: &responses})
 	if err != nil {
-		return fmt.Errorf("intercept: error parsing intercept.yaml: %v", err)
+		return nil, fmt.Errorf("intercept: error parsing intercept.yaml: %v", err)
 	}
-	return nil
+	return responses, nil
 }
 
-func (intercept *Intercept) ResponseInterceptorFromYaml(next ResponseModifyFunc) ResponseModifyFunc {
+func (intercept *Intercept) RequestInterceptor(next RequestModifyFunc) RequestModifyFunc {
+	return func(req *http.Request) {
+		next(req)
+
+		//if err := next(req); err != nil {
+		//	log.Fatal(err)
+		//}
+
+		requests, err := intercept.getRequests()
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		for _, request := range requests {
+
+			url := req.URL.String()
+
+			if url == request.UrlEquals ||
+				(request.UrlStartsWith != "" && strings.HasPrefix(url, request.UrlStartsWith)) ||
+				(request.UrlEndsWith != "" && strings.HasSuffix(url, request.UrlEndsWith)) {
+
+				//if request.Body != "" {
+				//	err := changeBody(req, func(b []byte) []byte {
+				//		return []byte(request.Body)
+				//	})
+				//	if err != nil {
+				//		panic(err)
+				//	}
+				//}
+
+				if len(request.Headers) != 0 {
+					for key, value := range request.Headers {
+						req.Header.Set(key, value)
+					}
+				}
+
+				//if request.Status != 0 {
+				//  res.StatusCode = request.Status
+				//}
+			}
+		}
+	}
+}
+
+func (intercept *Intercept) ResponseInterceptor(next ResponseModifyFunc) ResponseModifyFunc {
 	return func(res *http.Response) error {
 		if err := next(res); err != nil {
 			return err
 		}
 
-		err := intercept.updateYamlEntries()
+		responses, err := intercept.getResponses()
 		if err != nil {
 			return err
 		}
 
-		for _, response := range intercept.responses {
+		for _, response := range responses {
 
 			url := res.Request.URL.String()
 
@@ -117,7 +180,6 @@ func (intercept *Intercept) ResponseInterceptorFromYaml(next ResponseModifyFunc)
 				if response.Body != "" {
 					err := changeBody(res, func(b []byte) []byte {
 						return []byte(response.Body)
-						//return append([]byte(response.Body), b...)
 					})
 					if err != nil {
 						panic(err)
