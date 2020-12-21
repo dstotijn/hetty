@@ -12,6 +12,7 @@ import (
 	"github.com/dstotijn/hetty/pkg/proj"
 	"github.com/dstotijn/hetty/pkg/reqlog"
 	"github.com/dstotijn/hetty/pkg/scope"
+	"github.com/dstotijn/hetty/pkg/search"
 	"github.com/vektah/gqlparser/v2/gqlerror"
 )
 
@@ -263,15 +264,14 @@ func (r *mutationResolver) SetHTTPRequestLogFilter(
 	ctx context.Context,
 	input *HTTPRequestLogFilterInput,
 ) (*HTTPRequestLogFilter, error) {
-	filter := findRequestsFilterFromInput(input)
+	filter, err := findRequestsFilterFromInput(input)
+	if err != nil {
+		return nil, fmt.Errorf("could not parse request log filter: %v", err)
+	}
 	if err := r.RequestLogService.SetRequestLogFilter(ctx, filter); err != nil {
 		return nil, fmt.Errorf("could not set request log filter: %v", err)
 	}
 
-	empty := reqlog.FindRequestsFilter{}
-	if filter == empty {
-		return nil, nil
-	}
 	return findReqFilterToHTTPReqLogFilter(filter), nil
 }
 
@@ -297,12 +297,20 @@ func scopeToScopeRules(rules []scope.Rule) []ScopeRule {
 	return scopeRules
 }
 
-func findRequestsFilterFromInput(input *HTTPRequestLogFilterInput) (filter reqlog.FindRequestsFilter) {
+func findRequestsFilterFromInput(input *HTTPRequestLogFilterInput) (filter reqlog.FindRequestsFilter, err error) {
 	if input == nil {
 		return
 	}
 	if input.OnlyInScope != nil {
 		filter.OnlyInScope = *input.OnlyInScope
+	}
+	if input.SearchExpression != nil && *input.SearchExpression != "" {
+		expr, err := search.ParseQuery(*input.SearchExpression)
+		if err != nil {
+			return reqlog.FindRequestsFilter{}, fmt.Errorf("could not parse search query: %v", err)
+		}
+		filter.RawSearchExpr = *input.SearchExpression
+		filter.SearchExpr = expr
 	}
 
 	return
@@ -315,6 +323,10 @@ func findReqFilterToHTTPReqLogFilter(findReqFilter reqlog.FindRequestsFilter) *H
 	}
 	httpReqLogFilter := &HTTPRequestLogFilter{
 		OnlyInScope: findReqFilter.OnlyInScope,
+	}
+
+	if findReqFilter.RawSearchExpr != "" {
+		httpReqLogFilter.SearchExpression = &findReqFilter.RawSearchExpr
 	}
 
 	return httpReqLogFilter

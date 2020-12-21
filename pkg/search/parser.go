@@ -9,10 +9,10 @@ type precedence int
 const (
 	_ precedence = iota
 	precLowest
-	precEq
 	precAnd
 	precOr
 	precNot
+	precEq
 	precLessGreater
 	precPrefix
 	precGroup
@@ -86,7 +86,7 @@ func ParseQuery(input string) (expr Expression, err error) {
 	p.nextToken()
 
 	if p.curTokenIs(TokEOF) {
-		return nil, fmt.Errorf("unexpected EOF")
+		return nil, fmt.Errorf("search: unexpected EOF")
 	}
 
 	for !p.curTokenIs(TokEOF) {

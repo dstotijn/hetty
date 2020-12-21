@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -14,6 +15,7 @@ import (
 	"github.com/dstotijn/hetty/pkg/proj"
 	"github.com/dstotijn/hetty/pkg/proxy"
 	"github.com/dstotijn/hetty/pkg/scope"
+	"github.com/dstotijn/hetty/pkg/search"
 )
 
 type contextKey int
@@ -51,7 +53,9 @@ type Service struct {
 }
 
 type FindRequestsFilter struct {
-	OnlyInScope bool
+	OnlyInScope   bool
+	SearchExpr    search.Expression `json:"-"`
+	RawSearchExpr string
 }
 
 type Config struct {
@@ -208,6 +212,34 @@ func (svc *Service) ResponseModifier(next proxy.ResponseModifyFunc) proxy.Respon
 
 		return nil
 	}
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (f *FindRequestsFilter) UnmarshalJSON(b []byte) error {
+	var dto struct {
+		OnlyInScope   bool
+		RawSearchExpr string
+	}
+	if err := json.Unmarshal(b, &dto); err != nil {
+		return err
+	}
+
+	filter := FindRequestsFilter{
+		OnlyInScope:   dto.OnlyInScope,
+		RawSearchExpr: dto.RawSearchExpr,
+	}
+
+	if dto.RawSearchExpr != "" {
+		expr, err := search.ParseQuery(dto.RawSearchExpr)
+		if err != nil {
+			return err
+		}
+		filter.SearchExpr = expr
+	}
+
+	*f = filter
+
+	return nil
 }
 
 func (svc *Service) loadSettings() error {

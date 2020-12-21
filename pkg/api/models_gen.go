@@ -38,11 +38,13 @@ type HTTPRequestLog struct {
 }
 
 type HTTPRequestLogFilter struct {
-	OnlyInScope bool `json:"onlyInScope"`
+	OnlyInScope      bool    `json:"onlyInScope"`
+	SearchExpression *string `json:"searchExpression"`
 }
 
 type HTTPRequestLogFilterInput struct {
-	OnlyInScope *bool `json:"onlyInScope"`
+	OnlyInScope      *bool   `json:"onlyInScope"`
+	SearchExpression *string `json:"searchExpression"`
 }
 
 type HTTPResponseLog struct {

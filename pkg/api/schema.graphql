@@ -64,10 +64,12 @@ type ClearHTTPRequestLogResult {
 
 input HttpRequestLogFilterInput {
   onlyInScope: Boolean
+  searchExpression: String
 }
 
 type HttpRequestLogFilter {
   onlyInScope: Boolean!
+  searchExpression: String
 }
 
 type Query {

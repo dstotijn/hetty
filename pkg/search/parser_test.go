@@ -17,7 +17,7 @@ func TestParseQuery(t *testing.T) {
 			name:               "empty query",
 			input:              "",
 			expectedExpression: nil,
-			expectedError:      errors.New("unexpected EOF"),
+			expectedError:      errors.New("search: unexpected EOF"),
 		},
 		{
 			name:               "string literal expression",
@@ -193,6 +193,24 @@ func TestParseQuery(t *testing.T) {
 				},
 				Right: &InfixExpression{
 					Operator: TokOpRe,
+					Left:     &StringLiteral{Value: "baz"},
+					Right:    &StringLiteral{Value: "yolo"},
+				},
+			},
+			expectedError: nil,
+		},
+		{
+			name:  "eq operator takes precedence over boolean ops",
+			input: "foo=bar OR baz=yolo",
+			expectedExpression: &InfixExpression{
+				Operator: TokOpOr,
+				Left: &InfixExpression{
+					Operator: TokOpEq,
+					Left:     &StringLiteral{Value: "foo"},
+					Right:    &StringLiteral{Value: "bar"},
+				},
+				Right: &InfixExpression{
+					Operator: TokOpEq,
 					Left:     &StringLiteral{Value: "baz"},
 					Right:    &StringLiteral{Value: "yolo"},
 				},
