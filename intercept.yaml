@@ -18,3 +18,10 @@ responses:
 #    body: "alert(1);"
 #    headers:
 #      X-Proxy: hetty
+
+#requests:
+#  - url_starts_with: https://webhook.site
+#    method: POST
+#
+#    headers:
+#      Server: Goooogle

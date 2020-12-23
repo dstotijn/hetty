@@ -100,7 +100,7 @@ func main() {
 	}
 
 	// TODO: Consider moving to proxy.NewProxy
-	//p.UseRequestModifier(interept.RequestInterceptor)
+	p.UseRequestModifier(interept.RequestInterceptor)
 	p.UseResponseModifier(interept.ResponseInterceptor)
 
 	var adminHandler http.Handler

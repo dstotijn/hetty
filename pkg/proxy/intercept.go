@@ -4,30 +4,35 @@ import (
 	"bytes"
 	"compress/gzip"
 	"fmt"
+	"github.com/mitchellh/mapstructure"
 	"gopkg.in/yaml.v2"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 )
 
-func changeBody(res *http.Response, modifer func(body []byte) []byte) error {
-	body, err := ioutil.ReadAll(res.Body)
+type HTTPMessage struct {
+	Body   *io.ReadCloser
+	Header http.Header
+}
+
+func changeBody(msg *HTTPMessage, modifer func(body []byte) []byte) error {
+	body, err := ioutil.ReadAll(*msg.Body)
 	if err != nil {
 		return fmt.Errorf("Could not read response body: %v", err)
 	}
 
-	contentEncoding := res.Header.Get("Content-Encoding")
+	contentEncoding := msg.Header.Get("Content-Encoding")
 
 	if contentEncoding == "" {
 		newBody := modifer(body)
-		res.Body = ioutil.NopCloser(bytes.NewBuffer(newBody))
+		*msg.Body = ioutil.NopCloser(bytes.NewBuffer(newBody))
 	} else if contentEncoding == "gzip" {
-		// TMP!
-		//res.Body = ioutil.NopCloser(bytes.NewBuffer(body))
-
 		gzipReader, err := gzip.NewReader(bytes.NewBuffer(body))
 		if err != nil {
 			return fmt.Errorf("Could not create gzip reader: %v", err)
@@ -49,14 +54,14 @@ func changeBody(res *http.Response, modifer func(body []byte) []byte) error {
 			return fmt.Errorf("Could not close gzip body writer: %v", err)
 		}
 
-		res.Body = ioutil.NopCloser(&gzipBodyBuffer)
-		res.Header.Set("Content-Length", strconv.Itoa(gzipBodyBuffer.Len()))
+		*msg.Body = ioutil.NopCloser(&gzipBodyBuffer)
+		msg.Header.Set("Content-Length", strconv.Itoa(gzipBodyBuffer.Len()))
 
 	} else if contentEncoding == "br" {
 		// TODO: Handle brotli properly
 		newBody := modifer(body)
-		res.Body = ioutil.NopCloser(bytes.NewBuffer(newBody))
-		res.Header.Del("Content-Encoding")
+		*msg.Body = ioutil.NopCloser(bytes.NewBuffer(newBody))
+		msg.Header.Del("Content-Encoding")
 	} else {
 		return fmt.Errorf("Unknown encoding: %v", contentEncoding)
 	}
@@ -64,21 +69,22 @@ func changeBody(res *http.Response, modifer func(body []byte) []byte) error {
 	return nil
 }
 
-type RequestEntry struct {
-	UrlEquals     string `yaml:"url_equals"`
-	UrlStartsWith string `yaml:"url_starts_with"`
-	UrlEndsWith   string `yaml:"url_ends_with"`
+type MessageEntry struct {
+	UrlEquals     string `yaml:"url_equals" mapstructure:"url_equals"`
+	UrlStartsWith string `yaml:"url_starts_with" mapstructure:"url_starts_with"`
+	UrlEndsWith   string `yaml:"url_ends_with" mapstructure:"url_ends_with"`
 	Body          string
 	Headers       map[string]string `yaml:"headers,omitempty"`
 }
 
+type RequestEntry struct {
+	MessageEntry `yaml:",inline" mapstructure:",squash"`
+	Method       string
+}
+
 type ResponseEntry struct {
-	UrlEquals     string `yaml:"url_equals"`
-	UrlStartsWith string `yaml:"url_starts_with"`
-	UrlEndsWith   string `yaml:"url_ends_with"`
-	Body          string
-	Status        int
-	Headers       map[string]string `yaml:"headers,omitempty"`
+	MessageEntry `yaml:",inline" mapstructure:",squash"`
+	Status       int
 }
 
 type Intercept struct {
@@ -90,37 +96,85 @@ func NewIntercept(
 	getRequests func() ([]RequestEntry, error),
 	getResponses func() ([]ResponseEntry, error),
 ) (*Intercept, error) {
+	err := provisionInterceptYaml()
+	if err != nil {
+		return nil, err
+	}
+
 	return &Intercept{
 		getRequests:  getRequests,
 		getResponses: getResponses,
 	}, nil
 }
 
+type InterceptYamlFormat struct {
+	Responses []ResponseEntry
+	Requests  []RequestEntry
+}
+
+func getInterceptYamlPath() string {
+	path, _ := filepath.Abs("./intercept.yaml")
+	return path
+}
+
+func provisionInterceptYaml() error {
+	path := getInterceptYamlPath()
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		err = ioutil.WriteFile(path, []byte("responses:\n  - url_equals: https://example.com/\n    body: <h1>Hetty</h1>\n"), 0644)
+		if err != nil {
+			return fmt.Errorf("intercet: error while provisioning intercept.yaml")
+		}
+		log.Println("[INFO] Provisioned intercept.yaml. Try it by accessing https://example.com/")
+		return nil
+	}
+	return nil
+}
+
+func getInterceptYaml() ([]ResponseEntry, []RequestEntry, error) {
+	path := getInterceptYamlPath()
+	fileContent, err := ioutil.ReadFile(path)
+	if err != nil {
+		return nil, nil, fmt.Errorf("intercept: error reading intercept.yaml: %v", err)
+	}
+	var fileOutput interface{}
+	err = yaml.Unmarshal(fileContent, &fileOutput)
+	if err != nil {
+		return nil, nil, fmt.Errorf("intercept: error unmarshaling intercept.yaml: %v", err)
+	}
+	var reqResConfig InterceptYamlFormat
+	err = mapstructure.Decode(fileOutput, &reqResConfig)
+	if err != nil {
+		return nil, nil, fmt.Errorf("intercept: decoding error: %v", err)
+	}
+
+	return reqResConfig.Responses, reqResConfig.Requests, nil
+}
+
 func GetRequestsFromYaml() ([]RequestEntry, error) {
-	return []RequestEntry{}, nil
+	_, requests, err := getInterceptYaml()
+	if err != nil {
+		return nil, err
+	}
+	return requests, nil
 }
 
 func GetResponsesFromYaml() ([]ResponseEntry, error) {
-	var responses []ResponseEntry
-	path, _ := filepath.Abs("./intercept.yaml")
-	fileContent, err := ioutil.ReadFile(path)
+	responses, _, err := getInterceptYaml()
 	if err != nil {
-		return nil, fmt.Errorf("intercept: error reading intercept.yaml: %v", err)
-	}
-	err = yaml.Unmarshal(fileContent, struct{ Responses *[]ResponseEntry }{Responses: &responses})
-	if err != nil {
-		return nil, fmt.Errorf("intercept: error parsing intercept.yaml: %v", err)
+		return nil, err
 	}
 	return responses, nil
+}
+
+func isMatchingUrl(entry MessageEntry, url string) bool {
+	return url == entry.UrlEquals ||
+		(entry.UrlStartsWith != "" && strings.HasPrefix(url, entry.UrlStartsWith)) ||
+		(entry.UrlEndsWith != "" && strings.HasSuffix(url, entry.UrlEndsWith))
 }
 
 func (intercept *Intercept) RequestInterceptor(next RequestModifyFunc) RequestModifyFunc {
 	return func(req *http.Request) {
 		next(req)
-
-		//if err := next(req); err != nil {
-		//	log.Fatal(err)
-		//}
 
 		requests, err := intercept.getRequests()
 		if err != nil {
@@ -131,28 +185,21 @@ func (intercept *Intercept) RequestInterceptor(next RequestModifyFunc) RequestMo
 
 			url := req.URL.String()
 
-			if url == request.UrlEquals ||
-				(request.UrlStartsWith != "" && strings.HasPrefix(url, request.UrlStartsWith)) ||
-				(request.UrlEndsWith != "" && strings.HasSuffix(url, request.UrlEndsWith)) {
-
-				//if request.Body != "" {
-				//	err := changeBody(req, func(b []byte) []byte {
-				//		return []byte(request.Body)
-				//	})
-				//	if err != nil {
-				//		panic(err)
-				//	}
-				//}
+			if isMatchingUrl(request.MessageEntry, url) && req.Method == request.Method {
+				if request.Body != "" {
+					err := changeBody(&HTTPMessage{Header: req.Header, Body: &req.Body}, func(b []byte) []byte {
+						return []byte(request.Body)
+					})
+					if err != nil {
+						panic(err)
+					}
+				}
 
 				if len(request.Headers) != 0 {
 					for key, value := range request.Headers {
 						req.Header.Set(key, value)
 					}
 				}
-
-				//if request.Status != 0 {
-				//  res.StatusCode = request.Status
-				//}
 			}
 		}
 	}
@@ -173,12 +220,9 @@ func (intercept *Intercept) ResponseInterceptor(next ResponseModifyFunc) Respons
 
 			url := res.Request.URL.String()
 
-			if url == response.UrlEquals ||
-				(response.UrlStartsWith != "" && strings.HasPrefix(url, response.UrlStartsWith)) ||
-				(response.UrlEndsWith != "" && strings.HasSuffix(url, response.UrlEndsWith)) {
-
+			if isMatchingUrl(response.MessageEntry, url) {
 				if response.Body != "" {
-					err := changeBody(res, func(b []byte) []byte {
+					err := changeBody(&HTTPMessage{Header: res.Header, Body: &res.Body}, func(b []byte) []byte {
 						return []byte(response.Body)
 					})
 					if err != nil {
