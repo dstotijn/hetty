@@ -3,6 +3,7 @@ package sqlite
 import (
 	"errors"
 	"fmt"
+	"sort"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/dstotijn/hetty/pkg/search"
@@ -32,6 +33,8 @@ func parseSearchExpr(expr search.Expression) (sq.Sqlizer, error) {
 		return parsePrefixExpr(e)
 	case *search.InfixExpression:
 		return parseInfixExpr(e)
+	case *search.StringLiteral:
+		return parseStringLiteral(e)
 	default:
 		return nil, fmt.Errorf("expression type (%v) not supported", expr)
 	}
@@ -105,4 +108,19 @@ func parseInfixExpr(expr *search.InfixExpression) (sq.Sqlizer, error) {
 	default:
 		return nil, errors.New("unsupported operator")
 	}
+}
+
+func parseStringLiteral(strLiteral *search.StringLiteral) (sq.Sqlizer, error) {
+	// Sorting is not necessary, but makes it easier to do assertions in tests.
+	sortedKeys := make([]string, 0, len(stringLiteralMap))
+	for _, v := range stringLiteralMap {
+		sortedKeys = append(sortedKeys, v)
+	}
+	sort.Strings(sortedKeys)
+
+	or := make(sq.Or, len(stringLiteralMap))
+	for i, value := range sortedKeys {
+		or[i] = sq.Like{value: "%" + strLiteral.Value + "%"}
+	}
+	return or, nil
 }

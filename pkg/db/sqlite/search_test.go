@@ -170,6 +170,26 @@ func TestParseSearchExpr(t *testing.T) {
 			},
 			expectedError: nil,
 		},
+		{
+			name: "foo",
+			searchExpr: &search.StringLiteral{
+				Value: "foo",
+			},
+			expectedSqlizer: sq.Or{
+				sq.Like{"req.body": "%foo%"},
+				sq.Like{"req.id": "%foo%"},
+				sq.Like{"req.method": "%foo%"},
+				sq.Like{"req.proto": "%foo%"},
+				sq.Like{"req.timestamp": "%foo%"},
+				sq.Like{"req.url": "%foo%"},
+				sq.Like{"res.body": "%foo%"},
+				sq.Like{"res.id": "%foo%"},
+				sq.Like{"res.proto": "%foo%"},
+				sq.Like{"res.status_code": "%foo%"},
+				sq.Like{"res.status_reason": "%foo%"},
+				sq.Like{"res.timestamp": "%foo%"},
+			},
+		},
 	}
 
 	for _, tt := range tests {
