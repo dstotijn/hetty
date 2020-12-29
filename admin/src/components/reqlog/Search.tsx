@@ -89,7 +89,7 @@ function Search(): JSX.Element {
     FILTER,
     {
       onCompleted: (data) => {
-        setSearchExpr(data.httpRequestLogFilter.searchExpression || "");
+        setSearchExpr(data.httpRequestLogFilter?.searchExpression || "");
       },
     }
   );
@@ -108,6 +108,7 @@ function Search(): JSX.Element {
         },
       });
     },
+    onError: () => {},
   });
 
   const [

@@ -31,13 +31,7 @@ func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
 func (r *queryResolver) HTTPRequestLogs(ctx context.Context) ([]HTTPRequestLog, error) {
 	reqs, err := r.RequestLogService.FindRequests(ctx)
 	if err == proj.ErrNoProject {
-		return nil, &gqlerror.Error{
-			Path:    graphql.GetPath(ctx),
-			Message: "No active project.",
-			Extensions: map[string]interface{}{
-				"code": "no_active_project",
-			},
-		}
+		return nil, noActiveProjectErr(ctx)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("could not query repository for requests: %v", err)
@@ -268,7 +262,11 @@ func (r *mutationResolver) SetHTTPRequestLogFilter(
 	if err != nil {
 		return nil, fmt.Errorf("could not parse request log filter: %v", err)
 	}
-	if err := r.RequestLogService.SetRequestLogFilter(ctx, filter); err != nil {
+	err = r.RequestLogService.SetRequestLogFilter(ctx, filter)
+	if err == proj.ErrNoProject {
+		return nil, noActiveProjectErr(ctx)
+	}
+	if err != nil {
 		return nil, fmt.Errorf("could not set request log filter: %v", err)
 	}
 
@@ -330,4 +328,14 @@ func findReqFilterToHTTPReqLogFilter(findReqFilter reqlog.FindRequestsFilter) *H
 	}
 
 	return httpReqLogFilter
+}
+
+func noActiveProjectErr(ctx context.Context) error {
+	return &gqlerror.Error{
+		Path:    graphql.GetPath(ctx),
+		Message: "No active project.",
+		Extensions: map[string]interface{}{
+			"code": "no_active_project",
+		},
+	}
 }
