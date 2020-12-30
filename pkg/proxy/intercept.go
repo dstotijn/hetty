@@ -82,6 +82,7 @@ type RequestEntry struct {
 	Method       string
 }
 
+// TODO: Allow to modify response by request method
 type ResponseEntry struct {
 	MessageEntry `yaml:",inline" mapstructure:",squash"`
 	Status       int
@@ -182,7 +183,6 @@ func (intercept *Intercept) RequestInterceptor(next RequestModifyFunc) RequestMo
 		}
 
 		for _, request := range requests {
-
 			url := req.URL.String()
 
 			if isMatchingUrl(request.MessageEntry, url) && req.Method == request.Method {
