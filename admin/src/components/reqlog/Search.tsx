@@ -31,6 +31,7 @@ const FILTER = gql`
   query HttpRequestLogFilter {
     httpRequestLogFilter {
       onlyInScope
+      searchExpression
     }
   }
 `;
@@ -39,6 +40,7 @@ const SET_FILTER = gql`
   mutation SetHttpRequestLogFilter($filter: HttpRequestLogFilterInput) {
     setHttpRequestLogFilter(filter: $filter) {
       onlyInScope
+      searchExpression
     }
   }
 `;
@@ -75,14 +77,21 @@ const useStyles = makeStyles((theme: Theme) =>
 
 export interface SearchFilter {
   onlyInScope: boolean;
+  searchExpression: string;
 }
 
 function Search(): JSX.Element {
   const classes = useStyles();
   const theme = useTheme();
 
+  const [searchExpr, setSearchExpr] = useState("");
   const { loading: filterLoading, error: filterErr, data: filter } = useQuery(
-    FILTER
+    FILTER,
+    {
+      onCompleted: (data) => {
+        setSearchExpr(data.httpRequestLogFilter?.searchExpression || "");
+      },
+    }
   );
 
   const [
@@ -99,6 +108,7 @@ function Search(): JSX.Element {
         },
       });
     },
+    onError: () => {},
   });
 
   const [
@@ -111,6 +121,15 @@ function Search(): JSX.Element {
   const [filterOpen, setFilterOpen] = useState(false);
 
   const handleSubmit = (e: React.SyntheticEvent) => {
+    setFilterMutate({
+      variables: {
+        filter: {
+          ...withoutTypename(filter?.httpRequestLogFilter),
+          searchExpression: searchExpr,
+        },
+      },
+    });
+    setFilterOpen(false);
     e.preventDefault();
   };
 
@@ -142,10 +161,9 @@ function Search(): JSX.Element {
                 className={classes.iconButton}
                 onClick={() => setFilterOpen(!filterOpen)}
                 style={{
-                  color:
-                    filter?.httpRequestLogFilter !== null
-                      ? theme.palette.secondary.main
-                      : "inherit",
+                  color: filter?.httpRequestLogFilter?.onlyInScope
+                    ? theme.palette.secondary.main
+                    : "inherit",
                 }}
               >
                 {filterLoading || setFilterLoading ? (
@@ -161,6 +179,8 @@ function Search(): JSX.Element {
             <InputBase
               className={classes.input}
               placeholder="Search proxy logs…"
+              value={searchExpr}
+              onChange={(e) => setSearchExpr(e.target.value)}
               onFocus={() => setFilterOpen(true)}
             />
             <Tooltip title="Search">

@@ -30,7 +30,7 @@ var regexpFn = func(pattern string, value interface{}) (bool, error) {
 	case string:
 		return regexp.MatchString(pattern, v)
 	case int64:
-		return regexp.MatchString(pattern, string(v))
+		return regexp.MatchString(pattern, fmt.Sprintf("%v", v))
 	case []byte:
 		return regexp.Match(pattern, v)
 	default:
@@ -255,6 +255,14 @@ func (c *Client) FindRequestLogs(
 		if len(ruleExpr) > 0 {
 			reqQuery = reqQuery.Where(sq.Or(ruleExpr))
 		}
+	}
+
+	if filter.SearchExpr != nil {
+		sqlizer, err := parseSearchExpr(filter.SearchExpr)
+		if err != nil {
+			return nil, fmt.Errorf("sqlite: could not parse search expression: %v", err)
+		}
+		reqQuery = reqQuery.Where(sqlizer)
 	}
 
 	sql, args, err := reqQuery.ToSql()

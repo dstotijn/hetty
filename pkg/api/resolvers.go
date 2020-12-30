@@ -12,6 +12,7 @@ import (
 	"github.com/dstotijn/hetty/pkg/proj"
 	"github.com/dstotijn/hetty/pkg/reqlog"
 	"github.com/dstotijn/hetty/pkg/scope"
+	"github.com/dstotijn/hetty/pkg/search"
 	"github.com/vektah/gqlparser/v2/gqlerror"
 )
 
@@ -30,13 +31,7 @@ func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
 func (r *queryResolver) HTTPRequestLogs(ctx context.Context) ([]HTTPRequestLog, error) {
 	reqs, err := r.RequestLogService.FindRequests(ctx)
 	if err == proj.ErrNoProject {
-		return nil, &gqlerror.Error{
-			Path:    graphql.GetPath(ctx),
-			Message: "No active project.",
-			Extensions: map[string]interface{}{
-				"code": "no_active_project",
-			},
-		}
+		return nil, noActiveProjectErr(ctx)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("could not query repository for requests: %v", err)
@@ -263,15 +258,18 @@ func (r *mutationResolver) SetHTTPRequestLogFilter(
 	ctx context.Context,
 	input *HTTPRequestLogFilterInput,
 ) (*HTTPRequestLogFilter, error) {
-	filter := findRequestsFilterFromInput(input)
-	if err := r.RequestLogService.SetRequestLogFilter(ctx, filter); err != nil {
+	filter, err := findRequestsFilterFromInput(input)
+	if err != nil {
+		return nil, fmt.Errorf("could not parse request log filter: %v", err)
+	}
+	err = r.RequestLogService.SetRequestLogFilter(ctx, filter)
+	if err == proj.ErrNoProject {
+		return nil, noActiveProjectErr(ctx)
+	}
+	if err != nil {
 		return nil, fmt.Errorf("could not set request log filter: %v", err)
 	}
 
-	empty := reqlog.FindRequestsFilter{}
-	if filter == empty {
-		return nil, nil
-	}
 	return findReqFilterToHTTPReqLogFilter(filter), nil
 }
 
@@ -297,12 +295,20 @@ func scopeToScopeRules(rules []scope.Rule) []ScopeRule {
 	return scopeRules
 }
 
-func findRequestsFilterFromInput(input *HTTPRequestLogFilterInput) (filter reqlog.FindRequestsFilter) {
+func findRequestsFilterFromInput(input *HTTPRequestLogFilterInput) (filter reqlog.FindRequestsFilter, err error) {
 	if input == nil {
 		return
 	}
 	if input.OnlyInScope != nil {
 		filter.OnlyInScope = *input.OnlyInScope
+	}
+	if input.SearchExpression != nil && *input.SearchExpression != "" {
+		expr, err := search.ParseQuery(*input.SearchExpression)
+		if err != nil {
+			return reqlog.FindRequestsFilter{}, fmt.Errorf("could not parse search query: %v", err)
+		}
+		filter.RawSearchExpr = *input.SearchExpression
+		filter.SearchExpr = expr
 	}
 
 	return
@@ -317,5 +323,19 @@ func findReqFilterToHTTPReqLogFilter(findReqFilter reqlog.FindRequestsFilter) *H
 		OnlyInScope: findReqFilter.OnlyInScope,
 	}
 
+	if findReqFilter.RawSearchExpr != "" {
+		httpReqLogFilter.SearchExpression = &findReqFilter.RawSearchExpr
+	}
+
 	return httpReqLogFilter
+}
+
+func noActiveProjectErr(ctx context.Context) error {
+	return &gqlerror.Error{
+		Path:    graphql.GetPath(ctx),
+		Message: "No active project.",
+		Extensions: map[string]interface{}{
+			"code": "no_active_project",
+		},
+	}
 }

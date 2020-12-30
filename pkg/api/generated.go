@@ -72,7 +72,8 @@ type ComplexityRoot struct {
 	}
 
 	HTTPRequestLogFilter struct {
-		OnlyInScope func(childComplexity int) int
+		OnlyInScope      func(childComplexity int) int
+		SearchExpression func(childComplexity int) int
 	}
 
 	HTTPResponseLog struct {
@@ -248,6 +249,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.HTTPRequestLogFilter.OnlyInScope(childComplexity), true
+
+	case "HttpRequestLogFilter.searchExpression":
+		if e.complexity.HTTPRequestLogFilter.SearchExpression == nil {
+			break
+		}
+
+		return e.complexity.HTTPRequestLogFilter.SearchExpression(childComplexity), true
 
 	case "HttpResponseLog.body":
 		if e.complexity.HTTPResponseLog.Body == nil {
@@ -579,10 +587,12 @@ type ClearHTTPRequestLogResult {
 
 input HttpRequestLogFilterInput {
   onlyInScope: Boolean
+  searchExpression: String
 }
 
 type HttpRequestLogFilter {
   onlyInScope: Boolean!
+  searchExpression: String
 }
 
 type Query {
@@ -1237,6 +1247,38 @@ func (ec *executionContext) _HttpRequestLogFilter_onlyInScope(ctx context.Contex
 	res := resTmp.(bool)
 	fc.Result = res
 	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _HttpRequestLogFilter_searchExpression(ctx context.Context, field graphql.CollectedField, obj *HTTPRequestLogFilter) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "HttpRequestLogFilter",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.SearchExpression, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _HttpResponseLog_requestId(ctx context.Context, field graphql.CollectedField, obj *HTTPResponseLog) (ret graphql.Marshaler) {
@@ -3288,6 +3330,14 @@ func (ec *executionContext) unmarshalInputHttpRequestLogFilterInput(ctx context.
 			if err != nil {
 				return it, err
 			}
+		case "searchExpression":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("searchExpression"))
+			it.SearchExpression, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
 		}
 	}
 
@@ -3551,6 +3601,8 @@ func (ec *executionContext) _HttpRequestLogFilter(ctx context.Context, sel ast.S
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		case "searchExpression":
+			out.Values[i] = ec._HttpRequestLogFilter_searchExpression(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
