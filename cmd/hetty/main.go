@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"crypto/tls"
 	"flag"
 	"log"
@@ -71,11 +70,6 @@ func main() {
 		log.Fatalf("[FATAL] Could not create new project service: %v", err)
 	}
 	defer projService.Close()
-
-	_, err = projService.Open(context.TODO(), "New2")
-	if err != nil {
-		panic(err)
-	}
 
 	scope := scope.New(db, projService)
 
