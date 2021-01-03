@@ -70,22 +70,25 @@ func changeBody(msg *HTTPMessage, modifer func(body []byte) []byte) error {
 }
 
 type MessageEntry struct {
+	// Filters
 	UrlEquals     string `yaml:"url_equals" mapstructure:"url_equals"`
 	UrlStartsWith string `yaml:"url_starts_with" mapstructure:"url_starts_with"`
 	UrlEndsWith   string `yaml:"url_ends_with" mapstructure:"url_ends_with"`
-	Body          string
-	Headers       map[string]string `yaml:"headers,omitempty"`
+	Method        string
+
+	// Modify
+	Body    string
+	Headers map[string]string `yaml:"headers,omitempty"`
 }
 
 type RequestEntry struct {
 	MessageEntry `yaml:",inline" mapstructure:",squash"`
-	Method       string
 }
 
 // TODO: Allow to modify response by request method
 type ResponseEntry struct {
 	MessageEntry `yaml:",inline" mapstructure:",squash"`
-	Status       int
+	StatusCode   int
 }
 
 type Intercept struct {
@@ -173,6 +176,10 @@ func isMatchingUrl(entry MessageEntry, url string) bool {
 		(entry.UrlEndsWith != "" && strings.HasSuffix(url, entry.UrlEndsWith))
 }
 
+func isMatchingMethod(entry MessageEntry, method string) bool {
+	return entry.Method == "" || entry.Method == method
+}
+
 func (intercept *Intercept) RequestInterceptor(next RequestModifyFunc) RequestModifyFunc {
 	return func(req *http.Request) {
 		next(req)
@@ -185,7 +192,7 @@ func (intercept *Intercept) RequestInterceptor(next RequestModifyFunc) RequestMo
 		for _, request := range requests {
 			url := req.URL.String()
 
-			if isMatchingUrl(request.MessageEntry, url) && req.Method == request.Method {
+			if isMatchingUrl(request.MessageEntry, url) && isMatchingMethod(request.MessageEntry, req.Method) {
 				if request.Body != "" {
 					err := changeBody(&HTTPMessage{Header: req.Header, Body: &req.Body}, func(b []byte) []byte {
 						return []byte(request.Body)
@@ -220,7 +227,7 @@ func (intercept *Intercept) ResponseInterceptor(next ResponseModifyFunc) Respons
 
 			url := res.Request.URL.String()
 
-			if isMatchingUrl(response.MessageEntry, url) {
+			if isMatchingUrl(response.MessageEntry, url) && isMatchingMethod(response.MessageEntry, res.Request.Method) {
 				if response.Body != "" {
 					err := changeBody(&HTTPMessage{Header: res.Header, Body: &res.Body}, func(b []byte) []byte {
 						return []byte(response.Body)
@@ -236,8 +243,8 @@ func (intercept *Intercept) ResponseInterceptor(next ResponseModifyFunc) Respons
 					}
 				}
 
-				if response.Status != 0 {
-					res.StatusCode = response.Status
+				if response.StatusCode != 0 {
+					res.StatusCode = response.StatusCode
 				}
 			}
 		}
