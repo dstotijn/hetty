@@ -79,7 +79,6 @@ func (p *Proxy) UseResponseModifier(fn ...ResponseModifyMiddleware) {
 	p.resModifiers = append(p.resModifiers, fn...)
 }
 
-// TODO: Why doesn't it return error?
 func (p *Proxy) modifyRequest(r *http.Request) {
 	// Fix r.URL for HTTPS requests after CONNECT.
 	if r.URL.Scheme == "" {

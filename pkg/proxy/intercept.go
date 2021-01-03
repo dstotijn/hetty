@@ -85,7 +85,6 @@ type RequestEntry struct {
 	MessageEntry `yaml:",inline" mapstructure:",squash"`
 }
 
-// TODO: Allow to modify response by request method
 type ResponseEntry struct {
 	MessageEntry `yaml:",inline" mapstructure:",squash"`
 	StatusCode   int
