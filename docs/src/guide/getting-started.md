@@ -77,7 +77,7 @@ Usage of ./hetty:
   -adminPath string
         File path to admin build
   -cert string
-        CA certificate filepath. Creates a new CA certificate is file doesn't exist (default "~/.hetty/hetty_cert.pem")
+        CA certificate filepath. Creates a new CA certificate if file doesn't exist (default "~/.hetty/hetty_cert.pem")
   -key string
         CA private key filepath. Creates a new CA private key if file doesn't exist (default "~/.hetty/hetty_key.pem")
   -projects string
