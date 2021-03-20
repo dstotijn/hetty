@@ -4,10 +4,11 @@
   </a>
 </h1>
 
-[[外链图片转存失败,源站可能有防盗链机制,建议将图片保存下来直接上传(img-7BX6HKY5-1616225099227)(https://img.shields.io/github/v/release/dstotijn/hetty?color=18BA91&style=flat-square)]](https://github.com/dstotijn/hetty/releases/latest)
-[外链图片转存失败,源站可能有防盗链机制,建议将图片保存下来直接上传(img-Bik1RsRB-1616225099229)(https://img.shields.io/github/downloads/dstotijn/hetty/total?color=18BA91&style=flat-square)]
-[[外链图片转存失败,源站可能有防盗链机制,建议将图片保存下来直接上传(img-yl8livd9-1616225099231)(https://img.shields.io/github/license/dstotijn/hetty?color=18BA91&style=flat-square)]](https://github.com/dstotijn/hetty/blob/master/LICENSE)
-[[外链图片转存失败,源站可能有防盗链机制,建议将图片保存下来直接上传(img-9s3yTVhu-1616225099232)(https://img.shields.io/badge/hetty-docs-18BA91?style=flat-square)]](https://hetty.xyz/)
+[![Latest GitHub release](https://img.shields.io/github/v/release/dstotijn/hetty?color=18BA91&style=flat-square)](https://github.com/dstotijn/hetty/releases/latest)
+![GitHub download count](https://img.shields.io/github/downloads/dstotijn/hetty/total?color=18BA91&style=flat-square)
+[![GitHub](https://img.shields.io/github/license/dstotijn/hetty?color=18BA91&style=flat-square)](https://github.com/dstotijn/hetty/blob/master/LICENSE)
+[![Documentation](https://img.shields.io/badge/hetty-docs-18BA91?style=flat-square)](https://hetty.xyz/)
+
 
 **Hetty**是一个用来做安全研究的HTTP工具箱，它的目标是以开源替代Burp Suite Pro这款商业软件，以强大的功能来用于信息安全和赏金漏洞社区
 
@@ -137,8 +138,9 @@ certmgr.msc
 * 好用的管理接口，通过Next.js和Material UI来构建
 * 通过GraphQL API无界面管理
 * 扩展性是核心，所有的模块是go包的形式，可以被用于其他软件
-* 对中间人代理，
-* 
+* 通过可插拔的结构构建一个组件式的系统
+* 基于渗透测试这和漏洞社区使用者的反馈开发
+* 目标是一个相对小的核心特征但是可以满足大部分安全研究者需求
 
 ## 支持
 使用[issues](https://github.com/dstotijn/hetty/issues)来报告BUG和添加新特性，以及 [discussions](https://github.com/dstotijn/hetty/discussions)来解决问题
