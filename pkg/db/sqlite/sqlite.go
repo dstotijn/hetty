@@ -15,14 +15,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dstotijn/hetty/pkg/proj"
-	"github.com/dstotijn/hetty/pkg/reqlog"
-	"github.com/dstotijn/hetty/pkg/scope"
-
 	"github.com/99designs/gqlgen/graphql"
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jmoiron/sqlx"
 	"github.com/mattn/go-sqlite3"
+
+	"github.com/dstotijn/hetty/pkg/proj"
+	"github.com/dstotijn/hetty/pkg/reqlog"
+	"github.com/dstotijn/hetty/pkg/scope"
 )
 
 var regexpFn = func(pattern string, value interface{}) (bool, error) {
@@ -55,10 +55,7 @@ type httpRequestLogsQuery struct {
 func init() {
 	sql.Register("sqlite3_with_regexp", &sqlite3.SQLiteDriver{
 		ConnectHook: func(conn *sqlite3.SQLiteConn) error {
-			if err := conn.RegisterFunc("regexp", regexpFn, false); err != nil {
-				return err
-			}
-			return nil
+			return conn.RegisterFunc("regexp", regexpFn, false)
 		},
 	})
 }
@@ -66,9 +63,10 @@ func init() {
 func New(dbPath string) (*Client, error) {
 	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
 		if err := os.MkdirAll(dbPath, 0755); err != nil {
-			return nil, fmt.Errorf("proj: could not create project directory: %v", err)
+			return nil, fmt.Errorf("proj: could not create project directory: %w", err)
 		}
 	}
+
 	return &Client{
 		dbPath: dbPath,
 	}, nil
@@ -85,17 +83,18 @@ func (c *Client) OpenProject(name string) error {
 
 	dbPath := filepath.Join(c.dbPath, name+".db")
 	dsn := fmt.Sprintf("file:%v?%v", dbPath, opts.Encode())
+
 	db, err := sqlx.Open("sqlite3_with_regexp", dsn)
 	if err != nil {
-		return fmt.Errorf("sqlite: could not open database: %v", err)
+		return fmt.Errorf("sqlite: could not open database: %w", err)
 	}
 
 	if err := db.Ping(); err != nil {
-		return fmt.Errorf("sqlite: could not ping database: %v", err)
+		return fmt.Errorf("sqlite: could not ping database: %w", err)
 	}
 
 	if err := prepareSchema(db); err != nil {
-		return fmt.Errorf("sqlite: could not prepare schema: %v", err)
+		return fmt.Errorf("sqlite: could not prepare schema: %w", err)
 	}
 
 	c.db = db
@@ -107,10 +106,11 @@ func (c *Client) OpenProject(name string) error {
 func (c *Client) Projects() ([]proj.Project, error) {
 	files, err := ioutil.ReadDir(c.dbPath)
 	if err != nil {
-		return nil, fmt.Errorf("sqlite: could not read projects directory: %v", err)
+		return nil, fmt.Errorf("sqlite: could not read projects directory: %w", err)
 	}
 
 	projects := make([]proj.Project, len(files))
+
 	for i, file := range files {
 		projName := strings.TrimSuffix(file.Name(), ".db")
 		projects[i] = proj.Project{
@@ -132,7 +132,7 @@ func prepareSchema(db *sqlx.DB) error {
 		timestamp DATETIME
 	)`)
 	if err != nil {
-		return fmt.Errorf("could not create http_requests table: %v", err)
+		return fmt.Errorf("could not create http_requests table: %w", err)
 	}
 
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS http_responses (
@@ -145,7 +145,7 @@ func prepareSchema(db *sqlx.DB) error {
 		timestamp DATETIME
 	)`)
 	if err != nil {
-		return fmt.Errorf("could not create http_responses table: %v", err)
+		return fmt.Errorf("could not create http_responses table: %w", err)
 	}
 
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS http_headers (
@@ -156,7 +156,7 @@ func prepareSchema(db *sqlx.DB) error {
 		value TEXT
 	)`)
 	if err != nil {
-		return fmt.Errorf("could not create http_headers table: %v", err)
+		return fmt.Errorf("could not create http_headers table: %w", err)
 	}
 
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS settings (
@@ -164,7 +164,7 @@ func prepareSchema(db *sqlx.DB) error {
 		settings TEXT
 	)`)
 	if err != nil {
-		return fmt.Errorf("could not create settings table: %v", err)
+		return fmt.Errorf("could not create settings table: %w", err)
 	}
 
 	return nil
@@ -175,8 +175,9 @@ func (c *Client) Close() error {
 	if c.db == nil {
 		return nil
 	}
+
 	if err := c.db.Close(); err != nil {
-		return fmt.Errorf("sqlite: could not close database: %v", err)
+		return fmt.Errorf("sqlite: could not close database: %w", err)
 	}
 
 	c.db = nil
@@ -187,7 +188,7 @@ func (c *Client) Close() error {
 
 func (c *Client) DeleteProject(name string) error {
 	if err := os.Remove(filepath.Join(c.dbPath, name+".db")); err != nil {
-		return fmt.Errorf("sqlite: could not remove database file: %v", err)
+		return fmt.Errorf("sqlite: could not remove database file: %w", err)
 	}
 
 	return nil
@@ -219,10 +220,12 @@ func (c *Client) ClearRequestLogs(ctx context.Context) error {
 	if c.db == nil {
 		return proj.ErrNoProject
 	}
+
 	_, err := c.db.Exec("DELETE FROM http_requests")
 	if err != nil {
-		return fmt.Errorf("sqlite: could not delete requests: %v", err)
+		return fmt.Errorf("sqlite: could not delete requests: %w", err)
 	}
+
 	return nil
 }
 
@@ -247,11 +250,13 @@ func (c *Client) FindRequestLogs(
 
 	if filter.OnlyInScope && scope != nil {
 		var ruleExpr []sq.Sqlizer
+
 		for _, rule := range scope.Rules() {
 			if rule.URL != nil {
 				ruleExpr = append(ruleExpr, sq.Expr("regexp(?, req.url)", rule.URL.String()))
 			}
 		}
+
 		if len(ruleExpr) > 0 {
 			reqQuery = reqQuery.Where(sq.Or(ruleExpr))
 		}
@@ -260,37 +265,41 @@ func (c *Client) FindRequestLogs(
 	if filter.SearchExpr != nil {
 		sqlizer, err := parseSearchExpr(filter.SearchExpr)
 		if err != nil {
-			return nil, fmt.Errorf("sqlite: could not parse search expression: %v", err)
+			return nil, fmt.Errorf("sqlite: could not parse search expression: %w", err)
 		}
+
 		reqQuery = reqQuery.Where(sqlizer)
 	}
 
 	sql, args, err := reqQuery.ToSql()
 	if err != nil {
-		return nil, fmt.Errorf("sqlite: could not parse query: %v", err)
+		return nil, fmt.Errorf("sqlite: could not parse query: %w", err)
 	}
 
 	rows, err := c.db.QueryxContext(ctx, sql, args...)
 	if err != nil {
-		return nil, fmt.Errorf("sqlite: could not execute query: %v", err)
+		return nil, fmt.Errorf("sqlite: could not execute query: %w", err)
 	}
 	defer rows.Close()
 
 	for rows.Next() {
 		var dto httpRequest
+
 		err = rows.StructScan(&dto)
 		if err != nil {
-			return nil, fmt.Errorf("sqlite: could not scan row: %v", err)
+			return nil, fmt.Errorf("sqlite: could not scan row: %w", err)
 		}
+
 		reqLogs = append(reqLogs, dto.toRequestLog())
 	}
+
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("sqlite: could not iterate over rows: %v", err)
+		return nil, fmt.Errorf("sqlite: could not iterate over rows: %w", err)
 	}
-	rows.Close()
+	defer rows.Close()
 
 	if err := c.queryHeaders(ctx, httpReqLogsQuery, reqLogs); err != nil {
-		return nil, fmt.Errorf("sqlite: could not query headers: %v", err)
+		return nil, fmt.Errorf("sqlite: could not query headers: %w", err)
 	}
 
 	return reqLogs, nil
@@ -300,35 +309,38 @@ func (c *Client) FindRequestLogByID(ctx context.Context, id int64) (reqlog.Reque
 	if c.db == nil {
 		return reqlog.Request{}, proj.ErrNoProject
 	}
-	httpReqLogsQuery := parseHTTPRequestLogsQuery(ctx)
 
+	httpReqLogsQuery := parseHTTPRequestLogsQuery(ctx)
 	reqQuery := sq.
 		Select(httpReqLogsQuery.requestCols...).
 		From("http_requests req").
 		Where("req.id = ?")
+
 	if httpReqLogsQuery.joinResponse {
 		reqQuery = reqQuery.LeftJoin("http_responses res ON req.id = res.req_id")
 	}
 
 	reqSQL, _, err := reqQuery.ToSql()
 	if err != nil {
-		return reqlog.Request{}, fmt.Errorf("sqlite: could not parse query: %v", err)
+		return reqlog.Request{}, fmt.Errorf("sqlite: could not parse query: %w", err)
 	}
 
 	row := c.db.QueryRowxContext(ctx, reqSQL, id)
-	var dto httpRequest
-	err = row.StructScan(&dto)
-	if err == sql.ErrNoRows {
-		return reqlog.Request{}, reqlog.ErrRequestNotFound
-	}
-	if err != nil {
-		return reqlog.Request{}, fmt.Errorf("sqlite: could not scan row: %v", err)
-	}
-	reqLog := dto.toRequestLog()
 
+	var dto httpRequest
+
+	err = row.StructScan(&dto)
+	if errors.Is(err, sql.ErrNoRows) {
+		return reqlog.Request{}, reqlog.ErrRequestNotFound
+	} else if err != nil {
+		return reqlog.Request{}, fmt.Errorf("sqlite: could not scan row: %w", err)
+	}
+
+	reqLog := dto.toRequestLog()
 	reqLogs := []reqlog.Request{reqLog}
+
 	if err := c.queryHeaders(ctx, httpReqLogsQuery, reqLogs); err != nil {
-		return reqlog.Request{}, fmt.Errorf("sqlite: could not query headers: %v", err)
+		return reqlog.Request{}, fmt.Errorf("sqlite: could not query headers: %w", err)
 	}
 
 	return reqLogs[0], nil
@@ -352,8 +364,9 @@ func (c *Client) AddRequestLog(
 
 	tx, err := c.db.BeginTxx(ctx, nil)
 	if err != nil {
-		return nil, fmt.Errorf("sqlite: could not start transaction: %v", err)
+		return nil, fmt.Errorf("sqlite: could not start transaction: %w", err)
 	}
+
 	defer tx.Rollback()
 
 	reqStmt, err := tx.PrepareContext(ctx, `INSERT INTO http_requests (
@@ -364,7 +377,7 @@ func (c *Client) AddRequestLog(
 		timestamp
 	) VALUES (?, ?, ?, ?, ?)`)
 	if err != nil {
-		return nil, fmt.Errorf("sqlite: could not prepare statement: %v", err)
+		return nil, fmt.Errorf("sqlite: could not prepare statement: %w", err)
 	}
 	defer reqStmt.Close()
 
@@ -376,13 +389,14 @@ func (c *Client) AddRequestLog(
 		reqLog.Timestamp,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("sqlite: could not execute statement: %v", err)
+		return nil, fmt.Errorf("sqlite: could not execute statement: %w", err)
 	}
 
 	reqID, err := result.LastInsertId()
 	if err != nil {
-		return nil, fmt.Errorf("sqlite: could not get last insert ID: %v", err)
+		return nil, fmt.Errorf("sqlite: could not get last insert ID: %w", err)
 	}
+
 	reqLog.ID = reqID
 
 	headerStmt, err := tx.PrepareContext(ctx, `INSERT INTO http_headers (
@@ -391,17 +405,17 @@ func (c *Client) AddRequestLog(
 		value
 	) VALUES (?, ?, ?)`)
 	if err != nil {
-		return nil, fmt.Errorf("sqlite: could not prepare statement: %v", err)
+		return nil, fmt.Errorf("sqlite: could not prepare statement: %w", err)
 	}
 	defer headerStmt.Close()
 
 	err = insertHeaders(ctx, headerStmt, reqID, reqLog.Request.Header)
 	if err != nil {
-		return nil, fmt.Errorf("sqlite: could not insert http headers: %v", err)
+		return nil, fmt.Errorf("sqlite: could not insert http headers: %w", err)
 	}
 
 	if err := tx.Commit(); err != nil {
-		return nil, fmt.Errorf("sqlite: could not commit transaction: %v", err)
+		return nil, fmt.Errorf("sqlite: could not commit transaction: %w", err)
 	}
 
 	return reqLog, nil
@@ -424,9 +438,10 @@ func (c *Client) AddResponseLog(
 		Body:      body,
 		Timestamp: timestamp,
 	}
+
 	tx, err := c.db.BeginTx(ctx, nil)
 	if err != nil {
-		return nil, fmt.Errorf("sqlite: could not start transaction: %v", err)
+		return nil, fmt.Errorf("sqlite: could not start transaction: %w", err)
 	}
 	defer tx.Rollback()
 
@@ -439,7 +454,7 @@ func (c *Client) AddResponseLog(
 		timestamp
 	) VALUES (?, ?, ?, ?, ?, ?)`)
 	if err != nil {
-		return nil, fmt.Errorf("sqlite: could not prepare statement: %v", err)
+		return nil, fmt.Errorf("sqlite: could not prepare statement: %w", err)
 	}
 	defer resStmt.Close()
 
@@ -457,13 +472,14 @@ func (c *Client) AddResponseLog(
 		resLog.Timestamp,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("sqlite: could not execute statement: %v", err)
+		return nil, fmt.Errorf("sqlite: could not execute statement: %w", err)
 	}
 
 	resID, err := result.LastInsertId()
 	if err != nil {
-		return nil, fmt.Errorf("sqlite: could not get last insert ID: %v", err)
+		return nil, fmt.Errorf("sqlite: could not get last insert ID: %w", err)
 	}
+
 	resLog.ID = resID
 
 	headerStmt, err := tx.PrepareContext(ctx, `INSERT INTO http_headers (
@@ -472,17 +488,17 @@ func (c *Client) AddResponseLog(
 		value
 	) VALUES (?, ?, ?)`)
 	if err != nil {
-		return nil, fmt.Errorf("sqlite: could not prepare statement: %v", err)
+		return nil, fmt.Errorf("sqlite: could not prepare statement: %w", err)
 	}
 	defer headerStmt.Close()
 
 	err = insertHeaders(ctx, headerStmt, resID, resLog.Response.Header)
 	if err != nil {
-		return nil, fmt.Errorf("sqlite: could not insert http headers: %v", err)
+		return nil, fmt.Errorf("sqlite: could not insert http headers: %w", err)
 	}
 
 	if err := tx.Commit(); err != nil {
-		return nil, fmt.Errorf("sqlite: could not commit transaction: %v", err)
+		return nil, fmt.Errorf("sqlite: could not commit transaction: %w", err)
 	}
 
 	return resLog, nil
@@ -496,14 +512,14 @@ func (c *Client) UpsertSettings(ctx context.Context, module string, settings int
 
 	jsonSettings, err := json.Marshal(settings)
 	if err != nil {
-		return fmt.Errorf("sqlite: could not encode settings as JSON: %v", err)
+		return fmt.Errorf("sqlite: could not encode settings as JSON: %w", err)
 	}
 
 	_, err = c.db.ExecContext(ctx,
 		`INSERT INTO settings (module, settings) VALUES (?, ?)
 		ON CONFLICT(module) DO UPDATE SET settings = ?`, module, jsonSettings, jsonSettings)
 	if err != nil {
-		return fmt.Errorf("sqlite: could not insert scope settings: %v", err)
+		return fmt.Errorf("sqlite: could not insert scope settings: %w", err)
 	}
 
 	return nil
@@ -515,17 +531,18 @@ func (c *Client) FindSettingsByModule(ctx context.Context, module string, settin
 	}
 
 	var jsonSettings []byte
+
 	row := c.db.QueryRowContext(ctx, `SELECT settings FROM settings WHERE module = ?`, module)
+
 	err := row.Scan(&jsonSettings)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return proj.ErrNoSettings
-	}
-	if err != nil {
-		return fmt.Errorf("sqlite: could not scan row: %v", err)
+	} else if err != nil {
+		return fmt.Errorf("sqlite: could not scan row: %w", err)
 	}
 
 	if err := json.Unmarshal(jsonSettings, &settings); err != nil {
-		return fmt.Errorf("sqlite: could not decode settings from JSON: %v", err)
+		return fmt.Errorf("sqlite: could not decode settings from JSON: %w", err)
 	}
 
 	return nil
@@ -535,42 +552,46 @@ func insertHeaders(ctx context.Context, stmt *sql.Stmt, id int64, headers http.H
 	for key, values := range headers {
 		for _, value := range values {
 			if _, err := stmt.ExecContext(ctx, id, key, value); err != nil {
-				return fmt.Errorf("could not execute statement: %v", err)
+				return fmt.Errorf("could not execute statement: %w", err)
 			}
 		}
 	}
+
 	return nil
 }
 
 func findHeaders(ctx context.Context, stmt *sql.Stmt, id int64) (http.Header, error) {
 	headers := make(http.Header)
+
 	rows, err := stmt.QueryContext(ctx, id)
 	if err != nil {
-		return nil, fmt.Errorf("sqlite: could not execute query: %v", err)
+		return nil, fmt.Errorf("sqlite: could not execute query: %w", err)
 	}
 	defer rows.Close()
 
 	for rows.Next() {
 		var key, value string
-		err := rows.Scan(
-			&key,
-			&value,
-		)
+
+		err := rows.Scan(&key, &value)
 		if err != nil {
-			return nil, fmt.Errorf("sqlite: could not scan row: %v", err)
+			return nil, fmt.Errorf("sqlite: could not scan row: %w", err)
 		}
+
 		headers.Add(key, value)
 	}
+
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("sqlite: could not iterate over rows: %v", err)
+		return nil, fmt.Errorf("sqlite: could not iterate over rows: %w", err)
 	}
 
 	return headers, nil
 }
 
 func parseHTTPRequestLogsQuery(ctx context.Context) httpRequestLogsQuery {
-	var joinResponse bool
-	var reqHeaderCols, resHeaderCols []string
+	var (
+		joinResponse                 bool
+		reqHeaderCols, resHeaderCols []string
+	)
 
 	opCtx := graphql.GetOperationContext(ctx)
 	reqFields := graphql.CollectFieldsCtx(ctx, nil)
@@ -580,6 +601,7 @@ func parseHTTPRequestLogsQuery(ctx context.Context) httpRequestLogsQuery {
 		if col, ok := reqFieldToColumnMap[reqField.Name]; ok {
 			reqCols = append(reqCols, "req."+col)
 		}
+
 		if reqField.Name == "headers" {
 			headerFields := graphql.CollectFields(opCtx, reqField.Selections, nil)
 			for _, headerField := range headerFields {
@@ -588,19 +610,23 @@ func parseHTTPRequestLogsQuery(ctx context.Context) httpRequestLogsQuery {
 				}
 			}
 		}
+
 		if reqField.Name == "response" {
 			joinResponse = true
 			resFields := graphql.CollectFields(opCtx, reqField.Selections, nil)
+
 			for _, resField := range resFields {
 				if resField.Name == "headers" {
 					reqCols = append(reqCols, "res.id AS res_id")
 					headerFields := graphql.CollectFields(opCtx, resField.Selections, nil)
+
 					for _, headerField := range headerFields {
 						if col, ok := headerFieldToColumnMap[headerField.Name]; ok {
 							resHeaderCols = append(resHeaderCols, col)
 						}
 					}
 				}
+
 				if col, ok := resFieldToColumnMap[resField.Name]; ok {
 					reqCols = append(reqCols, "res."+col)
 				}
@@ -627,18 +653,21 @@ func (c *Client) queryHeaders(
 			From("http_headers").Where("req_id = ?").
 			ToSql()
 		if err != nil {
-			return fmt.Errorf("could not parse request headers query: %v", err)
+			return fmt.Errorf("could not parse request headers query: %w", err)
 		}
+
 		reqHeadersStmt, err := c.db.PrepareContext(ctx, reqHeadersQuery)
 		if err != nil {
-			return fmt.Errorf("could not prepare statement: %v", err)
+			return fmt.Errorf("could not prepare statement: %w", err)
 		}
 		defer reqHeadersStmt.Close()
+
 		for i := range reqLogs {
 			headers, err := findHeaders(ctx, reqHeadersStmt, reqLogs[i].ID)
 			if err != nil {
-				return fmt.Errorf("could not query request headers: %v", err)
+				return fmt.Errorf("could not query request headers: %w", err)
 			}
+
 			reqLogs[i].Request.Header = headers
 		}
 	}
@@ -649,21 +678,25 @@ func (c *Client) queryHeaders(
 			From("http_headers").Where("res_id = ?").
 			ToSql()
 		if err != nil {
-			return fmt.Errorf("could not parse response headers query: %v", err)
+			return fmt.Errorf("could not parse response headers query: %w", err)
 		}
+
 		resHeadersStmt, err := c.db.PrepareContext(ctx, resHeadersQuery)
 		if err != nil {
-			return fmt.Errorf("could not prepare statement: %v", err)
+			return fmt.Errorf("could not prepare statement: %w", err)
 		}
 		defer resHeadersStmt.Close()
+
 		for i := range reqLogs {
 			if reqLogs[i].Response == nil {
 				continue
 			}
+
 			headers, err := findHeaders(ctx, resHeadersStmt, reqLogs[i].Response.ID)
 			if err != nil {
-				return fmt.Errorf("could not query response headers: %v", err)
+				return fmt.Errorf("could not query response headers: %w", err)
 			}
+
 			reqLogs[i].Response.Response.Header = headers
 		}
 	}

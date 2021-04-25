@@ -43,7 +43,7 @@ func (u *reqURL) Scan(value interface{}) error {
 
 	parsed, err := url.Parse(rawURL)
 	if err != nil {
-		return fmt.Errorf("sqlite: could not parse URL: %v", err)
+		return fmt.Errorf("sqlite: could not parse URL: %w", err)
 	}
 
 	*u = reqURL(*parsed)

@@ -6,6 +6,7 @@ import (
 	"sort"
 
 	sq "github.com/Masterminds/squirrel"
+
 	"github.com/dstotijn/hetty/pkg/search"
 )
 
@@ -57,20 +58,24 @@ func parseInfixExpr(expr *search.InfixExpression) (sq.Sqlizer, error) {
 		if err != nil {
 			return nil, err
 		}
+
 		right, err := parseSearchExpr(expr.Right)
 		if err != nil {
 			return nil, err
 		}
+
 		return sq.And{left, right}, nil
 	case search.TokOpOr:
 		left, err := parseSearchExpr(expr.Left)
 		if err != nil {
 			return nil, err
 		}
+
 		right, err := parseSearchExpr(expr.Right)
 		if err != nil {
 			return nil, err
 		}
+
 		return sq.Or{left, right}, nil
 	}
 
@@ -78,6 +83,7 @@ func parseInfixExpr(expr *search.InfixExpression) (sq.Sqlizer, error) {
 	if !ok {
 		return nil, errors.New("left operand must be a string literal")
 	}
+
 	right, ok := expr.Right.(*search.StringLiteral)
 	if !ok {
 		return nil, errors.New("right operand must be a string literal")
@@ -113,14 +119,17 @@ func parseInfixExpr(expr *search.InfixExpression) (sq.Sqlizer, error) {
 func parseStringLiteral(strLiteral *search.StringLiteral) (sq.Sqlizer, error) {
 	// Sorting is not necessary, but makes it easier to do assertions in tests.
 	sortedKeys := make([]string, 0, len(stringLiteralMap))
+
 	for _, v := range stringLiteralMap {
 		sortedKeys = append(sortedKeys, v)
 	}
+
 	sort.Strings(sortedKeys)
 
 	or := make(sq.Or, len(stringLiteralMap))
 	for i, value := range sortedKeys {
 		or[i] = sq.Like{value: "%" + strLiteral.Value + "%"}
 	}
+
 	return or, nil
 }

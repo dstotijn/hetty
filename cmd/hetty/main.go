@@ -2,25 +2,27 @@ package main
 
 import (
 	"crypto/tls"
+	"errors"
 	"flag"
+	"fmt"
 	"log"
 	"net"
 	"net/http"
 	"os"
 	"strings"
 
+	"github.com/99designs/gqlgen/graphql/handler"
+	"github.com/99designs/gqlgen/graphql/playground"
 	rice "github.com/GeertJohan/go.rice"
+	"github.com/gorilla/mux"
+	"github.com/mitchellh/go-homedir"
+
 	"github.com/dstotijn/hetty/pkg/api"
 	"github.com/dstotijn/hetty/pkg/db/sqlite"
 	"github.com/dstotijn/hetty/pkg/proj"
 	"github.com/dstotijn/hetty/pkg/proxy"
 	"github.com/dstotijn/hetty/pkg/reqlog"
 	"github.com/dstotijn/hetty/pkg/scope"
-
-	"github.com/99designs/gqlgen/graphql/handler"
-	"github.com/99designs/gqlgen/graphql/playground"
-	"github.com/gorilla/mux"
-	"github.com/mitchellh/go-homedir"
 )
 
 var (
@@ -32,8 +34,16 @@ var (
 )
 
 func main() {
-	flag.StringVar(&caCertFile, "cert", "~/.hetty/hetty_cert.pem", "CA certificate filepath. Creates a new CA certificate if file doesn't exist")
-	flag.StringVar(&caKeyFile, "key", "~/.hetty/hetty_key.pem", "CA private key filepath. Creates a new CA private key if file doesn't exist")
+	if err := run(); err != nil {
+		log.Fatalf("[ERROR]: %v", err)
+	}
+}
+
+func run() error {
+	flag.StringVar(&caCertFile, "cert", "~/.hetty/hetty_cert.pem",
+		"CA certificate filepath. Creates a new CA certificate if file doesn't exist")
+	flag.StringVar(&caKeyFile, "key", "~/.hetty/hetty_key.pem",
+		"CA private key filepath. Creates a new CA private key if file doesn't exist")
 	flag.StringVar(&projPath, "projects", "~/.hetty/projects", "Projects directory path")
 	flag.StringVar(&addr, "addr", ":8080", "TCP address to listen on, in the form \"host:port\"")
 	flag.StringVar(&adminPath, "adminPath", "", "File path to admin build")
@@ -42,32 +52,34 @@ func main() {
 	// Expand `~` in filepaths.
 	caCertFile, err := homedir.Expand(caCertFile)
 	if err != nil {
-		log.Fatalf("[FATAL] Could not parse CA certificate filepath: %v", err)
+		return fmt.Errorf("could not parse CA certificate filepath: %w", err)
 	}
+
 	caKeyFile, err := homedir.Expand(caKeyFile)
 	if err != nil {
-		log.Fatalf("[FATAL] Could not parse CA private key filepath: %v", err)
+		return fmt.Errorf("could not parse CA private key filepath: %w", err)
 	}
+
 	projPath, err := homedir.Expand(projPath)
 	if err != nil {
-		log.Fatalf("[FATAL] Could not parse projects filepath: %v", err)
+		return fmt.Errorf("could not parse projects filepath: %w", err)
 	}
 
 	// Load existing CA certificate and key from disk, or generate and write
 	// to disk if no files exist yet.
 	caCert, caKey, err := proxy.LoadOrCreateCA(caKeyFile, caCertFile)
 	if err != nil {
-		log.Fatalf("[FATAL] Could not create/load CA key pair: %v", err)
+		return fmt.Errorf("could not create/load CA key pair: %w", err)
 	}
 
 	db, err := sqlite.New(projPath)
 	if err != nil {
-		log.Fatalf("[FATAL] Could not initialize database client: %v", err)
+		return fmt.Errorf("could not initialize database client: %w", err)
 	}
 
 	projService, err := proj.NewService(db)
 	if err != nil {
-		log.Fatalf("[FATAL] Could not create new project service: %v", err)
+		return fmt.Errorf("could not create new project service: %w", err)
 	}
 	defer projService.Close()
 
@@ -81,19 +93,21 @@ func main() {
 
 	p, err := proxy.NewProxy(caCert, caKey)
 	if err != nil {
-		log.Fatalf("[FATAL] Could not create Proxy: %v", err)
+		return fmt.Errorf("could not create proxy: %w", err)
 	}
 
 	p.UseRequestModifier(reqLogService.RequestModifier)
 	p.UseResponseModifier(reqLogService.ResponseModifier)
 
 	var adminHandler http.Handler
+
 	if adminPath == "" {
 		// Used for embedding with `rice`.
 		box, err := rice.FindBox("../../admin/dist")
 		if err != nil {
-			log.Fatalf("[FATAL] Could not find embedded admin resources: %v", err)
+			return fmt.Errorf("could not find embedded admin resources: %w", err)
 		}
+
 		adminHandler = http.FileServer(box.HTTPBox())
 	} else {
 		adminHandler = http.FileServer(http.Dir(adminPath))
@@ -109,11 +123,12 @@ func main() {
 
 	// GraphQL server.
 	adminRouter.Path("/api/playground/").Handler(playground.Handler("GraphQL Playground", "/api/graphql/"))
-	adminRouter.Path("/api/graphql/").Handler(handler.NewDefaultServer(api.NewExecutableSchema(api.Config{Resolvers: &api.Resolver{
-		RequestLogService: reqLogService,
-		ProjectService:    projService,
-		ScopeService:      scope,
-	}})))
+	adminRouter.Path("/api/graphql/").Handler(
+		handler.NewDefaultServer(api.NewExecutableSchema(api.Config{Resolvers: &api.Resolver{
+			RequestLogService: reqLogService,
+			ProjectService:    projService,
+			ScopeService:      scope,
+		}})))
 
 	// Admin interface.
 	adminRouter.PathPrefix("").Handler(adminHandler)
@@ -128,8 +143,11 @@ func main() {
 	}
 
 	log.Printf("[INFO] Running server on %v ...", addr)
+
 	err = s.ListenAndServe()
-	if err != nil && err != http.ErrServerClosed {
-		log.Fatalf("[FATAL] HTTP server closed: %v", err)
+	if err != nil && errors.Is(err, http.ErrServerClosed) {
+		return fmt.Errorf("http server closed unexpected: %w", err)
 	}
+
+	return nil
 }

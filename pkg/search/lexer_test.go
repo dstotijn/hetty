@@ -3,6 +3,8 @@ package search
 import "testing"
 
 func TestNextToken(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name     string
 		input    string

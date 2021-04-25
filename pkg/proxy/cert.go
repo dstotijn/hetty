@@ -25,7 +25,7 @@ import (
 var MaxSerialNumber = big.NewInt(0).SetBytes(bytes.Repeat([]byte{255}, 20))
 
 // CertConfig is a set of configuration values that are used to build TLS configs
-// capable of MITM
+// capable of MITM.
 type CertConfig struct {
 	ca     *x509.Certificate
 	caPriv crypto.PrivateKey
@@ -40,6 +40,7 @@ func NewCertConfig(ca *x509.Certificate, caPrivKey crypto.PrivateKey) (*CertConf
 	if err != nil {
 		return nil, err
 	}
+
 	pub := priv.Public()
 
 	// Subject Key Identifier support for end entity certificate.
@@ -48,6 +49,7 @@ func NewCertConfig(ca *x509.Certificate, caPrivKey crypto.PrivateKey) (*CertConf
 	if err != nil {
 		return nil, err
 	}
+
 	h := sha1.New()
 	h.Write(pkixPubKey)
 	keyID := h.Sum(nil)
@@ -67,58 +69,69 @@ func LoadOrCreateCA(caKeyFile, caCertFile string) (*x509.Certificate, *rsa.Priva
 	if err == nil {
 		caCert, err := x509.ParseCertificate(tlsCA.Certificate[0])
 		if err != nil {
-			return nil, nil, fmt.Errorf("proxy: could not parse CA: %v", err)
+			return nil, nil, fmt.Errorf("proxy: could not parse CA: %w", err)
 		}
+
 		caKey, ok := tlsCA.PrivateKey.(*rsa.PrivateKey)
 		if !ok {
 			return nil, nil, errors.New("proxy: private key is not RSA")
 		}
+
 		return caCert, caKey, nil
 	}
+
 	if !os.IsNotExist(err) {
-		return nil, nil, fmt.Errorf("proxy: could not load CA key pair: %v", err)
+		return nil, nil, fmt.Errorf("proxy: could not load CA key pair: %w", err)
 	}
 
 	// Create directories for files if they don't exist yet.
 	keyDir, _ := filepath.Split(caKeyFile)
 	if keyDir != "" {
 		if _, err := os.Stat(keyDir); os.IsNotExist(err) {
-			os.MkdirAll(keyDir, 0755)
+			if err := os.MkdirAll(keyDir, 0755); err != nil {
+				return nil, nil, fmt.Errorf("proxy: could not create directory for CA key: %w", err)
+			}
 		}
 	}
+
 	keyDir, _ = filepath.Split(caCertFile)
 	if keyDir != "" {
 		if _, err := os.Stat("keyDir"); os.IsNotExist(err) {
-			os.MkdirAll(keyDir, 0755)
+			if err := os.MkdirAll(keyDir, 0755); err != nil {
+				return nil, nil, fmt.Errorf("proxy: could not create directory for CA cert: %w", err)
+			}
 		}
 	}
 
 	// Create new CA keypair.
-	caCert, caKey, err := NewCA("Hetty", "Hetty CA", time.Duration(365*24*time.Hour))
+	caCert, caKey, err := NewCA("Hetty", "Hetty CA", 365*24*time.Hour)
 	if err != nil {
-		return nil, nil, fmt.Errorf("proxy: could not generate new CA keypair: %v", err)
+		return nil, nil, fmt.Errorf("proxy: could not generate new CA keypair: %w", err)
 	}
 
 	// Open CA certificate and key files for writing.
 	certOut, err := os.Create(caCertFile)
 	if err != nil {
-		return nil, nil, fmt.Errorf("proxy: could not open cert file for writing: %v", err)
+		return nil, nil, fmt.Errorf("proxy: could not open cert file for writing: %w", err)
 	}
+
 	keyOut, err := os.OpenFile(caKeyFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
-		return nil, nil, fmt.Errorf("proxy: could not open key file for writing: %v", err)
+		return nil, nil, fmt.Errorf("proxy: could not open key file for writing: %w", err)
 	}
 
 	// Write PEM blocks to CA certificate and key files.
 	if err := pem.Encode(certOut, &pem.Block{Type: "CERTIFICATE", Bytes: caCert.Raw}); err != nil {
-		return nil, nil, fmt.Errorf("proxy: could not write CA certificate to disk: %v", err)
+		return nil, nil, fmt.Errorf("proxy: could not write CA certificate to disk: %w", err)
 	}
+
 	privBytes, err := x509.MarshalPKCS8PrivateKey(caKey)
 	if err != nil {
-		return nil, nil, fmt.Errorf("proxy: could not convert private key to DER format: %v", err)
+		return nil, nil, fmt.Errorf("proxy: could not convert private key to DER format: %w", err)
 	}
+
 	if err := pem.Encode(keyOut, &pem.Block{Type: "PRIVATE KEY", Bytes: privBytes}); err != nil {
-		return nil, nil, fmt.Errorf("proxy: could not write CA key to disk: %v", err)
+		return nil, nil, fmt.Errorf("proxy: could not write CA key to disk: %w", err)
 	}
 
 	return caCert, caKey, nil
@@ -130,6 +143,7 @@ func NewCA(name, organization string, validity time.Duration) (*x509.Certificate
 	if err != nil {
 		return nil, nil, err
 	}
+
 	pub := priv.Public()
 
 	// Subject Key Identifier support for end entity certificate.
@@ -138,6 +152,7 @@ func NewCA(name, organization string, validity time.Duration) (*x509.Certificate
 	if err != nil {
 		return nil, nil, err
 	}
+
 	h := sha1.New()
 	h.Write(pkixpub)
 	keyID := h.Sum(nil)
@@ -187,8 +202,10 @@ func (c *CertConfig) TLSConfig() *tls.Config {
 			if clientHello.ServerName == "" {
 				return nil, errors.New("missing server name (SNI)")
 			}
+
 			return c.cert(clientHello.ServerName)
 		},
+		MinVersion: tls.VersionTLS12,
 		NextProtos: []string{"http/1.1"},
 	}
 }

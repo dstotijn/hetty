@@ -24,9 +24,7 @@ const LogBypassedKey contextKey = 0
 
 const moduleName = "reqlog"
 
-var (
-	ErrRequestNotFound = errors.New("reqlog: request not found")
-)
+var ErrRequestNotFound = errors.New("reqlog: request not found")
 
 type Request struct {
 	ID        int64
@@ -74,12 +72,13 @@ func NewService(cfg Config) *Service {
 
 	cfg.ProjectService.OnProjectOpen(func(_ string) error {
 		err := svc.loadSettings()
-		if err == proj.ErrNoSettings {
+		if errors.Is(err, proj.ErrNoSettings) {
 			return nil
 		}
 		if err != nil {
-			return fmt.Errorf("reqlog: could not load settings: %v", err)
+			return fmt.Errorf("reqlog: could not load settings: %w", err)
 		}
+
 		return nil
 	})
 	cfg.ProjectService.OnProjectClose(func(_ string) error {
@@ -126,12 +125,13 @@ func (svc *Service) addResponse(
 	if res.Header.Get("Content-Encoding") == "gzip" {
 		gzipReader, err := gzip.NewReader(bytes.NewBuffer(body))
 		if err != nil {
-			return nil, fmt.Errorf("reqlog: could not create gzip reader: %v", err)
+			return nil, fmt.Errorf("reqlog: could not create gzip reader: %w", err)
 		}
 		defer gzipReader.Close()
+
 		body, err = ioutil.ReadAll(gzipReader)
 		if err != nil {
-			return nil, fmt.Errorf("reqlog: could not read gzipped response body: %v", err)
+			return nil, fmt.Errorf("reqlog: could not read gzipped response body: %w", err)
 		}
 	}
 
@@ -141,18 +141,23 @@ func (svc *Service) addResponse(
 func (svc *Service) RequestModifier(next proxy.RequestModifyFunc) proxy.RequestModifyFunc {
 	return func(req *http.Request) {
 		now := time.Now()
+
 		next(req)
 
 		clone := req.Clone(req.Context())
+
 		var body []byte
+
 		if req.Body != nil {
 			// TODO: Use io.LimitReader.
 			var err error
+
 			body, err = ioutil.ReadAll(req.Body)
 			if err != nil {
 				log.Printf("[ERROR] Could not read request body for logging: %v", err)
 				return
 			}
+
 			req.Body = ioutil.NopCloser(bytes.NewBuffer(body))
 		}
 
@@ -161,19 +166,21 @@ func (svc *Service) RequestModifier(next proxy.RequestModifyFunc) proxy.RequestM
 		if svc.BypassOutOfScopeRequests && !svc.scope.Match(clone, body) {
 			ctx := context.WithValue(req.Context(), LogBypassedKey, true)
 			*req = *req.WithContext(ctx)
+
 			return
 		}
 
 		reqLog, err := svc.addRequest(req.Context(), *clone, body, now)
-		if err == proj.ErrNoProject {
+		if errors.Is(err, proj.ErrNoProject) {
 			ctx := context.WithValue(req.Context(), LogBypassedKey, true)
 			*req = *req.WithContext(ctx)
+
 			return
-		}
-		if err != nil {
+		} else if err != nil {
 			log.Printf("[ERROR] Could not store request log: %v", err)
 			return
 		}
+
 		ctx := context.WithValue(req.Context(), proxy.ReqIDKey, reqLog.ID)
 		*req = *req.WithContext(ctx)
 	}
@@ -182,6 +189,7 @@ func (svc *Service) RequestModifier(next proxy.RequestModifyFunc) proxy.RequestM
 func (svc *Service) ResponseModifier(next proxy.ResponseModifyFunc) proxy.ResponseModifyFunc {
 	return func(res *http.Response) error {
 		now := time.Now()
+
 		if err := next(res); err != nil {
 			return err
 		}
@@ -200,8 +208,9 @@ func (svc *Service) ResponseModifier(next proxy.ResponseModifyFunc) proxy.Respon
 		// TODO: Use io.LimitReader.
 		body, err := ioutil.ReadAll(res.Body)
 		if err != nil {
-			return fmt.Errorf("reqlog: could not read response body: %v", err)
+			return fmt.Errorf("reqlog: could not read response body: %w", err)
 		}
+
 		res.Body = ioutil.NopCloser(bytes.NewBuffer(body))
 
 		go func() {
@@ -220,6 +229,7 @@ func (f *FindRequestsFilter) UnmarshalJSON(b []byte) error {
 		OnlyInScope   bool
 		RawSearchExpr string
 	}
+
 	if err := json.Unmarshal(b, &dto); err != nil {
 		return err
 	}
@@ -234,6 +244,7 @@ func (f *FindRequestsFilter) UnmarshalJSON(b []byte) error {
 		if err != nil {
 			return err
 		}
+
 		filter.SearchExpr = expr
 	}
 

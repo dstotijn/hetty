@@ -18,8 +18,10 @@ const (
 	precGroup
 )
 
-type prefixParser func(*Parser) (Expression, error)
-type infixParser func(*Parser, Expression) (Expression, error)
+type (
+	prefixParser func(*Parser) (Expression, error)
+	infixParser  func(*Parser, Expression) (Expression, error)
+)
 
 var (
 	prefixParsers = map[TokenType]prefixParser{}
@@ -77,7 +79,6 @@ func NewParser(l *Lexer) *Parser {
 	p.nextToken()
 
 	return p
-
 }
 
 func ParseQuery(input string) (expr Expression, err error) {
@@ -91,18 +92,20 @@ func ParseQuery(input string) (expr Expression, err error) {
 
 	for !p.curTokenIs(TokEOF) {
 		right, err := p.parseExpression(precLowest)
-		if err != nil {
-			return nil, fmt.Errorf("search: could not parse expression: %v", err)
-		}
-		if expr == nil {
+
+		switch {
+		case err != nil:
+			return nil, fmt.Errorf("search: could not parse expression: %w", err)
+		case expr == nil:
 			expr = right
-		} else {
+		default:
 			expr = &InfixExpression{
 				Operator: TokOpAnd,
 				Left:     expr,
 				Right:    right,
 			}
 		}
+
 		p.nextToken()
 	}
 
@@ -122,18 +125,11 @@ func (p *Parser) peekTokenIs(t TokenType) bool {
 	return p.peek.Type == t
 }
 
-func (p *Parser) expectPeek(t TokenType) error {
-	if !p.peekTokenIs(t) {
-		return fmt.Errorf("expected next token to be %v, got %v", t, p.peek.Type)
-	}
-	p.nextToken()
-	return nil
-}
-
 func (p *Parser) curPrecedence() precedence {
 	if p, ok := tokenPrecedences[p.cur.Type]; ok {
 		return p
 	}
+
 	return precLowest
 }
 
@@ -141,6 +137,7 @@ func (p *Parser) peekPrecedence() precedence {
 	if p, ok := tokenPrecedences[p.peek.Type]; ok {
 		return p
 	}
+
 	return precLowest
 }
 
@@ -152,7 +149,7 @@ func (p *Parser) parseExpression(prec precedence) (Expression, error) {
 
 	expr, err := prefixParser(p)
 	if err != nil {
-		return nil, fmt.Errorf("could not parse expression prefix: %v", err)
+		return nil, fmt.Errorf("could not parse expression prefix: %w", err)
 	}
 
 	for !p.peekTokenIs(eof) && prec < p.peekPrecedence() {
@@ -165,7 +162,7 @@ func (p *Parser) parseExpression(prec precedence) (Expression, error) {
 
 		expr, err = infixParser(p, expr)
 		if err != nil {
-			return nil, fmt.Errorf("could not parse infix expression: %v", err)
+			return nil, fmt.Errorf("could not parse infix expression: %w", err)
 		}
 	}
 
@@ -181,8 +178,9 @@ func parsePrefixExpression(p *Parser) (Expression, error) {
 
 	right, err := p.parseExpression(precPrefix)
 	if err != nil {
-		return nil, fmt.Errorf("could not parse expression for right operand: %v", err)
+		return nil, fmt.Errorf("could not parse expression for right operand: %w", err)
 	}
+
 	expr.Right = right
 
 	return expr, nil
@@ -199,8 +197,9 @@ func parseInfixExpression(p *Parser, left Expression) (Expression, error) {
 
 	right, err := p.parseExpression(prec)
 	if err != nil {
-		return nil, fmt.Errorf("could not parse expression for right operand: %v", err)
+		return nil, fmt.Errorf("could not parse expression for right operand: %w", err)
 	}
+
 	expr.Right = right
 
 	return expr, nil
@@ -215,17 +214,19 @@ func parseGroupedExpression(p *Parser) (Expression, error) {
 
 	expr, err := p.parseExpression(precLowest)
 	if err != nil {
-		return nil, fmt.Errorf("could not parse grouped expression: %v", err)
+		return nil, fmt.Errorf("could not parse grouped expression: %w", err)
 	}
 
 	for p.nextToken(); !p.curTokenIs(TokParenClose); p.nextToken() {
 		if p.curTokenIs(TokEOF) {
 			return nil, fmt.Errorf("unexpected EOF: unmatched parentheses")
 		}
+
 		right, err := p.parseExpression(precLowest)
 		if err != nil {
-			return nil, fmt.Errorf("could not parse expression: %v", err)
+			return nil, fmt.Errorf("could not parse expression: %w", err)
 		}
+
 		expr = &InfixExpression{
 			Operator: TokOpAnd,
 			Left:     expr,

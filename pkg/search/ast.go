@@ -11,7 +11,6 @@ type PrefixExpression struct {
 	Right    Expression
 }
 
-func (pe *PrefixExpression) expressionNode() {}
 func (pe *PrefixExpression) String() string {
 	b := strings.Builder{}
 	b.WriteString("(")
@@ -29,7 +28,6 @@ type InfixExpression struct {
 	Right    Expression
 }
 
-func (ie *InfixExpression) expressionNode() {}
 func (ie *InfixExpression) String() string {
 	b := strings.Builder{}
 	b.WriteString("(")
@@ -47,7 +45,6 @@ type StringLiteral struct {
 	Value string
 }
 
-func (sl *StringLiteral) expressionNode() {}
 func (sl *StringLiteral) String() string {
 	return sl.Value
 }

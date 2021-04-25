@@ -1,0 +1,55 @@
+linters:
+  presets:
+    - bugs
+    - comment
+    - error
+    - format
+    - import
+    - metalinter
+    - module
+    - performance
+    - sql
+    - style
+    - test
+    - unused
+  disable:
+    - exhaustive
+    - exhaustivestruct
+    - gochecknoglobals
+    - gochecknoinits
+    - godox
+    - goerr113
+    - gomnd
+    - interfacer
+    - maligned
+    - nlreturn
+    - scopelint 
+    - testpackage
+    - wrapcheck
+
+linters-settings:
+  errcheck:
+    ignore: "database/sql:Rollback"
+  gci:
+    local-prefixes: github.com/dstotijn/hetty
+  godot:
+    capital: true
+    
+issues:
+  exclude-rules:
+    - linters:
+      - gosec
+      # Ignore SHA1 usage.
+      text: "G(401|505):"
+    - linters:
+      - wsl
+      # Ignore cuddled defer statements.
+      text: "only one cuddle assignment allowed before defer statement"
+    - linters:
+      - nlreturn
+      # Ignore `break` without leading blank line.
+      text: "break with no blank line before"
+  
+run:
+  skip-files:
+    - cmd/hetty/rice-box.go

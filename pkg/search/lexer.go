@@ -17,21 +17,21 @@ const eof = 0
 
 // Token types.
 const (
-	// Flow
+	// Flow.
 	TokInvalid TokenType = iota
 	TokEOF
 	TokParenOpen
 	TokParenClose
 
-	// Literals
+	// Literals.
 	TokString
 
-	// Boolean operators
+	// Boolean operators.
 	TokOpNot
 	TokOpAnd
 	TokOpOr
 
-	// Comparison operators
+	// Comparison operators.
 	TokOpEq
 	TokOpNotEq
 	TokOpGt
@@ -98,6 +98,7 @@ func (tt TokenType) String() string {
 	if typeString, ok := tokenTypeStrings[tt]; ok {
 		return typeString
 	}
+
 	return "<unknown>"
 }
 
@@ -113,6 +114,7 @@ func (l *Lexer) read() (r rune) {
 		l.width = 0
 		return eof
 	}
+
 	r, l.width = utf8.DecodeRuneInString(l.input[l.pos:])
 	l.pos += l.width
 
@@ -124,6 +126,7 @@ func (l *Lexer) emit(tokenType TokenType) {
 		Type:    tokenType,
 		Literal: l.input[l.start:l.pos],
 	}
+
 	l.start = l.pos
 }
 
@@ -159,6 +162,7 @@ func begin(l *Lexer) stateFn {
 			l.backup()
 			l.emit(TokOpEq)
 		}
+
 		return begin
 	case '!':
 		switch next := l.read(); next {
@@ -169,6 +173,7 @@ func begin(l *Lexer) stateFn {
 		default:
 			return l.errorf("invalid rune %v", r)
 		}
+
 		return begin
 	case '<':
 		if next := l.read(); next == '=' {
@@ -177,6 +182,7 @@ func begin(l *Lexer) stateFn {
 			l.backup()
 			l.emit(TokOpLt)
 		}
+
 		return begin
 	case '>':
 		if next := l.read(); next == '=' {
@@ -185,6 +191,7 @@ func begin(l *Lexer) stateFn {
 			l.backup()
 			l.emit(TokOpGt)
 		}
+
 		return begin
 	case '(':
 		l.emit(TokParenOpen)
@@ -231,15 +238,18 @@ func unquotedString(l *Lexer) stateFn {
 		case r == eof:
 			l.backup()
 			l.emitUnquotedString()
+
 			return begin
 		case unicode.IsSpace(r):
 			l.backup()
 			l.emitUnquotedString()
 			l.skip()
+
 			return begin
 		case isReserved(r):
 			l.backup()
 			l.emitUnquotedString()
+
 			return begin
 		}
 	}
@@ -251,6 +261,7 @@ func (l *Lexer) emitUnquotedString() {
 		l.emit(tokType)
 		return
 	}
+
 	l.emit(TokString)
 }
 
@@ -260,5 +271,6 @@ func isReserved(r rune) bool {
 			return true
 		}
 	}
+
 	return false
 }

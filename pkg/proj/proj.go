@@ -9,8 +9,10 @@ import (
 	"sync"
 )
 
-type OnProjectOpenFn func(name string) error
-type OnProjectCloseFn func(name string) error
+type (
+	OnProjectOpenFn  func(name string) error
+	OnProjectCloseFn func(name string) error
+)
 
 // Service is used for managing projects.
 type Service struct {
@@ -47,8 +49,9 @@ func (svc *Service) Close() error {
 	defer svc.mu.Unlock()
 
 	closedProject := svc.activeProject
+
 	if err := svc.repo.Close(); err != nil {
-		return fmt.Errorf("proj: could not close project: %v", err)
+		return fmt.Errorf("proj: could not close project: %w", err)
 	}
 
 	svc.activeProject = ""
@@ -63,12 +66,13 @@ func (svc *Service) Delete(name string) error {
 	if name == "" {
 		return errors.New("proj: name cannot be empty")
 	}
+
 	if svc.activeProject == name {
 		return fmt.Errorf("proj: project (%v) is active", name)
 	}
 
 	if err := svc.repo.DeleteProject(name); err != nil {
-		return fmt.Errorf("proj: could not delete project: %v", err)
+		return fmt.Errorf("proj: could not delete project: %w", err)
 	}
 
 	return nil
@@ -85,11 +89,11 @@ func (svc *Service) Open(ctx context.Context, name string) (Project, error) {
 	defer svc.mu.Unlock()
 
 	if err := svc.repo.Close(); err != nil {
-		return Project{}, fmt.Errorf("proj: could not close previously open database: %v", err)
+		return Project{}, fmt.Errorf("proj: could not close previously open database: %w", err)
 	}
 
 	if err := svc.repo.OpenProject(name); err != nil {
-		return Project{}, fmt.Errorf("proj: could not open database: %v", err)
+		return Project{}, fmt.Errorf("proj: could not open database: %w", err)
 	}
 
 	svc.activeProject = name
@@ -115,7 +119,7 @@ func (svc *Service) ActiveProject() (Project, error) {
 func (svc *Service) Projects() ([]Project, error) {
 	projects, err := svc.repo.Projects()
 	if err != nil {
-		return nil, fmt.Errorf("proj: could not get projects: %v", err)
+		return nil, fmt.Errorf("proj: could not get projects: %w", err)
 	}
 
 	return projects, nil

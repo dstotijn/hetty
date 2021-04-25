@@ -4,16 +4,18 @@ package api
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"regexp"
 	"strings"
 
 	"github.com/99designs/gqlgen/graphql"
+	"github.com/vektah/gqlparser/v2/gqlerror"
+
 	"github.com/dstotijn/hetty/pkg/proj"
 	"github.com/dstotijn/hetty/pkg/reqlog"
 	"github.com/dstotijn/hetty/pkg/scope"
 	"github.com/dstotijn/hetty/pkg/search"
-	"github.com/vektah/gqlparser/v2/gqlerror"
 )
 
 type Resolver struct {
@@ -22,20 +24,22 @@ type Resolver struct {
 	ScopeService      *scope.Scope
 }
 
-type queryResolver struct{ *Resolver }
-type mutationResolver struct{ *Resolver }
+type (
+	queryResolver    struct{ *Resolver }
+	mutationResolver struct{ *Resolver }
+)
 
 func (r *Resolver) Query() QueryResolver       { return &queryResolver{r} }
 func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
 
 func (r *queryResolver) HTTPRequestLogs(ctx context.Context) ([]HTTPRequestLog, error) {
 	reqs, err := r.RequestLogService.FindRequests(ctx)
-	if err == proj.ErrNoProject {
+	if errors.Is(err, proj.ErrNoProject) {
 		return nil, noActiveProjectErr(ctx)
+	} else if err != nil {
+		return nil, fmt.Errorf("could not query repository for requests: %w", err)
 	}
-	if err != nil {
-		return nil, fmt.Errorf("could not query repository for requests: %v", err)
-	}
+
 	logs := make([]HTTPRequestLog, len(reqs))
 
 	for i, req := range reqs {
@@ -43,6 +47,7 @@ func (r *queryResolver) HTTPRequestLogs(ctx context.Context) ([]HTTPRequestLog, 
 		if err != nil {
 			return nil, err
 		}
+
 		logs[i] = req
 	}
 
@@ -51,12 +56,12 @@ func (r *queryResolver) HTTPRequestLogs(ctx context.Context) ([]HTTPRequestLog, 
 
 func (r *queryResolver) HTTPRequestLog(ctx context.Context, id int64) (*HTTPRequestLog, error) {
 	log, err := r.RequestLogService.FindRequestLogByID(ctx, id)
-	if err == reqlog.ErrRequestNotFound {
+	if errors.Is(err, reqlog.ErrRequestNotFound) {
 		return nil, nil
+	} else if err != nil {
+		return nil, fmt.Errorf("could not get request by ID: %w", err)
 	}
-	if err != nil {
-		return nil, fmt.Errorf("could not get request by ID: %v", err)
-	}
+
 	req, err := parseRequestLog(log)
 	if err != nil {
 		return nil, err
@@ -89,6 +94,7 @@ func parseRequestLog(req reqlog.Request) (HTTPRequestLog, error) {
 
 	if req.Request.Header != nil {
 		log.Headers = make([]HTTPHeader, 0)
+
 		for key, values := range req.Request.Header {
 			for _, value := range values {
 				log.Headers = append(log.Headers, HTTPHeader{
@@ -106,15 +112,19 @@ func parseRequestLog(req reqlog.Request) (HTTPRequestLog, error) {
 			StatusCode: req.Response.Response.StatusCode,
 		}
 		statusReasonSubs := strings.SplitN(req.Response.Response.Status, " ", 2)
+
 		if len(statusReasonSubs) == 2 {
 			log.Response.StatusReason = statusReasonSubs[1]
 		}
+
 		if len(req.Response.Body) > 0 {
 			resBody := string(req.Response.Body)
 			log.Response.Body = &resBody
 		}
+
 		if req.Response.Response.Header != nil {
 			log.Response.Headers = make([]HTTPHeader, 0)
+
 			for key, values := range req.Response.Response.Header {
 				for _, value := range values {
 					log.Response.Headers = append(log.Response.Headers, HTTPHeader{
@@ -131,12 +141,12 @@ func parseRequestLog(req reqlog.Request) (HTTPRequestLog, error) {
 
 func (r *mutationResolver) OpenProject(ctx context.Context, name string) (*Project, error) {
 	p, err := r.ProjectService.Open(ctx, name)
-	if err == proj.ErrInvalidName {
+	if errors.Is(err, proj.ErrInvalidName) {
 		return nil, gqlerror.Errorf("Project name must only contain alphanumeric or space chars.")
+	} else if err != nil {
+		return nil, fmt.Errorf("could not open project: %w", err)
 	}
-	if err != nil {
-		return nil, fmt.Errorf("could not open project: %v", err)
-	}
+
 	return &Project{
 		Name:     p.Name,
 		IsActive: p.IsActive,
@@ -145,11 +155,10 @@ func (r *mutationResolver) OpenProject(ctx context.Context, name string) (*Proje
 
 func (r *queryResolver) ActiveProject(ctx context.Context) (*Project, error) {
 	p, err := r.ProjectService.ActiveProject()
-	if err == proj.ErrNoProject {
+	if errors.Is(err, proj.ErrNoProject) {
 		return nil, nil
-	}
-	if err != nil {
-		return nil, fmt.Errorf("could not open project: %v", err)
+	} else if err != nil {
+		return nil, fmt.Errorf("could not open project: %w", err)
 	}
 
 	return &Project{
@@ -161,7 +170,7 @@ func (r *queryResolver) ActiveProject(ctx context.Context) (*Project, error) {
 func (r *queryResolver) Projects(ctx context.Context) ([]Project, error) {
 	p, err := r.ProjectService.Projects()
 	if err != nil {
-		return nil, fmt.Errorf("could not get projects: %v", err)
+		return nil, fmt.Errorf("could not get projects: %w", err)
 	}
 
 	projects := make([]Project, len(p))
@@ -184,21 +193,25 @@ func regexpToStringPtr(r *regexp.Regexp) *string {
 	if r == nil {
 		return nil
 	}
+
 	s := r.String()
+
 	return &s
 }
 
 func (r *mutationResolver) CloseProject(ctx context.Context) (*CloseProjectResult, error) {
 	if err := r.ProjectService.Close(); err != nil {
-		return nil, fmt.Errorf("could not close project: %v", err)
+		return nil, fmt.Errorf("could not close project: %w", err)
 	}
+
 	return &CloseProjectResult{true}, nil
 }
 
 func (r *mutationResolver) DeleteProject(ctx context.Context, name string) (*DeleteProjectResult, error) {
 	if err := r.ProjectService.Delete(name); err != nil {
-		return nil, fmt.Errorf("could not delete project: %v", err)
+		return nil, fmt.Errorf("could not delete project: %w", err)
 	}
+
 	return &DeleteProjectResult{
 		Success: true,
 	}, nil
@@ -206,33 +219,40 @@ func (r *mutationResolver) DeleteProject(ctx context.Context, name string) (*Del
 
 func (r *mutationResolver) ClearHTTPRequestLog(ctx context.Context) (*ClearHTTPRequestLogResult, error) {
 	if err := r.RequestLogService.ClearRequests(ctx); err != nil {
-		return nil, fmt.Errorf("could not clear request log: %v", err)
+		return nil, fmt.Errorf("could not clear request log: %w", err)
 	}
+
 	return &ClearHTTPRequestLogResult{true}, nil
 }
 
 func (r *mutationResolver) SetScope(ctx context.Context, input []ScopeRuleInput) ([]ScopeRule, error) {
 	rules := make([]scope.Rule, len(input))
+
 	for i, rule := range input {
 		u, err := stringPtrToRegexp(rule.URL)
 		if err != nil {
-			return nil, fmt.Errorf("invalid URL in scope rule: %v", err)
+			return nil, fmt.Errorf("invalid URL in scope rule: %w", err)
 		}
+
 		var headerKey, headerValue *regexp.Regexp
+
 		if rule.Header != nil {
 			headerKey, err = stringPtrToRegexp(rule.Header.Key)
 			if err != nil {
-				return nil, fmt.Errorf("invalid header key in scope rule: %v", err)
+				return nil, fmt.Errorf("invalid header key in scope rule: %w", err)
 			}
+
 			headerValue, err = stringPtrToRegexp(rule.Header.Key)
 			if err != nil {
-				return nil, fmt.Errorf("invalid header value in scope rule: %v", err)
+				return nil, fmt.Errorf("invalid header value in scope rule: %w", err)
 			}
 		}
+
 		body, err := stringPtrToRegexp(rule.Body)
 		if err != nil {
-			return nil, fmt.Errorf("invalid body in scope rule: %v", err)
+			return nil, fmt.Errorf("invalid body in scope rule: %w", err)
 		}
+
 		rules[i] = scope.Rule{
 			URL: u,
 			Header: scope.Header{
@@ -244,7 +264,7 @@ func (r *mutationResolver) SetScope(ctx context.Context, input []ScopeRuleInput)
 	}
 
 	if err := r.ScopeService.SetRules(ctx, rules); err != nil {
-		return nil, fmt.Errorf("could not set scope: %v", err)
+		return nil, fmt.Errorf("could not set scope: %w", err)
 	}
 
 	return scopeToScopeRules(rules), nil
@@ -260,14 +280,14 @@ func (r *mutationResolver) SetHTTPRequestLogFilter(
 ) (*HTTPRequestLogFilter, error) {
 	filter, err := findRequestsFilterFromInput(input)
 	if err != nil {
-		return nil, fmt.Errorf("could not parse request log filter: %v", err)
+		return nil, fmt.Errorf("could not parse request log filter: %w", err)
 	}
+
 	err = r.RequestLogService.SetRequestLogFilter(ctx, filter)
-	if err == proj.ErrNoProject {
+	if errors.Is(err, proj.ErrNoProject) {
 		return nil, noActiveProjectErr(ctx)
-	}
-	if err != nil {
-		return nil, fmt.Errorf("could not set request log filter: %v", err)
+	} else if err != nil {
+		return nil, fmt.Errorf("could not set request log filter: %w", err)
 	}
 
 	return findReqFilterToHTTPReqLogFilter(filter), nil
@@ -277,6 +297,7 @@ func stringPtrToRegexp(s *string) (*regexp.Regexp, error) {
 	if s == nil {
 		return nil, nil
 	}
+
 	return regexp.Compile(*s)
 }
 
@@ -290,8 +311,10 @@ func scopeToScopeRules(rules []scope.Rule) []ScopeRule {
 				Value: regexpToStringPtr(rule.Header.Value),
 			}
 		}
+
 		scopeRules[i].Body = regexpToStringPtr(rule.Body)
 	}
+
 	return scopeRules
 }
 
@@ -299,14 +322,17 @@ func findRequestsFilterFromInput(input *HTTPRequestLogFilterInput) (filter reqlo
 	if input == nil {
 		return
 	}
+
 	if input.OnlyInScope != nil {
 		filter.OnlyInScope = *input.OnlyInScope
 	}
+
 	if input.SearchExpression != nil && *input.SearchExpression != "" {
 		expr, err := search.ParseQuery(*input.SearchExpression)
 		if err != nil {
-			return reqlog.FindRequestsFilter{}, fmt.Errorf("could not parse search query: %v", err)
+			return reqlog.FindRequestsFilter{}, fmt.Errorf("could not parse search query: %w", err)
 		}
+
 		filter.RawSearchExpr = *input.SearchExpression
 		filter.SearchExpr = expr
 	}
@@ -319,6 +345,7 @@ func findReqFilterToHTTPReqLogFilter(findReqFilter reqlog.FindRequestsFilter) *H
 	if findReqFilter == empty {
 		return nil
 	}
+
 	httpReqLogFilter := &HTTPRequestLogFilter{
 		OnlyInScope: findReqFilter.OnlyInScope,
 	}

@@ -3,6 +3,7 @@ package scope
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"regexp"
@@ -38,12 +39,13 @@ func New(repo Repository, projService *proj.Service) *Scope {
 
 	projService.OnProjectOpen(func(_ string) error {
 		err := s.load(context.Background())
-		if err == proj.ErrNoSettings {
+		if errors.Is(err, proj.ErrNoSettings) {
 			return nil
 		}
 		if err != nil {
-			return fmt.Errorf("scope: could not load scope: %v", err)
+			return fmt.Errorf("scope: could not load scope: %w", err)
 		}
+
 		return nil
 	})
 	projService.OnProjectClose(func(_ string) error {
@@ -57,6 +59,7 @@ func New(repo Repository, projService *proj.Service) *Scope {
 func (s *Scope) Rules() []Rule {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
+
 	return s.rules
 }
 
@@ -65,12 +68,12 @@ func (s *Scope) load(ctx context.Context) error {
 	defer s.mu.Unlock()
 
 	var rules []Rule
+
 	err := s.repo.FindSettingsByModule(ctx, moduleName, &rules)
-	if err == proj.ErrNoSettings {
+	if errors.Is(err, proj.ErrNoSettings) {
 		return err
-	}
-	if err != nil {
-		return fmt.Errorf("scope: could not load scope settings: %v", err)
+	} else if err != nil {
+		return fmt.Errorf("scope: could not load scope settings: %w", err)
 	}
 
 	s.rules = rules
@@ -89,7 +92,7 @@ func (s *Scope) SetRules(ctx context.Context, rules []Rule) error {
 	defer s.mu.Unlock()
 
 	if err := s.repo.UpsertSettings(ctx, moduleName, rules); err != nil {
-		return fmt.Errorf("scope: cannot set rules in repository: %v", err)
+		return fmt.Errorf("scope: cannot set rules in repository: %w", err)
 	}
 
 	s.rules = rules
@@ -100,6 +103,7 @@ func (s *Scope) SetRules(ctx context.Context, rules []Rule) error {
 func (s *Scope) Match(req *http.Request, body []byte) bool {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
+
 	for _, rule := range s.rules {
 		if matches := rule.Match(req, body); matches {
 			return true
@@ -118,11 +122,13 @@ func (r Rule) Match(req *http.Request, body []byte) bool {
 
 	for key, values := range req.Header {
 		var keyMatches, valueMatches bool
+
 		if r.Header.Key != nil {
 			if matches := r.Header.Key.MatchString(key); matches {
 				keyMatches = true
 			}
 		}
+
 		if r.Header.Value != nil {
 			for _, value := range values {
 				if matches := r.Header.Value.MatchString(value); matches {
@@ -154,15 +160,17 @@ func (r Rule) Match(req *http.Request, body []byte) bool {
 
 // MarshalJSON implements json.Marshaler.
 func (r Rule) MarshalJSON() ([]byte, error) {
-	type headerDTO struct {
-		Key   string
-		Value string
-	}
-	type ruleDTO struct {
-		URL    string
-		Header headerDTO
-		Body   string
-	}
+	type (
+		headerDTO struct {
+			Key   string
+			Value string
+		}
+		ruleDTO struct {
+			URL    string
+			Header headerDTO
+			Body   string
+		}
+	)
 
 	dto := ruleDTO{
 		URL: regexpToString(r.URL),
@@ -178,15 +186,17 @@ func (r Rule) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements json.Unmarshaler.
 func (r *Rule) UnmarshalJSON(data []byte) error {
-	type headerDTO struct {
-		Key   string
-		Value string
-	}
-	type ruleDTO struct {
-		URL    string
-		Header headerDTO
-		Body   string
-	}
+	type (
+		headerDTO struct {
+			Key   string
+			Value string
+		}
+		ruleDTO struct {
+			URL    string
+			Header headerDTO
+			Body   string
+		}
+	)
 
 	var dto ruleDTO
 	if err := json.Unmarshal(data, &dto); err != nil {
@@ -197,14 +207,17 @@ func (r *Rule) UnmarshalJSON(data []byte) error {
 	if err != nil {
 		return err
 	}
+
 	headerKey, err := stringToRegexp(dto.Header.Key)
 	if err != nil {
 		return err
 	}
+
 	headerValue, err := stringToRegexp(dto.Header.Value)
 	if err != nil {
 		return err
 	}
+
 	body, err := stringToRegexp(dto.Body)
 	if err != nil {
 		return err
@@ -226,6 +239,7 @@ func regexpToString(r *regexp.Regexp) string {
 	if r == nil {
 		return ""
 	}
+
 	return r.String()
 }
 
@@ -233,5 +247,6 @@ func stringToRegexp(s string) (*regexp.Regexp, error) {
 	if s == "" {
 		return nil, nil
 	}
+
 	return regexp.Compile(s)
 }

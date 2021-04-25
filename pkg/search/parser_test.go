@@ -7,6 +7,8 @@ import (
 )
 
 func TestParseQuery(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name               string
 		input              string
@@ -233,6 +235,8 @@ func TestParseQuery(t *testing.T) {
 }
 
 func assertError(t *testing.T, exp, got error) {
+	t.Helper()
+
 	switch {
 	case exp == nil && got != nil:
 		t.Fatalf("expected: nil, got: %v", got)
