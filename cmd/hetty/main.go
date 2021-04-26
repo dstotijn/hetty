@@ -2,9 +2,11 @@ package main
 
 import (
 	"crypto/tls"
+	"embed"
 	"errors"
 	"flag"
 	"fmt"
+	"io/fs"
 	"log"
 	"net"
 	"net/http"
@@ -13,7 +15,6 @@ import (
 
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
-	rice "github.com/GeertJohan/go.rice"
 	"github.com/gorilla/mux"
 	"github.com/mitchellh/go-homedir"
 
@@ -30,8 +31,13 @@ var (
 	caKeyFile  string
 	projPath   string
 	addr       string
-	adminPath  string
 )
+
+//go:embed admin
+//go:embed admin/_next/static
+//go:embed admin/_next/static/chunks/pages/*.js
+//go:embed admin/_next/static/*/*.js
+var adminContent embed.FS
 
 func main() {
 	if err := run(); err != nil {
@@ -46,7 +52,6 @@ func run() error {
 		"CA private key filepath. Creates a new CA private key if file doesn't exist")
 	flag.StringVar(&projPath, "projects", "~/.hetty/projects", "Projects directory path")
 	flag.StringVar(&addr, "addr", ":8080", "TCP address to listen on, in the form \"host:port\"")
-	flag.StringVar(&adminPath, "adminPath", "", "File path to admin build")
 	flag.Parse()
 
 	// Expand `~` in filepaths.
@@ -99,22 +104,13 @@ func run() error {
 	p.UseRequestModifier(reqLogService.RequestModifier)
 	p.UseResponseModifier(reqLogService.ResponseModifier)
 
-	var adminHandler http.Handler
-
-	if adminPath == "" {
-		// Used for embedding with `rice`.
-		box, err := rice.FindBox("../../admin/dist")
-		if err != nil {
-			return fmt.Errorf("could not find embedded admin resources: %w", err)
-		}
-
-		adminHandler = http.FileServer(box.HTTPBox())
-	} else {
-		adminHandler = http.FileServer(http.Dir(adminPath))
+	fsSub, err := fs.Sub(adminContent, "admin")
+	if err != nil {
+		return fmt.Errorf("could not prepare subtree file system: %w", err)
 	}
 
+	adminHandler := http.FileServer(http.FS(fsSub))
 	router := mux.NewRouter().SkipClean(true)
-
 	adminRouter := router.MatcherFunc(func(req *http.Request, match *mux.RouteMatch) bool {
 		hostname, _ := os.Hostname()
 		host, _, _ := net.SplitHostPort(req.Host)

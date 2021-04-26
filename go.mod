@@ -1,10 +1,9 @@
 module github.com/dstotijn/hetty
 
-go 1.15
+go 1.16
 
 require (
 	github.com/99designs/gqlgen v0.13.0
-	github.com/GeertJohan/go.rice v1.0.0
 	github.com/Masterminds/squirrel v1.4.0
 	github.com/gorilla/mux v1.7.4
 	github.com/hashicorp/golang-lru v0.5.1 // indirect

@@ -49,7 +49,3 @@ issues:
       - nlreturn
       # Ignore `break` without leading blank line.
       text: "break with no blank line before"
-  
-run:
-  skip-files:
-    - cmd/hetty/rice-box.go

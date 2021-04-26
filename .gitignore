@@ -1,7 +1,7 @@
-.release-env
-.vscode
-**/rice-box.go
-dist
-hetty
+/.release-env
+/.vscode
+/dist
+/hetty
+/cmd/hetty/admin
 *.pem
 *.test

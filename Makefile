@@ -1,17 +1,16 @@
 PACKAGE_NAME := github.com/dstotijn/hetty
-GOLANG_CROSS_VERSION ?= v1.15.2
+GOLANG_CROSS_VERSION ?= v1.16.3
 
-.PHONY: embed
-embed:
+.PHONY: build-admin
+build-admin:
 	NEXT_TELEMETRY_DISABLED=1 cd admin && yarn install && yarn run export
-	cd cmd/hetty && rice embed-go
 
 .PHONY: build
-build: embed
-	CGO_ENABLED=1 go build ./cmd/hetty
+build: build-admin
+	CGO_ENABLED=1 mv admin/dist cmd/hetty/admin && go build ./cmd/hetty
 
 .PHONY: release-dry-run
-release-dry-run: embed
+release-dry-run: build-admin
 	@docker run \
 		--rm \
 		-v `pwd`:/go/src/$(PACKAGE_NAME) \
@@ -20,7 +19,7 @@ release-dry-run: embed
 		--rm-dist --skip-validate --skip-publish
 
 .PHONY: release
-release: embed
+release: build-admin
 	@if [ ! -f ".release-env" ]; then \
 		echo "\033[91mFile \`.release-env\` is missing.\033[0m";\
 		exit 1;\
