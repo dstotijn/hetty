@@ -228,10 +228,16 @@ for details.
   for all the encouragement and feedback.
 - The font used in the logo and admin interface is [JetBrains Mono](https://www.jetbrains.com/lp/mono/).
 
+## Sponsors
+
+<a href="https://www.tines.com/?utm_source=oss&utm_medium=sponsorship&utm_campaign=hetty">
+<img src="https://hetty.xyz/assets/tines-sponsorship-badge.png" width="140" alt="Sponsored by Tines">
+</a>
+
 ## License
 
 [MIT License](LICENSE)
 
 ---
 
-© 2020 David Stotijn — [Twitter](https://twitter.com/dstotijn), [Email](mailto:dstotijn@gmail.com)
+© 2021 David Stotijn — [Twitter](https://twitter.com/dstotijn), [Email](mailto:dstotijn@gmail.com)

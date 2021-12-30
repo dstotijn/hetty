@@ -27,3 +27,7 @@ Hetty is in early development. Additional features are planned
 for a `v1.0` release. Please see the <a href="https://github.com/dstotijn/hetty/projects/1">backlog</a>
 for details.
 :::
+
+## Sponsors
+
+[![Sponsored by Tines](/assets/tines-sponsorship-badge.png =140x)](https://www.tines.com/?utm_source=oss&utm_medium=sponsorship&utm_campaign=hetty)
