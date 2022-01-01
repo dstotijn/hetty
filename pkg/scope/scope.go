@@ -32,7 +32,7 @@ type Header struct {
 	Value *regexp.Regexp
 }
 
-func New(repo Repository, projService *proj.Service) *Scope {
+func New(repo Repository, projService proj.Service) *Scope {
 	s := &Scope{
 		repo: repo,
 	}

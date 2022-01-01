@@ -20,7 +20,7 @@ import (
 
 type Resolver struct {
 	RequestLogService *reqlog.Service
-	ProjectService    *proj.Service
+	ProjectService    proj.Service
 	ScopeService      *scope.Scope
 }
 

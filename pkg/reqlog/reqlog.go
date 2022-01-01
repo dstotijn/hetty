@@ -59,7 +59,7 @@ type FindRequestsFilter struct {
 type Config struct {
 	Scope                    *scope.Scope
 	Repository               Repository
-	ProjectService           *proj.Service
+	ProjectService           proj.Service
 	BypassOutOfScopeRequests bool
 }
 
@@ -71,7 +71,7 @@ func NewService(cfg Config) *Service {
 	}
 
 	cfg.ProjectService.OnProjectOpen(func(_ string) error {
-		err := svc.loadSettings()
+		err := svc.repo.FindSettingsByModule(context.Background(), moduleName, svc)
 		if errors.Is(err, proj.ErrNoSettings) {
 			return nil
 		}
@@ -82,7 +82,8 @@ func NewService(cfg Config) *Service {
 		return nil
 	})
 	cfg.ProjectService.OnProjectClose(func(_ string) error {
-		svc.unloadSettings()
+		svc.BypassOutOfScopeRequests = false
+		svc.FindReqsFilter = FindRequestsFilter{}
 		return nil
 	})
 
@@ -251,13 +252,4 @@ func (f *FindRequestsFilter) UnmarshalJSON(b []byte) error {
 	*f = filter
 
 	return nil
-}
-
-func (svc *Service) loadSettings() error {
-	return svc.repo.FindSettingsByModule(context.Background(), moduleName, svc)
-}
-
-func (svc *Service) unloadSettings() {
-	svc.BypassOutOfScopeRequests = false
-	svc.FindReqsFilter = FindRequestsFilter{}
 }

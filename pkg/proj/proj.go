@@ -15,7 +15,17 @@ type (
 )
 
 // Service is used for managing projects.
-type Service struct {
+type Service interface {
+	Open(ctx context.Context, name string) (Project, error)
+	Close() error
+	Delete(name string) error
+	ActiveProject() (Project, error)
+	Projects() ([]Project, error)
+	OnProjectOpen(fn OnProjectOpenFn)
+	OnProjectClose(fn OnProjectCloseFn)
+}
+
+type service struct {
 	repo              Repository
 	activeProject     string
 	onProjectOpenFns  []OnProjectOpenFn
@@ -37,14 +47,14 @@ var (
 var nameRegexp = regexp.MustCompile(`^[\w\d\s]+$`)
 
 // NewService returns a new Service.
-func NewService(repo Repository) (*Service, error) {
-	return &Service{
+func NewService(repo Repository) (Service, error) {
+	return &service{
 		repo: repo,
 	}, nil
 }
 
 // Close closes the currently open project database (if there is one).
-func (svc *Service) Close() error {
+func (svc *service) Close() error {
 	svc.mu.Lock()
 	defer svc.mu.Unlock()
 
@@ -62,7 +72,7 @@ func (svc *Service) Close() error {
 }
 
 // Delete removes a project database file from disk (if there is one).
-func (svc *Service) Delete(name string) error {
+func (svc *service) Delete(name string) error {
 	if name == "" {
 		return errors.New("proj: name cannot be empty")
 	}
@@ -80,7 +90,7 @@ func (svc *Service) Delete(name string) error {
 
 // Open opens a database identified with `name`. If a database with this
 // identifier doesn't exist yet, it will be automatically created.
-func (svc *Service) Open(ctx context.Context, name string) (Project, error) {
+func (svc *service) Open(ctx context.Context, name string) (Project, error) {
 	if !nameRegexp.MatchString(name) {
 		return Project{}, ErrInvalidName
 	}
@@ -105,7 +115,7 @@ func (svc *Service) Open(ctx context.Context, name string) (Project, error) {
 	}, nil
 }
 
-func (svc *Service) ActiveProject() (Project, error) {
+func (svc *service) ActiveProject() (Project, error) {
 	activeProject := svc.activeProject
 	if activeProject == "" {
 		return Project{}, ErrNoProject
@@ -116,7 +126,7 @@ func (svc *Service) ActiveProject() (Project, error) {
 	}, nil
 }
 
-func (svc *Service) Projects() ([]Project, error) {
+func (svc *service) Projects() ([]Project, error) {
 	projects, err := svc.repo.Projects()
 	if err != nil {
 		return nil, fmt.Errorf("proj: could not get projects: %w", err)
@@ -125,21 +135,21 @@ func (svc *Service) Projects() ([]Project, error) {
 	return projects, nil
 }
 
-func (svc *Service) OnProjectOpen(fn OnProjectOpenFn) {
+func (svc *service) OnProjectOpen(fn OnProjectOpenFn) {
 	svc.mu.Lock()
 	defer svc.mu.Unlock()
 
 	svc.onProjectOpenFns = append(svc.onProjectOpenFns, fn)
 }
 
-func (svc *Service) OnProjectClose(fn OnProjectCloseFn) {
+func (svc *service) OnProjectClose(fn OnProjectCloseFn) {
 	svc.mu.Lock()
 	defer svc.mu.Unlock()
 
 	svc.onProjectCloseFns = append(svc.onProjectCloseFns, fn)
 }
 
-func (svc *Service) emitProjectOpened() {
+func (svc *service) emitProjectOpened() {
 	for _, fn := range svc.onProjectOpenFns {
 		if err := fn(svc.activeProject); err != nil {
 			log.Printf("[ERROR] Could not execute onProjectOpen function: %v", err)
@@ -147,7 +157,7 @@ func (svc *Service) emitProjectOpened() {
 	}
 }
 
-func (svc *Service) emitProjectClosed(name string) {
+func (svc *service) emitProjectClosed(name string) {
 	for _, fn := range svc.onProjectCloseFns {
 		if err := fn(name); err != nil {
 			log.Printf("[ERROR] Could not execute onProjectClose function: %v", err)
