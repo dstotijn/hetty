@@ -24,7 +24,7 @@ Source: [pkg/api/schema.graphql](https://github.com/dstotijn/hetty/blob/master/p
 
 MIT License
 
-Copyright (c) 2020 David Stotijn
+Copyright (c) 2021 David Stotijn
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
