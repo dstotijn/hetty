@@ -7,7 +7,7 @@ build-admin:
 
 .PHONY: build
 build: build-admin
-	CGO_ENABLED=1 mv admin/dist cmd/hetty/admin && go build ./cmd/hetty
+	CGO_ENABLED=0 mv admin/dist cmd/hetty/admin && go build ./cmd/hetty
 
 .PHONY: release-dry-run
 release-dry-run: build-admin

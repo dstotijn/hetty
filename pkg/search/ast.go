@@ -1,6 +1,10 @@
 package search
 
-import "strings"
+import (
+	"encoding/gob"
+	"regexp"
+	"strings"
+)
 
 type Expression interface {
 	String() string
@@ -11,7 +15,7 @@ type PrefixExpression struct {
 	Right    Expression
 }
 
-func (pe *PrefixExpression) String() string {
+func (pe PrefixExpression) String() string {
 	b := strings.Builder{}
 	b.WriteString("(")
 	b.WriteString(pe.Operator.String())
@@ -28,7 +32,7 @@ type InfixExpression struct {
 	Right    Expression
 }
 
-func (ie *InfixExpression) String() string {
+func (ie InfixExpression) String() string {
 	b := strings.Builder{}
 	b.WriteString("(")
 	b.WriteString(ie.Left.String())
@@ -45,6 +49,32 @@ type StringLiteral struct {
 	Value string
 }
 
-func (sl *StringLiteral) String() string {
+func (sl StringLiteral) String() string {
 	return sl.Value
+}
+
+type RegexpLiteral struct {
+	*regexp.Regexp
+}
+
+func (rl RegexpLiteral) MarshalBinary() ([]byte, error) {
+	return []byte(rl.Regexp.String()), nil
+}
+
+func (rl *RegexpLiteral) UnmarshalBinary(data []byte) error {
+	re, err := regexp.Compile(string(data))
+	if err != nil {
+		return err
+	}
+
+	*rl = RegexpLiteral{re}
+
+	return nil
+}
+
+func init() {
+	gob.Register(PrefixExpression{})
+	gob.Register(InfixExpression{})
+	gob.Register(StringLiteral{})
+	gob.Register(RegexpLiteral{})
 }

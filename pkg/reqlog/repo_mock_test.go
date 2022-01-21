@@ -7,9 +7,8 @@ import (
 	"context"
 	"github.com/dstotijn/hetty/pkg/reqlog"
 	"github.com/dstotijn/hetty/pkg/scope"
-	"net/http"
+	"github.com/oklog/ulid"
 	"sync"
-	"time"
 )
 
 // Ensure, that RepoMock does implement reqlog.Repository.
@@ -22,26 +21,20 @@ var _ reqlog.Repository = &RepoMock{}
 //
 // 		// make and configure a mocked reqlog.Repository
 // 		mockedRepository := &RepoMock{
-// 			AddRequestLogFunc: func(ctx context.Context, req http.Request, body []byte, timestamp time.Time) (*reqlog.Request, error) {
-// 				panic("mock out the AddRequestLog method")
-// 			},
-// 			AddResponseLogFunc: func(ctx context.Context, reqID int64, res http.Response, body []byte, timestamp time.Time) (*reqlog.Response, error) {
-// 				panic("mock out the AddResponseLog method")
-// 			},
-// 			ClearRequestLogsFunc: func(ctx context.Context) error {
+// 			ClearRequestLogsFunc: func(ctx context.Context, projectID ulid.ULID) error {
 // 				panic("mock out the ClearRequestLogs method")
 // 			},
-// 			FindRequestLogByIDFunc: func(ctx context.Context, id int64) (reqlog.Request, error) {
+// 			FindRequestLogByIDFunc: func(ctx context.Context, id ulid.ULID) (reqlog.RequestLog, error) {
 // 				panic("mock out the FindRequestLogByID method")
 // 			},
-// 			FindRequestLogsFunc: func(ctx context.Context, filter reqlog.FindRequestsFilter, scopeMoqParam *scope.Scope) ([]reqlog.Request, error) {
+// 			FindRequestLogsFunc: func(ctx context.Context, filter reqlog.FindRequestsFilter, scopeMoqParam *scope.Scope) ([]reqlog.RequestLog, error) {
 // 				panic("mock out the FindRequestLogs method")
 // 			},
-// 			FindSettingsByModuleFunc: func(ctx context.Context, module string, settings interface{}) error {
-// 				panic("mock out the FindSettingsByModule method")
+// 			StoreRequestLogFunc: func(ctx context.Context, reqLog reqlog.RequestLog) error {
+// 				panic("mock out the StoreRequestLog method")
 // 			},
-// 			UpsertSettingsFunc: func(ctx context.Context, module string, settings interface{}) error {
-// 				panic("mock out the UpsertSettings method")
+// 			StoreResponseLogFunc: func(ctx context.Context, reqLogID ulid.ULID, resLog reqlog.ResponseLog) error {
+// 				panic("mock out the StoreResponseLog method")
 // 			},
 // 		}
 //
@@ -50,64 +43,36 @@ var _ reqlog.Repository = &RepoMock{}
 //
 // 	}
 type RepoMock struct {
-	// AddRequestLogFunc mocks the AddRequestLog method.
-	AddRequestLogFunc func(ctx context.Context, req http.Request, body []byte, timestamp time.Time) (*reqlog.Request, error)
-
-	// AddResponseLogFunc mocks the AddResponseLog method.
-	AddResponseLogFunc func(ctx context.Context, reqID int64, res http.Response, body []byte, timestamp time.Time) (*reqlog.Response, error)
-
 	// ClearRequestLogsFunc mocks the ClearRequestLogs method.
-	ClearRequestLogsFunc func(ctx context.Context) error
+	ClearRequestLogsFunc func(ctx context.Context, projectID ulid.ULID) error
 
 	// FindRequestLogByIDFunc mocks the FindRequestLogByID method.
-	FindRequestLogByIDFunc func(ctx context.Context, id int64) (reqlog.Request, error)
+	FindRequestLogByIDFunc func(ctx context.Context, id ulid.ULID) (reqlog.RequestLog, error)
 
 	// FindRequestLogsFunc mocks the FindRequestLogs method.
-	FindRequestLogsFunc func(ctx context.Context, filter reqlog.FindRequestsFilter, scopeMoqParam *scope.Scope) ([]reqlog.Request, error)
+	FindRequestLogsFunc func(ctx context.Context, filter reqlog.FindRequestsFilter, scopeMoqParam *scope.Scope) ([]reqlog.RequestLog, error)
 
-	// FindSettingsByModuleFunc mocks the FindSettingsByModule method.
-	FindSettingsByModuleFunc func(ctx context.Context, module string, settings interface{}) error
+	// StoreRequestLogFunc mocks the StoreRequestLog method.
+	StoreRequestLogFunc func(ctx context.Context, reqLog reqlog.RequestLog) error
 
-	// UpsertSettingsFunc mocks the UpsertSettings method.
-	UpsertSettingsFunc func(ctx context.Context, module string, settings interface{}) error
+	// StoreResponseLogFunc mocks the StoreResponseLog method.
+	StoreResponseLogFunc func(ctx context.Context, reqLogID ulid.ULID, resLog reqlog.ResponseLog) error
 
 	// calls tracks calls to the methods.
 	calls struct {
-		// AddRequestLog holds details about calls to the AddRequestLog method.
-		AddRequestLog []struct {
-			// Ctx is the ctx argument value.
-			Ctx context.Context
-			// Req is the req argument value.
-			Req http.Request
-			// Body is the body argument value.
-			Body []byte
-			// Timestamp is the timestamp argument value.
-			Timestamp time.Time
-		}
-		// AddResponseLog holds details about calls to the AddResponseLog method.
-		AddResponseLog []struct {
-			// Ctx is the ctx argument value.
-			Ctx context.Context
-			// ReqID is the reqID argument value.
-			ReqID int64
-			// Res is the res argument value.
-			Res http.Response
-			// Body is the body argument value.
-			Body []byte
-			// Timestamp is the timestamp argument value.
-			Timestamp time.Time
-		}
 		// ClearRequestLogs holds details about calls to the ClearRequestLogs method.
 		ClearRequestLogs []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
+			// ProjectID is the projectID argument value.
+			ProjectID ulid.ULID
 		}
 		// FindRequestLogByID holds details about calls to the FindRequestLogByID method.
 		FindRequestLogByID []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// ID is the id argument value.
-			ID int64
+			ID ulid.ULID
 		}
 		// FindRequestLogs holds details about calls to the FindRequestLogs method.
 		FindRequestLogs []struct {
@@ -118,148 +83,58 @@ type RepoMock struct {
 			// ScopeMoqParam is the scopeMoqParam argument value.
 			ScopeMoqParam *scope.Scope
 		}
-		// FindSettingsByModule holds details about calls to the FindSettingsByModule method.
-		FindSettingsByModule []struct {
+		// StoreRequestLog holds details about calls to the StoreRequestLog method.
+		StoreRequestLog []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-			// Module is the module argument value.
-			Module string
-			// Settings is the settings argument value.
-			Settings interface{}
+			// ReqLog is the reqLog argument value.
+			ReqLog reqlog.RequestLog
 		}
-		// UpsertSettings holds details about calls to the UpsertSettings method.
-		UpsertSettings []struct {
+		// StoreResponseLog holds details about calls to the StoreResponseLog method.
+		StoreResponseLog []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-			// Module is the module argument value.
-			Module string
-			// Settings is the settings argument value.
-			Settings interface{}
+			// ReqLogID is the reqLogID argument value.
+			ReqLogID ulid.ULID
+			// ResLog is the resLog argument value.
+			ResLog reqlog.ResponseLog
 		}
 	}
-	lockAddRequestLog        sync.RWMutex
-	lockAddResponseLog       sync.RWMutex
-	lockClearRequestLogs     sync.RWMutex
-	lockFindRequestLogByID   sync.RWMutex
-	lockFindRequestLogs      sync.RWMutex
-	lockFindSettingsByModule sync.RWMutex
-	lockUpsertSettings       sync.RWMutex
-}
-
-// AddRequestLog calls AddRequestLogFunc.
-func (mock *RepoMock) AddRequestLog(ctx context.Context, req http.Request, body []byte, timestamp time.Time) (*reqlog.Request, error) {
-	if mock.AddRequestLogFunc == nil {
-		panic("RepoMock.AddRequestLogFunc: method is nil but Repository.AddRequestLog was just called")
-	}
-	callInfo := struct {
-		Ctx       context.Context
-		Req       http.Request
-		Body      []byte
-		Timestamp time.Time
-	}{
-		Ctx:       ctx,
-		Req:       req,
-		Body:      body,
-		Timestamp: timestamp,
-	}
-	mock.lockAddRequestLog.Lock()
-	mock.calls.AddRequestLog = append(mock.calls.AddRequestLog, callInfo)
-	mock.lockAddRequestLog.Unlock()
-	return mock.AddRequestLogFunc(ctx, req, body, timestamp)
-}
-
-// AddRequestLogCalls gets all the calls that were made to AddRequestLog.
-// Check the length with:
-//     len(mockedRepository.AddRequestLogCalls())
-func (mock *RepoMock) AddRequestLogCalls() []struct {
-	Ctx       context.Context
-	Req       http.Request
-	Body      []byte
-	Timestamp time.Time
-} {
-	var calls []struct {
-		Ctx       context.Context
-		Req       http.Request
-		Body      []byte
-		Timestamp time.Time
-	}
-	mock.lockAddRequestLog.RLock()
-	calls = mock.calls.AddRequestLog
-	mock.lockAddRequestLog.RUnlock()
-	return calls
-}
-
-// AddResponseLog calls AddResponseLogFunc.
-func (mock *RepoMock) AddResponseLog(ctx context.Context, reqID int64, res http.Response, body []byte, timestamp time.Time) (*reqlog.Response, error) {
-	if mock.AddResponseLogFunc == nil {
-		panic("RepoMock.AddResponseLogFunc: method is nil but Repository.AddResponseLog was just called")
-	}
-	callInfo := struct {
-		Ctx       context.Context
-		ReqID     int64
-		Res       http.Response
-		Body      []byte
-		Timestamp time.Time
-	}{
-		Ctx:       ctx,
-		ReqID:     reqID,
-		Res:       res,
-		Body:      body,
-		Timestamp: timestamp,
-	}
-	mock.lockAddResponseLog.Lock()
-	mock.calls.AddResponseLog = append(mock.calls.AddResponseLog, callInfo)
-	mock.lockAddResponseLog.Unlock()
-	return mock.AddResponseLogFunc(ctx, reqID, res, body, timestamp)
-}
-
-// AddResponseLogCalls gets all the calls that were made to AddResponseLog.
-// Check the length with:
-//     len(mockedRepository.AddResponseLogCalls())
-func (mock *RepoMock) AddResponseLogCalls() []struct {
-	Ctx       context.Context
-	ReqID     int64
-	Res       http.Response
-	Body      []byte
-	Timestamp time.Time
-} {
-	var calls []struct {
-		Ctx       context.Context
-		ReqID     int64
-		Res       http.Response
-		Body      []byte
-		Timestamp time.Time
-	}
-	mock.lockAddResponseLog.RLock()
-	calls = mock.calls.AddResponseLog
-	mock.lockAddResponseLog.RUnlock()
-	return calls
+	lockClearRequestLogs   sync.RWMutex
+	lockFindRequestLogByID sync.RWMutex
+	lockFindRequestLogs    sync.RWMutex
+	lockStoreRequestLog    sync.RWMutex
+	lockStoreResponseLog   sync.RWMutex
 }
 
 // ClearRequestLogs calls ClearRequestLogsFunc.
-func (mock *RepoMock) ClearRequestLogs(ctx context.Context) error {
+func (mock *RepoMock) ClearRequestLogs(ctx context.Context, projectID ulid.ULID) error {
 	if mock.ClearRequestLogsFunc == nil {
 		panic("RepoMock.ClearRequestLogsFunc: method is nil but Repository.ClearRequestLogs was just called")
 	}
 	callInfo := struct {
-		Ctx context.Context
+		Ctx       context.Context
+		ProjectID ulid.ULID
 	}{
-		Ctx: ctx,
+		Ctx:       ctx,
+		ProjectID: projectID,
 	}
 	mock.lockClearRequestLogs.Lock()
 	mock.calls.ClearRequestLogs = append(mock.calls.ClearRequestLogs, callInfo)
 	mock.lockClearRequestLogs.Unlock()
-	return mock.ClearRequestLogsFunc(ctx)
+	return mock.ClearRequestLogsFunc(ctx, projectID)
 }
 
 // ClearRequestLogsCalls gets all the calls that were made to ClearRequestLogs.
 // Check the length with:
 //     len(mockedRepository.ClearRequestLogsCalls())
 func (mock *RepoMock) ClearRequestLogsCalls() []struct {
-	Ctx context.Context
+	Ctx       context.Context
+	ProjectID ulid.ULID
 } {
 	var calls []struct {
-		Ctx context.Context
+		Ctx       context.Context
+		ProjectID ulid.ULID
 	}
 	mock.lockClearRequestLogs.RLock()
 	calls = mock.calls.ClearRequestLogs
@@ -268,13 +143,13 @@ func (mock *RepoMock) ClearRequestLogsCalls() []struct {
 }
 
 // FindRequestLogByID calls FindRequestLogByIDFunc.
-func (mock *RepoMock) FindRequestLogByID(ctx context.Context, id int64) (reqlog.Request, error) {
+func (mock *RepoMock) FindRequestLogByID(ctx context.Context, id ulid.ULID) (reqlog.RequestLog, error) {
 	if mock.FindRequestLogByIDFunc == nil {
 		panic("RepoMock.FindRequestLogByIDFunc: method is nil but Repository.FindRequestLogByID was just called")
 	}
 	callInfo := struct {
 		Ctx context.Context
-		ID  int64
+		ID  ulid.ULID
 	}{
 		Ctx: ctx,
 		ID:  id,
@@ -290,11 +165,11 @@ func (mock *RepoMock) FindRequestLogByID(ctx context.Context, id int64) (reqlog.
 //     len(mockedRepository.FindRequestLogByIDCalls())
 func (mock *RepoMock) FindRequestLogByIDCalls() []struct {
 	Ctx context.Context
-	ID  int64
+	ID  ulid.ULID
 } {
 	var calls []struct {
 		Ctx context.Context
-		ID  int64
+		ID  ulid.ULID
 	}
 	mock.lockFindRequestLogByID.RLock()
 	calls = mock.calls.FindRequestLogByID
@@ -303,7 +178,7 @@ func (mock *RepoMock) FindRequestLogByIDCalls() []struct {
 }
 
 // FindRequestLogs calls FindRequestLogsFunc.
-func (mock *RepoMock) FindRequestLogs(ctx context.Context, filter reqlog.FindRequestsFilter, scopeMoqParam *scope.Scope) ([]reqlog.Request, error) {
+func (mock *RepoMock) FindRequestLogs(ctx context.Context, filter reqlog.FindRequestsFilter, scopeMoqParam *scope.Scope) ([]reqlog.RequestLog, error) {
 	if mock.FindRequestLogsFunc == nil {
 		panic("RepoMock.FindRequestLogsFunc: method is nil but Repository.FindRequestLogs was just called")
 	}
@@ -341,80 +216,76 @@ func (mock *RepoMock) FindRequestLogsCalls() []struct {
 	return calls
 }
 
-// FindSettingsByModule calls FindSettingsByModuleFunc.
-func (mock *RepoMock) FindSettingsByModule(ctx context.Context, module string, settings interface{}) error {
-	if mock.FindSettingsByModuleFunc == nil {
-		panic("RepoMock.FindSettingsByModuleFunc: method is nil but Repository.FindSettingsByModule was just called")
+// StoreRequestLog calls StoreRequestLogFunc.
+func (mock *RepoMock) StoreRequestLog(ctx context.Context, reqLog reqlog.RequestLog) error {
+	if mock.StoreRequestLogFunc == nil {
+		panic("RepoMock.StoreRequestLogFunc: method is nil but Repository.StoreRequestLog was just called")
 	}
 	callInfo := struct {
-		Ctx      context.Context
-		Module   string
-		Settings interface{}
+		Ctx    context.Context
+		ReqLog reqlog.RequestLog
 	}{
-		Ctx:      ctx,
-		Module:   module,
-		Settings: settings,
+		Ctx:    ctx,
+		ReqLog: reqLog,
 	}
-	mock.lockFindSettingsByModule.Lock()
-	mock.calls.FindSettingsByModule = append(mock.calls.FindSettingsByModule, callInfo)
-	mock.lockFindSettingsByModule.Unlock()
-	return mock.FindSettingsByModuleFunc(ctx, module, settings)
+	mock.lockStoreRequestLog.Lock()
+	mock.calls.StoreRequestLog = append(mock.calls.StoreRequestLog, callInfo)
+	mock.lockStoreRequestLog.Unlock()
+	return mock.StoreRequestLogFunc(ctx, reqLog)
 }
 
-// FindSettingsByModuleCalls gets all the calls that were made to FindSettingsByModule.
+// StoreRequestLogCalls gets all the calls that were made to StoreRequestLog.
 // Check the length with:
-//     len(mockedRepository.FindSettingsByModuleCalls())
-func (mock *RepoMock) FindSettingsByModuleCalls() []struct {
-	Ctx      context.Context
-	Module   string
-	Settings interface{}
+//     len(mockedRepository.StoreRequestLogCalls())
+func (mock *RepoMock) StoreRequestLogCalls() []struct {
+	Ctx    context.Context
+	ReqLog reqlog.RequestLog
 } {
 	var calls []struct {
-		Ctx      context.Context
-		Module   string
-		Settings interface{}
+		Ctx    context.Context
+		ReqLog reqlog.RequestLog
 	}
-	mock.lockFindSettingsByModule.RLock()
-	calls = mock.calls.FindSettingsByModule
-	mock.lockFindSettingsByModule.RUnlock()
+	mock.lockStoreRequestLog.RLock()
+	calls = mock.calls.StoreRequestLog
+	mock.lockStoreRequestLog.RUnlock()
 	return calls
 }
 
-// UpsertSettings calls UpsertSettingsFunc.
-func (mock *RepoMock) UpsertSettings(ctx context.Context, module string, settings interface{}) error {
-	if mock.UpsertSettingsFunc == nil {
-		panic("RepoMock.UpsertSettingsFunc: method is nil but Repository.UpsertSettings was just called")
+// StoreResponseLog calls StoreResponseLogFunc.
+func (mock *RepoMock) StoreResponseLog(ctx context.Context, reqLogID ulid.ULID, resLog reqlog.ResponseLog) error {
+	if mock.StoreResponseLogFunc == nil {
+		panic("RepoMock.StoreResponseLogFunc: method is nil but Repository.StoreResponseLog was just called")
 	}
 	callInfo := struct {
 		Ctx      context.Context
-		Module   string
-		Settings interface{}
+		ReqLogID ulid.ULID
+		ResLog   reqlog.ResponseLog
 	}{
 		Ctx:      ctx,
-		Module:   module,
-		Settings: settings,
+		ReqLogID: reqLogID,
+		ResLog:   resLog,
 	}
-	mock.lockUpsertSettings.Lock()
-	mock.calls.UpsertSettings = append(mock.calls.UpsertSettings, callInfo)
-	mock.lockUpsertSettings.Unlock()
-	return mock.UpsertSettingsFunc(ctx, module, settings)
+	mock.lockStoreResponseLog.Lock()
+	mock.calls.StoreResponseLog = append(mock.calls.StoreResponseLog, callInfo)
+	mock.lockStoreResponseLog.Unlock()
+	return mock.StoreResponseLogFunc(ctx, reqLogID, resLog)
 }
 
-// UpsertSettingsCalls gets all the calls that were made to UpsertSettings.
+// StoreResponseLogCalls gets all the calls that were made to StoreResponseLog.
 // Check the length with:
-//     len(mockedRepository.UpsertSettingsCalls())
-func (mock *RepoMock) UpsertSettingsCalls() []struct {
+//     len(mockedRepository.StoreResponseLogCalls())
+func (mock *RepoMock) StoreResponseLogCalls() []struct {
 	Ctx      context.Context
-	Module   string
-	Settings interface{}
+	ReqLogID ulid.ULID
+	ResLog   reqlog.ResponseLog
 } {
 	var calls []struct {
 		Ctx      context.Context
-		Module   string
-		Settings interface{}
+		ReqLogID ulid.ULID
+		ResLog   reqlog.ResponseLog
 	}
-	mock.lockUpsertSettings.RLock()
-	calls = mock.calls.UpsertSettings
-	mock.lockUpsertSettings.RUnlock()
+	mock.lockStoreResponseLog.RLock()
+	calls = mock.calls.StoreResponseLog
+	mock.lockStoreResponseLog.RUnlock()
 	return calls
 }

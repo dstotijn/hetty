@@ -27,7 +27,7 @@ type HTTPHeader struct {
 }
 
 type HTTPRequestLog struct {
-	ID        int64            `json:"id"`
+	ID        ULID             `json:"id"`
 	URL       string           `json:"url"`
 	Method    HTTPMethod       `json:"method"`
 	Proto     string           `json:"proto"`
@@ -48,7 +48,6 @@ type HTTPRequestLogFilterInput struct {
 }
 
 type HTTPResponseLog struct {
-	RequestID    int64        `json:"requestId"`
 	Proto        string       `json:"proto"`
 	StatusCode   int          `json:"statusCode"`
 	StatusReason string       `json:"statusReason"`
@@ -57,6 +56,7 @@ type HTTPResponseLog struct {
 }
 
 type Project struct {
+	ID       ULID   `json:"id"`
 	Name     string `json:"name"`
 	IsActive bool   `json:"isActive"`
 }

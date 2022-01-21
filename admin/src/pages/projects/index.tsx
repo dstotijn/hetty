@@ -12,7 +12,7 @@ function Index(): JSX.Element {
         </Box>
         <Typography paragraph>
           Projects contain settings and data generated/processed by Hetty. They
-          are stored as SQLite database files on disk.
+          are stored in a single database on disk.
         </Typography>
         <Box my={4}>
           <Divider />

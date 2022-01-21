@@ -15,7 +15,7 @@ import (
 
 type contextKey int
 
-const ReqIDKey contextKey = 0
+const ReqLogIDKey contextKey = 0
 
 // Proxy implements http.Handler and offers MITM behaviour for modifying
 // HTTP requests and responses.

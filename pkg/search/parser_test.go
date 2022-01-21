@@ -3,6 +3,7 @@ package search
 import (
 	"errors"
 	"reflect"
+	"regexp"
 	"testing"
 )
 
@@ -24,101 +25,101 @@ func TestParseQuery(t *testing.T) {
 		{
 			name:               "string literal expression",
 			input:              "foobar",
-			expectedExpression: &StringLiteral{Value: "foobar"},
+			expectedExpression: StringLiteral{Value: "foobar"},
 			expectedError:      nil,
 		},
 		{
 			name:  "boolean expression with equal operator",
 			input: "foo = bar",
-			expectedExpression: &InfixExpression{
+			expectedExpression: InfixExpression{
 				Operator: TokOpEq,
-				Left:     &StringLiteral{Value: "foo"},
-				Right:    &StringLiteral{Value: "bar"},
+				Left:     StringLiteral{Value: "foo"},
+				Right:    StringLiteral{Value: "bar"},
 			},
 			expectedError: nil,
 		},
 		{
 			name:  "boolean expression with not equal operator",
 			input: "foo != bar",
-			expectedExpression: &InfixExpression{
+			expectedExpression: InfixExpression{
 				Operator: TokOpNotEq,
-				Left:     &StringLiteral{Value: "foo"},
-				Right:    &StringLiteral{Value: "bar"},
+				Left:     StringLiteral{Value: "foo"},
+				Right:    StringLiteral{Value: "bar"},
 			},
 			expectedError: nil,
 		},
 		{
 			name:  "boolean expression with greater than operator",
 			input: "foo > bar",
-			expectedExpression: &InfixExpression{
+			expectedExpression: InfixExpression{
 				Operator: TokOpGt,
-				Left:     &StringLiteral{Value: "foo"},
-				Right:    &StringLiteral{Value: "bar"},
+				Left:     StringLiteral{Value: "foo"},
+				Right:    StringLiteral{Value: "bar"},
 			},
 			expectedError: nil,
 		},
 		{
 			name:  "boolean expression with less than operator",
 			input: "foo < bar",
-			expectedExpression: &InfixExpression{
+			expectedExpression: InfixExpression{
 				Operator: TokOpLt,
-				Left:     &StringLiteral{Value: "foo"},
-				Right:    &StringLiteral{Value: "bar"},
+				Left:     StringLiteral{Value: "foo"},
+				Right:    StringLiteral{Value: "bar"},
 			},
 			expectedError: nil,
 		},
 		{
 			name:  "boolean expression with greater than or equal operator",
 			input: "foo >= bar",
-			expectedExpression: &InfixExpression{
+			expectedExpression: InfixExpression{
 				Operator: TokOpGtEq,
-				Left:     &StringLiteral{Value: "foo"},
-				Right:    &StringLiteral{Value: "bar"},
+				Left:     StringLiteral{Value: "foo"},
+				Right:    StringLiteral{Value: "bar"},
 			},
 			expectedError: nil,
 		},
 		{
 			name:  "boolean expression with less than or equal operator",
 			input: "foo <= bar",
-			expectedExpression: &InfixExpression{
+			expectedExpression: InfixExpression{
 				Operator: TokOpLtEq,
-				Left:     &StringLiteral{Value: "foo"},
-				Right:    &StringLiteral{Value: "bar"},
+				Left:     StringLiteral{Value: "foo"},
+				Right:    StringLiteral{Value: "bar"},
 			},
 			expectedError: nil,
 		},
 		{
 			name:  "boolean expression with regular expression operator",
 			input: "foo =~ bar",
-			expectedExpression: &InfixExpression{
+			expectedExpression: InfixExpression{
 				Operator: TokOpRe,
-				Left:     &StringLiteral{Value: "foo"},
-				Right:    &StringLiteral{Value: "bar"},
+				Left:     StringLiteral{Value: "foo"},
+				Right:    regexp.MustCompile("bar"),
 			},
 			expectedError: nil,
 		},
 		{
 			name:  "boolean expression with not regular expression operator",
 			input: "foo !~ bar",
-			expectedExpression: &InfixExpression{
+			expectedExpression: InfixExpression{
 				Operator: TokOpNotRe,
-				Left:     &StringLiteral{Value: "foo"},
-				Right:    &StringLiteral{Value: "bar"},
+				Left:     StringLiteral{Value: "foo"},
+				Right:    regexp.MustCompile("bar"),
 			},
 			expectedError: nil,
 		},
 		{
 			name:  "boolean expression with AND, OR and NOT operators",
 			input: "foo AND bar OR NOT baz",
-			expectedExpression: &InfixExpression{
+			expectedExpression: InfixExpression{
 				Operator: TokOpAnd,
-				Left:     &StringLiteral{Value: "foo"},
-				Right: &InfixExpression{
+				Left:     StringLiteral{Value: "foo"},
+				Right: InfixExpression{
 					Operator: TokOpOr,
-					Left:     &StringLiteral{Value: "bar"},
-					Right: &PrefixExpression{
+					Left:     StringLiteral{Value: "bar"},
+					Right: PrefixExpression{
 						Operator: TokOpNot,
-						Right:    &StringLiteral{Value: "baz"},
+						Right:    StringLiteral{Value: "baz"},
 					},
 				},
 			},
@@ -127,16 +128,16 @@ func TestParseQuery(t *testing.T) {
 		{
 			name:  "boolean expression with nested group",
 			input: "(foo AND bar) OR NOT baz",
-			expectedExpression: &InfixExpression{
+			expectedExpression: InfixExpression{
 				Operator: TokOpOr,
-				Left: &InfixExpression{
+				Left: InfixExpression{
 					Operator: TokOpAnd,
-					Left:     &StringLiteral{Value: "foo"},
-					Right:    &StringLiteral{Value: "bar"},
+					Left:     StringLiteral{Value: "foo"},
+					Right:    StringLiteral{Value: "bar"},
 				},
-				Right: &PrefixExpression{
+				Right: PrefixExpression{
 					Operator: TokOpNot,
-					Right:    &StringLiteral{Value: "baz"},
+					Right:    StringLiteral{Value: "baz"},
 				},
 			},
 			expectedError: nil,
@@ -144,59 +145,59 @@ func TestParseQuery(t *testing.T) {
 		{
 			name:  "implicit boolean expression with string literal operands",
 			input: "foo bar baz",
-			expectedExpression: &InfixExpression{
+			expectedExpression: InfixExpression{
 				Operator: TokOpAnd,
-				Left: &InfixExpression{
+				Left: InfixExpression{
 					Operator: TokOpAnd,
-					Left:     &StringLiteral{Value: "foo"},
-					Right:    &StringLiteral{Value: "bar"},
+					Left:     StringLiteral{Value: "foo"},
+					Right:    StringLiteral{Value: "bar"},
 				},
-				Right: &StringLiteral{Value: "baz"},
+				Right: StringLiteral{Value: "baz"},
 			},
 			expectedError: nil,
 		},
 		{
 			name:  "implicit boolean expression nested in group",
 			input: "(foo bar)",
-			expectedExpression: &InfixExpression{
+			expectedExpression: InfixExpression{
 				Operator: TokOpAnd,
-				Left:     &StringLiteral{Value: "foo"},
-				Right:    &StringLiteral{Value: "bar"},
+				Left:     StringLiteral{Value: "foo"},
+				Right:    StringLiteral{Value: "bar"},
 			},
 			expectedError: nil,
 		},
 		{
 			name:  "implicit and explicit boolean expression with string literal operands",
 			input: "foo bar OR baz yolo",
-			expectedExpression: &InfixExpression{
+			expectedExpression: InfixExpression{
 				Operator: TokOpAnd,
-				Left: &InfixExpression{
+				Left: InfixExpression{
 					Operator: TokOpAnd,
-					Left:     &StringLiteral{Value: "foo"},
-					Right: &InfixExpression{
+					Left:     StringLiteral{Value: "foo"},
+					Right: InfixExpression{
 						Operator: TokOpOr,
-						Left:     &StringLiteral{Value: "bar"},
-						Right:    &StringLiteral{Value: "baz"},
+						Left:     StringLiteral{Value: "bar"},
+						Right:    StringLiteral{Value: "baz"},
 					},
 				},
-				Right: &StringLiteral{Value: "yolo"},
+				Right: StringLiteral{Value: "yolo"},
 			},
 			expectedError: nil,
 		},
 		{
 			name:  "implicit boolean expression with comparison operands",
 			input: "foo=bar baz=~yolo",
-			expectedExpression: &InfixExpression{
+			expectedExpression: InfixExpression{
 				Operator: TokOpAnd,
-				Left: &InfixExpression{
+				Left: InfixExpression{
 					Operator: TokOpEq,
-					Left:     &StringLiteral{Value: "foo"},
-					Right:    &StringLiteral{Value: "bar"},
+					Left:     StringLiteral{Value: "foo"},
+					Right:    StringLiteral{Value: "bar"},
 				},
-				Right: &InfixExpression{
+				Right: InfixExpression{
 					Operator: TokOpRe,
-					Left:     &StringLiteral{Value: "baz"},
-					Right:    &StringLiteral{Value: "yolo"},
+					Left:     StringLiteral{Value: "baz"},
+					Right:    regexp.MustCompile("yolo"),
 				},
 			},
 			expectedError: nil,
@@ -204,17 +205,17 @@ func TestParseQuery(t *testing.T) {
 		{
 			name:  "eq operator takes precedence over boolean ops",
 			input: "foo=bar OR baz=yolo",
-			expectedExpression: &InfixExpression{
+			expectedExpression: InfixExpression{
 				Operator: TokOpOr,
-				Left: &InfixExpression{
+				Left: InfixExpression{
 					Operator: TokOpEq,
-					Left:     &StringLiteral{Value: "foo"},
-					Right:    &StringLiteral{Value: "bar"},
+					Left:     StringLiteral{Value: "foo"},
+					Right:    StringLiteral{Value: "bar"},
 				},
-				Right: &InfixExpression{
+				Right: InfixExpression{
 					Operator: TokOpEq,
-					Left:     &StringLiteral{Value: "baz"},
-					Right:    &StringLiteral{Value: "yolo"},
+					Left:     StringLiteral{Value: "baz"},
+					Right:    StringLiteral{Value: "yolo"},
 				},
 			},
 			expectedError: nil,

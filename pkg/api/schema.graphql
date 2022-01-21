@@ -10,7 +10,6 @@ type HttpRequestLog {
 }
 
 type HttpResponseLog {
-  requestId: ID!
   proto: String!
   statusCode: Int!
   statusReason: String!
@@ -24,6 +23,7 @@ type HttpHeader {
 }
 
 type Project {
+  id: ID!
   name: String!
   isActive: Boolean!
 }
@@ -82,9 +82,10 @@ type Query {
 }
 
 type Mutation {
-  openProject(name: String!): Project
+  createProject(name: String!): Project
+  openProject(id: ID!): Project
   closeProject: CloseProjectResult!
-  deleteProject(name: String!): DeleteProjectResult!
+  deleteProject(id: ID!): DeleteProjectResult!
   clearHTTPRequestLog: ClearHTTPRequestLogResult!
   setScope(scope: [ScopeRuleInput!]!): [ScopeRule!]!
   setHttpRequestLogFilter(

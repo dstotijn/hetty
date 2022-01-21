@@ -2,13 +2,14 @@ package proj
 
 import (
 	"context"
+
+	"github.com/oklog/ulid"
 )
 
 type Repository interface {
-	UpsertSettings(ctx context.Context, module string, settings interface{}) error
-	FindSettingsByModule(ctx context.Context, module string, settings interface{}) error
-	OpenProject(name string) error
-	DeleteProject(name string) error
-	Projects() ([]Project, error)
+	FindProjectByID(ctx context.Context, id ulid.ULID) (Project, error)
+	UpsertProject(ctx context.Context, project Project) error
+	DeleteProject(ctx context.Context, id ulid.ULID) error
+	Projects(ctx context.Context) ([]Project, error)
 	Close() error
 }

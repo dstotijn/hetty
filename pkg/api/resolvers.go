@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/99designs/gqlgen/graphql"
+	"github.com/oklog/ulid"
 	"github.com/vektah/gqlparser/v2/gqlerror"
 
 	"github.com/dstotijn/hetty/pkg/proj"
@@ -19,9 +20,8 @@ import (
 )
 
 type Resolver struct {
-	RequestLogService *reqlog.Service
 	ProjectService    proj.Service
-	ScopeService      *scope.Scope
+	RequestLogService *reqlog.Service
 }
 
 type (
@@ -54,8 +54,8 @@ func (r *queryResolver) HTTPRequestLogs(ctx context.Context) ([]HTTPRequestLog, 
 	return logs, nil
 }
 
-func (r *queryResolver) HTTPRequestLog(ctx context.Context, id int64) (*HTTPRequestLog, error) {
-	log, err := r.RequestLogService.FindRequestLogByID(ctx, id)
+func (r *queryResolver) HTTPRequestLog(ctx context.Context, id ULID) (*HTTPRequestLog, error) {
+	log, err := r.RequestLogService.FindRequestLogByID(ctx, ulid.ULID(id))
 	if errors.Is(err, reqlog.ErrRequestNotFound) {
 		return nil, nil
 	} else if err != nil {
@@ -70,32 +70,32 @@ func (r *queryResolver) HTTPRequestLog(ctx context.Context, id int64) (*HTTPRequ
 	return &req, nil
 }
 
-func parseRequestLog(req reqlog.Request) (HTTPRequestLog, error) {
-	method := HTTPMethod(req.Request.Method)
+func parseRequestLog(reqLog reqlog.RequestLog) (HTTPRequestLog, error) {
+	method := HTTPMethod(reqLog.Method)
 	if method != "" && !method.IsValid() {
 		return HTTPRequestLog{}, fmt.Errorf("request has invalid method: %v", method)
 	}
 
 	log := HTTPRequestLog{
-		ID:        req.ID,
-		Proto:     req.Request.Proto,
+		ID:        ULID(reqLog.ID),
+		Proto:     reqLog.Proto,
 		Method:    method,
-		Timestamp: req.Timestamp,
+		Timestamp: ulid.Time(reqLog.ID.Time()),
 	}
 
-	if req.Request.URL != nil {
-		log.URL = req.Request.URL.String()
+	if reqLog.URL != nil {
+		log.URL = reqLog.URL.String()
 	}
 
-	if len(req.Body) > 0 {
-		reqBody := string(req.Body)
-		log.Body = &reqBody
+	if len(reqLog.Body) > 0 {
+		bodyStr := string(reqLog.Body)
+		log.Body = &bodyStr
 	}
 
-	if req.Request.Header != nil {
+	if reqLog.Header != nil {
 		log.Headers = make([]HTTPHeader, 0)
 
-		for key, values := range req.Request.Header {
+		for key, values := range reqLog.Header {
 			for _, value := range values {
 				log.Headers = append(log.Headers, HTTPHeader{
 					Key:   key,
@@ -105,27 +105,26 @@ func parseRequestLog(req reqlog.Request) (HTTPRequestLog, error) {
 		}
 	}
 
-	if req.Response != nil {
+	if reqLog.Response != nil {
 		log.Response = &HTTPResponseLog{
-			RequestID:  req.Response.RequestID,
-			Proto:      req.Response.Response.Proto,
-			StatusCode: req.Response.Response.StatusCode,
+			Proto:      reqLog.Response.Proto,
+			StatusCode: reqLog.Response.StatusCode,
 		}
-		statusReasonSubs := strings.SplitN(req.Response.Response.Status, " ", 2)
+		statusReasonSubs := strings.SplitN(reqLog.Response.Status, " ", 2)
 
 		if len(statusReasonSubs) == 2 {
 			log.Response.StatusReason = statusReasonSubs[1]
 		}
 
-		if len(req.Response.Body) > 0 {
-			resBody := string(req.Response.Body)
-			log.Response.Body = &resBody
+		if len(reqLog.Response.Body) > 0 {
+			bodyStr := string(reqLog.Response.Body)
+			log.Response.Body = &bodyStr
 		}
 
-		if req.Response.Response.Header != nil {
+		if reqLog.Response.Header != nil {
 			log.Response.Headers = make([]HTTPHeader, 0)
 
-			for key, values := range req.Response.Response.Header {
+			for key, values := range reqLog.Response.Header {
 				for _, value := range values {
 					log.Response.Headers = append(log.Response.Headers, HTTPHeader{
 						Key:   key,
@@ -139,8 +138,8 @@ func parseRequestLog(req reqlog.Request) (HTTPRequestLog, error) {
 	return log, nil
 }
 
-func (r *mutationResolver) OpenProject(ctx context.Context, name string) (*Project, error) {
-	p, err := r.ProjectService.Open(ctx, name)
+func (r *mutationResolver) CreateProject(ctx context.Context, name string) (*Project, error) {
+	p, err := r.ProjectService.CreateProject(ctx, name)
 	if errors.Is(err, proj.ErrInvalidName) {
 		return nil, gqlerror.Errorf("Project name must only contain alphanumeric or space chars.")
 	} else if err != nil {
@@ -148,13 +147,29 @@ func (r *mutationResolver) OpenProject(ctx context.Context, name string) (*Proje
 	}
 
 	return &Project{
+		ID:       ULID(p.ID),
 		Name:     p.Name,
-		IsActive: p.IsActive,
+		IsActive: r.ProjectService.IsProjectActive(p.ID),
+	}, nil
+}
+
+func (r *mutationResolver) OpenProject(ctx context.Context, id ULID) (*Project, error) {
+	p, err := r.ProjectService.OpenProject(ctx, ulid.ULID(id))
+	if errors.Is(err, proj.ErrInvalidName) {
+		return nil, gqlerror.Errorf("Project name must only contain alphanumeric or space chars.")
+	} else if err != nil {
+		return nil, fmt.Errorf("could not open project: %w", err)
+	}
+
+	return &Project{
+		ID:       ULID(p.ID),
+		Name:     p.Name,
+		IsActive: r.ProjectService.IsProjectActive(p.ID),
 	}, nil
 }
 
 func (r *queryResolver) ActiveProject(ctx context.Context) (*Project, error) {
-	p, err := r.ProjectService.ActiveProject()
+	p, err := r.ProjectService.ActiveProject(ctx)
 	if errors.Is(err, proj.ErrNoProject) {
 		return nil, nil
 	} else if err != nil {
@@ -162,13 +177,14 @@ func (r *queryResolver) ActiveProject(ctx context.Context) (*Project, error) {
 	}
 
 	return &Project{
+		ID:       ULID(p.ID),
 		Name:     p.Name,
-		IsActive: p.IsActive,
+		IsActive: r.ProjectService.IsProjectActive(p.ID),
 	}, nil
 }
 
 func (r *queryResolver) Projects(ctx context.Context) ([]Project, error) {
-	p, err := r.ProjectService.Projects()
+	p, err := r.ProjectService.Projects(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("could not get projects: %w", err)
 	}
@@ -176,8 +192,9 @@ func (r *queryResolver) Projects(ctx context.Context) ([]Project, error) {
 	projects := make([]Project, len(p))
 	for i, proj := range p {
 		projects[i] = Project{
+			ID:       ULID(proj.ID),
 			Name:     proj.Name,
-			IsActive: proj.IsActive,
+			IsActive: r.ProjectService.IsProjectActive(proj.ID),
 		}
 	}
 
@@ -185,7 +202,7 @@ func (r *queryResolver) Projects(ctx context.Context) ([]Project, error) {
 }
 
 func (r *queryResolver) Scope(ctx context.Context) ([]ScopeRule, error) {
-	rules := r.ScopeService.Rules()
+	rules := r.ProjectService.Scope().Rules()
 	return scopeToScopeRules(rules), nil
 }
 
@@ -200,15 +217,15 @@ func regexpToStringPtr(r *regexp.Regexp) *string {
 }
 
 func (r *mutationResolver) CloseProject(ctx context.Context) (*CloseProjectResult, error) {
-	if err := r.ProjectService.Close(); err != nil {
+	if err := r.ProjectService.CloseProject(); err != nil {
 		return nil, fmt.Errorf("could not close project: %w", err)
 	}
 
 	return &CloseProjectResult{true}, nil
 }
 
-func (r *mutationResolver) DeleteProject(ctx context.Context, name string) (*DeleteProjectResult, error) {
-	if err := r.ProjectService.Delete(name); err != nil {
+func (r *mutationResolver) DeleteProject(ctx context.Context, id ULID) (*DeleteProjectResult, error) {
+	if err := r.ProjectService.DeleteProject(ctx, ulid.ULID(id)); err != nil {
 		return nil, fmt.Errorf("could not delete project: %w", err)
 	}
 
@@ -218,7 +235,14 @@ func (r *mutationResolver) DeleteProject(ctx context.Context, name string) (*Del
 }
 
 func (r *mutationResolver) ClearHTTPRequestLog(ctx context.Context) (*ClearHTTPRequestLogResult, error) {
-	if err := r.RequestLogService.ClearRequests(ctx); err != nil {
+	project, err := r.ProjectService.ActiveProject(ctx)
+	if errors.Is(err, proj.ErrNoProject) {
+		return nil, noActiveProjectErr(ctx)
+	} else if err != nil {
+		return nil, fmt.Errorf("could not get active project: %w", err)
+	}
+
+	if err := r.RequestLogService.ClearRequests(ctx, project.ID); err != nil {
 		return nil, fmt.Errorf("could not clear request log: %w", err)
 	}
 
@@ -263,8 +287,9 @@ func (r *mutationResolver) SetScope(ctx context.Context, input []ScopeRuleInput)
 		}
 	}
 
-	if err := r.ScopeService.SetRules(ctx, rules); err != nil {
-		return nil, fmt.Errorf("could not set scope: %w", err)
+	err := r.ProjectService.SetScopeRules(ctx, rules)
+	if err != nil {
+		return nil, fmt.Errorf("could not set scope rules: %w", err)
 	}
 
 	return scopeToScopeRules(rules), nil
@@ -283,7 +308,7 @@ func (r *mutationResolver) SetHTTPRequestLogFilter(
 		return nil, fmt.Errorf("could not parse request log filter: %w", err)
 	}
 
-	err = r.RequestLogService.SetRequestLogFilter(ctx, filter)
+	err = r.ProjectService.SetRequestLogFindFilter(ctx, filter)
 	if errors.Is(err, proj.ErrNoProject) {
 		return nil, noActiveProjectErr(ctx)
 	} else if err != nil {
@@ -333,7 +358,6 @@ func findRequestsFilterFromInput(input *HTTPRequestLogFilterInput) (filter reqlo
 			return reqlog.FindRequestsFilter{}, fmt.Errorf("could not parse search query: %w", err)
 		}
 
-		filter.RawSearchExpr = *input.SearchExpression
 		filter.SearchExpr = expr
 	}
 
@@ -350,8 +374,9 @@ func findReqFilterToHTTPReqLogFilter(findReqFilter reqlog.FindRequestsFilter) *H
 		OnlyInScope: findReqFilter.OnlyInScope,
 	}
 
-	if findReqFilter.RawSearchExpr != "" {
-		httpReqLogFilter.SearchExpression = &findReqFilter.RawSearchExpr
+	if findReqFilter.SearchExpr != nil {
+		searchExpr := findReqFilter.SearchExpr.String()
+		httpReqLogFilter.SearchExpression = &searchExpr
 	}
 
 	return httpReqLogFilter

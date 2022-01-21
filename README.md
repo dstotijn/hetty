@@ -33,7 +33,7 @@ for details.
 
 ## Installation
 
-Hetty compiles to a self-contained binary, with an embedded SQLite database
+Hetty compiles to a self-contained binary, with an embedded BadgerDB database
 and web based admin interface.
 
 ### Install pre-built release (recommended)
@@ -47,11 +47,10 @@ and web based admin interface.
 - [Go 1.16](https://golang.org/)
 - [Yarn](https://yarnpkg.com/)
 
-Hetty depends on SQLite (via [mattn/go-sqlite3](https://github.com/mattn/go-sqlite3))
-and needs `cgo` to compile. Additionally, the static resources for the admin interface
+When building from source, the static resources for the admin interface
 (Next.js) need to be generated via [Yarn](https://yarnpkg.com/). The generated
-files will be embedded (using the [embed](https://golang.org/pkg/embed/) package)
-when you use the `build` Makefile target.
+files will be embedded (using the [embed](https://golang.org/pkg/embed/)
+package) when you use the `build` Makefile target.
 
 Clone the repository and use the `build` make target to create a binary:
 
@@ -64,7 +63,7 @@ $ make build
 ### Docker
 
 A Docker image is available on Docker Hub: [`dstotijn/hetty`](https://hub.docker.com/r/dstotijn/hetty).
-For persistent storage of CA certificates and project databases, mount a volume:
+For persistent storage of CA certificates and projects database, mount a volume:
 
 ```
 $ mkdir -p $HOME/.hetty
@@ -77,7 +76,7 @@ When Hetty is run, by default it listens on `:8080` and is accessible via
 http://localhost:8080. Depending on incoming HTTP requests, it either acts as a
 MITM proxy, or it serves the API and web interface.
 
-By default, project database files and CA certificates are stored in a `.hetty`
+By default, the projects database files and CA certificates are stored in a `.hetty`
 directory under the user's home directory (`$HOME` on Linux/macOS, `%USERPROFILE%`
 on Windows).
 
@@ -101,8 +100,8 @@ Usage of ./hetty:
         CA certificate filepath. Creates a new CA certificate if file doesn't exist (default "~/.hetty/hetty_cert.pem")
   -key string
         CA private key filepath. Creates a new CA private key if file doesn't exist (default "~/.hetty/hetty_key.pem")
-  -projects string
-        Projects directory path (default "~/.hetty/projects")
+  -db string
+        Database directory path (default "~/.hetty/db")
 ```
 
 You should see:

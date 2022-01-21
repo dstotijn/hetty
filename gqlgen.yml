@@ -45,7 +45,7 @@ omit_slice_element_pointers: true
 models:
   ID:
     model:
-      - github.com/99designs/gqlgen/graphql.Int64
+      - github.com/dstotijn/hetty/pkg/api.ULID
 #   Int:
 #     model:
 #       - github.com/99designs/gqlgen/graphql.Int

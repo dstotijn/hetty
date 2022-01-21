@@ -3,14 +3,13 @@ module github.com/dstotijn/hetty
 go 1.16
 
 require (
-	github.com/99designs/gqlgen v0.13.0
-	github.com/Masterminds/squirrel v1.4.0
+	github.com/99designs/gqlgen v0.14.0
+	github.com/dgraph-io/badger/v3 v3.2103.2
+	github.com/google/go-cmp v0.5.6
 	github.com/gorilla/mux v1.7.4
 	github.com/hashicorp/golang-lru v0.5.1 // indirect
-	github.com/jmoiron/sqlx v1.2.0
-	github.com/mattn/go-sqlite3 v1.14.4
+	github.com/matryer/moq v0.0.0-20200106131100-75d0ddfc0007
 	github.com/mitchellh/go-homedir v1.1.0
-	github.com/mitchellh/mapstructure v1.1.2 // indirect
-	github.com/vektah/gqlparser/v2 v2.1.0
-	google.golang.org/appengine v1.6.6 // indirect
+	github.com/oklog/ulid v1.3.1
+	github.com/vektah/gqlparser/v2 v2.2.0
 )

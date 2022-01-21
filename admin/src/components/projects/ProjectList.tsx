@@ -48,6 +48,7 @@ const useStyles = makeStyles((theme: Theme) =>
 const PROJECTS = gql`
   query Projects {
     projects {
+      id
       name
       isActive
     }
@@ -55,8 +56,9 @@ const PROJECTS = gql`
 `;
 
 const OPEN_PROJECT = gql`
-  mutation OpenProject($name: String!) {
-    openProject(name: $name) {
+  mutation OpenProject($id: ID!) {
+    openProject(id: $id) {
+      id
       name
       isActive
     }
@@ -72,8 +74,8 @@ const CLOSE_PROJECT = gql`
 `;
 
 const DELETE_PROJECT = gql`
-  mutation DeleteProject($name: String!) {
-    deleteProject(name: $name) {
+  mutation DeleteProject($id: ID!) {
+    deleteProject(id: $id) {
       success
     }
   }
@@ -89,7 +91,7 @@ function ProjectList(): JSX.Element {
     { error: openProjErr, loading: openProjLoading },
   ] = useMutation(OPEN_PROJECT, {
     errorPolicy: "all",
-    onError: () => {},
+    onError: () => { },
     update(cache, { data: { openProject } }) {
       cache.modify({
         fields: {
@@ -98,6 +100,7 @@ function ProjectList(): JSX.Element {
               data: openProject,
               fragment: gql`
                 fragment ActiveProject on Project {
+                  id
                   name
                   isActive
                   type
@@ -108,10 +111,11 @@ function ProjectList(): JSX.Element {
           },
           projects(_, { DELETE }) {
             cache.writeFragment({
-              id: openProject.name,
+              id: openProject.id,
               data: openProject,
               fragment: gql`
                 fragment OpenProject on Project {
+                  id
                   name
                   isActive
                   type
@@ -129,7 +133,7 @@ function ProjectList(): JSX.Element {
   });
   const [closeProject, { error: closeProjErr }] = useMutation(CLOSE_PROJECT, {
     errorPolicy: "all",
-    onError: () => {},
+    onError: () => { },
     update(cache) {
       cache.modify({
         fields: {
@@ -151,7 +155,7 @@ function ProjectList(): JSX.Element {
     { loading: deleteProjLoading, error: deleteProjErr },
   ] = useMutation(DELETE_PROJECT, {
     errorPolicy: "all",
-    onError: () => {},
+    onError: () => { },
     update(cache) {
       cache.modify({
         fields: {
@@ -165,14 +169,14 @@ function ProjectList(): JSX.Element {
     },
   });
 
-  const [deleteProjName, setDeleteProjName] = useState(null);
+  const [deleteProj, setDeleteProj] = useState(null);
   const [deleteDiagOpen, setDeleteDiagOpen] = useState(false);
-  const handleDeleteButtonClick = (name: string) => {
-    setDeleteProjName(name);
+  const handleDeleteButtonClick = (project: any) => {
+    setDeleteProj(project);
     setDeleteDiagOpen(true);
   };
   const handleDeleteConfirm = () => {
-    deleteProject({ variables: { name: deleteProjName } });
+    deleteProject({ variables: { id: deleteProj.id } });
   };
   const handleDeleteCancel = () => {
     setDeleteDiagOpen(false);
@@ -190,7 +194,7 @@ function ProjectList(): JSX.Element {
     <div>
       <Dialog open={deleteDiagOpen} onClose={handleDeleteCancel}>
         <DialogTitle>
-          Delete project “<strong>{deleteProjName}</strong>”?
+          Delete project “<strong>{deleteProj?.name}</strong>”?
         </DialogTitle>
         <DialogContent>
           <DialogContentText>
@@ -223,7 +227,7 @@ function ProjectList(): JSX.Element {
         onClose={handleCloseDeleteNotif}
       >
         <Alert onClose={handleCloseDeleteNotif} severity="info">
-          Project <strong>{deleteProjName}</strong> was deleted.
+          Project <strong>{deleteProj?.name}</strong> was deleted.
         </Alert>
       </Snackbar>
 
@@ -253,7 +257,7 @@ function ProjectList(): JSX.Element {
       {projData?.projects.length > 0 && (
         <List className={classes.projectsList}>
           {projData.projects.map((project) => (
-            <ListItem key={project.name}>
+            <ListItem key={project.id}>
               <ListItemAvatar>
                 <Avatar
                   className={
@@ -281,7 +285,7 @@ function ProjectList(): JSX.Element {
                         disabled={openProjLoading || projLoading}
                         onClick={() =>
                           openProject({
-                            variables: { name: project.name },
+                            variables: { id: project.id },
                           })
                         }
                       >
@@ -293,7 +297,7 @@ function ProjectList(): JSX.Element {
                 <Tooltip title="Delete project">
                   <span>
                     <IconButton
-                      onClick={() => handleDeleteButtonClick(project.name)}
+                      onClick={() => handleDeleteButtonClick(project)}
                       disabled={project.isActive}
                     >
                       <DeleteIcon />

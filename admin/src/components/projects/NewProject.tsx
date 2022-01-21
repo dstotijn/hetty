@@ -24,9 +24,19 @@ const useStyles = makeStyles((theme: Theme) =>
   })
 );
 
+const CREATE_PROJECT = gql`
+  mutation CreateProject($name: String!) {
+    createProject(name: $name) {
+      id
+      name
+    }
+  }
+`;
+
 const OPEN_PROJECT = gql`
-  mutation OpenProject($name: String!) {
-    openProject(name: $name) {
+  mutation OpenProject($id: ID!) {
+    openProject(id: $id) {
+      id
       name
       isActive
     }
@@ -37,8 +47,15 @@ function NewProject(): JSX.Element {
   const classes = useStyles();
   const [input, setInput] = useState(null);
 
-  const [openProject, { error, loading }] = useMutation(OPEN_PROJECT, {
-    onError: () => {},
+  const [createProject, { error: createProjErr, loading: createProjLoading }] = useMutation(CREATE_PROJECT, {
+    onError: () => { },
+    onCompleted(data) {
+      input.value = "";
+      openProject({ variables: { id: data.createProject.id } });
+    },
+  });
+  const [openProject, { error: openProjErr, loading: openProjLoading }] = useMutation(OPEN_PROJECT, {
+    onError: () => { },
     onCompleted() {
       input.value = "";
     },
@@ -47,10 +64,11 @@ function NewProject(): JSX.Element {
         fields: {
           activeProject() {
             const activeProjRef = cache.writeFragment({
-              id: openProject.name,
+              id: openProject.id,
               data: openProject,
               fragment: gql`
                 fragment ActiveProject on Project {
+                  id
                   name
                   isActive
                   type
@@ -61,10 +79,11 @@ function NewProject(): JSX.Element {
           },
           projects(_, { DELETE }) {
             cache.writeFragment({
-              id: openProject.name,
+              id: openProject.id,
               data: openProject,
               fragment: gql`
                 fragment OpenProject on Project {
+                  id
                   name
                   isActive
                   type
@@ -78,9 +97,9 @@ function NewProject(): JSX.Element {
     },
   });
 
-  const handleNewProjectForm = (e: React.SyntheticEvent) => {
+  const handleCreateAndOpenProjectForm = (e: React.SyntheticEvent) => {
     e.preventDefault();
-    openProject({ variables: { name: input.value } });
+    createProject({ variables: { name: input.value } });
   };
 
   return (
@@ -88,7 +107,7 @@ function NewProject(): JSX.Element {
       <Box mb={3}>
         <Typography variant="h6">New project</Typography>
       </Box>
-      <form onSubmit={handleNewProjectForm} autoComplete="off">
+      <form onSubmit={handleCreateAndOpenProjectForm} autoComplete="off">
         <TextField
           className={classes.projectName}
           color="secondary"
@@ -100,8 +119,8 @@ function NewProject(): JSX.Element {
           }}
           label="Project name"
           placeholder="Project name…"
-          error={Boolean(error)}
-          helperText={error && error.message}
+          error={Boolean(createProjErr || openProjErr)}
+          helperText={createProjErr && createProjErr.message || openProjErr && openProjErr.message}
         />
         <Button
           className={classes.button}
@@ -109,8 +128,8 @@ function NewProject(): JSX.Element {
           variant="contained"
           color="secondary"
           size="large"
-          disabled={loading}
-          startIcon={loading ? <CircularProgress size={22} /> : <AddIcon />}
+          disabled={createProjLoading || openProjLoading}
+          startIcon={createProjLoading || openProjLoading ? <CircularProgress size={22} /> : <AddIcon />}
         >
           Create & open project
         </Button>

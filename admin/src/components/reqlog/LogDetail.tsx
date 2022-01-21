@@ -32,7 +32,7 @@ const HTTP_REQUEST_LOG = gql`
 `;
 
 interface Props {
-  requestId: number;
+  requestId: string;
 }
 
 function LogDetail({ requestId: id }: Props): JSX.Element {

@@ -8,7 +8,6 @@ linters:
     - metalinter
     - module
     - performance
-    - sql
     - style
     - test
     - unused
@@ -28,8 +27,6 @@ linters:
     - wrapcheck
 
 linters-settings:
-  errcheck:
-    ignore: "database/sql:Rollback"
   gci:
     local-prefixes: github.com/dstotijn/hetty
   godot:

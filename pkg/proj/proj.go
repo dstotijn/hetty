@@ -5,134 +5,197 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"math/rand"
 	"regexp"
 	"sync"
+	"time"
+
+	"github.com/oklog/ulid"
+
+	"github.com/dstotijn/hetty/pkg/reqlog"
+	"github.com/dstotijn/hetty/pkg/scope"
+	"github.com/dstotijn/hetty/pkg/search"
 )
 
+//nolint:gosec
+var ulidEntropy = rand.New(rand.NewSource(time.Now().UnixNano()))
+
 type (
-	OnProjectOpenFn  func(name string) error
-	OnProjectCloseFn func(name string) error
+	OnProjectOpenFn  func(projectID ulid.ULID) error
+	OnProjectCloseFn func(projectID ulid.ULID) error
 )
 
 // Service is used for managing projects.
 type Service interface {
-	Open(ctx context.Context, name string) (Project, error)
-	Close() error
-	Delete(name string) error
-	ActiveProject() (Project, error)
-	Projects() ([]Project, error)
+	CreateProject(ctx context.Context, name string) (Project, error)
+	OpenProject(ctx context.Context, projectID ulid.ULID) (Project, error)
+	CloseProject() error
+	DeleteProject(ctx context.Context, projectID ulid.ULID) error
+	ActiveProject(ctx context.Context) (Project, error)
+	IsProjectActive(projectID ulid.ULID) bool
+	Projects(ctx context.Context) ([]Project, error)
+	Scope() *scope.Scope
+	SetScopeRules(ctx context.Context, rules []scope.Rule) error
+	SetRequestLogFindFilter(ctx context.Context, filter reqlog.FindRequestsFilter) error
 	OnProjectOpen(fn OnProjectOpenFn)
 	OnProjectClose(fn OnProjectCloseFn)
 }
 
 type service struct {
 	repo              Repository
-	activeProject     string
+	reqLogSvc         *reqlog.Service
+	scope             *scope.Scope
+	activeProjectID   ulid.ULID
 	onProjectOpenFns  []OnProjectOpenFn
 	onProjectCloseFns []OnProjectCloseFn
 	mu                sync.RWMutex
 }
 
 type Project struct {
+	ID       ulid.ULID
 	Name     string
-	IsActive bool
+	Settings Settings
+
+	isActive bool
+}
+
+type Settings struct {
+	ReqLogBypassOutOfScope bool
+	ReqLogOnlyFindInScope  bool
+	ScopeRules             []scope.Rule
+	SearchExpr             search.Expression
 }
 
 var (
-	ErrNoProject   = errors.New("proj: no open project")
-	ErrNoSettings  = errors.New("proj: settings not found")
-	ErrInvalidName = errors.New("proj: invalid name, must be alphanumeric or whitespace chars")
+	ErrProjectNotFound = errors.New("proj: project not found")
+	ErrNoProject       = errors.New("proj: no open project")
+	ErrNoSettings      = errors.New("proj: settings not found")
+	ErrInvalidName     = errors.New("proj: invalid name, must be alphanumeric or whitespace chars")
 )
 
 var nameRegexp = regexp.MustCompile(`^[\w\d\s]+$`)
 
+type Config struct {
+	Repository    Repository
+	ReqLogService *reqlog.Service
+	Scope         *scope.Scope
+}
+
 // NewService returns a new Service.
-func NewService(repo Repository) (Service, error) {
+func NewService(cfg Config) (Service, error) {
 	return &service{
-		repo: repo,
+		repo:      cfg.Repository,
+		reqLogSvc: cfg.ReqLogService,
+		scope:     cfg.Scope,
 	}, nil
 }
 
-// Close closes the currently open project database (if there is one).
-func (svc *service) Close() error {
+func (svc *service) CreateProject(ctx context.Context, name string) (Project, error) {
+	if !nameRegexp.MatchString(name) {
+		return Project{}, ErrInvalidName
+	}
+
+	project := Project{
+		ID:   ulid.MustNew(ulid.Timestamp(time.Now()), ulidEntropy),
+		Name: name,
+	}
+
+	err := svc.repo.UpsertProject(ctx, project)
+	if err != nil {
+		return Project{}, fmt.Errorf("proj: could not create project: %w", err)
+	}
+
+	return project, nil
+}
+
+// CloseProject closes the currently open project (if there is one).
+func (svc *service) CloseProject() error {
 	svc.mu.Lock()
 	defer svc.mu.Unlock()
 
-	closedProject := svc.activeProject
-
-	if err := svc.repo.Close(); err != nil {
-		return fmt.Errorf("proj: could not close project: %w", err)
+	if svc.activeProjectID.Compare(ulid.ULID{}) == 0 {
+		return nil
 	}
 
-	svc.activeProject = ""
+	closedProjectID := svc.activeProjectID
 
-	svc.emitProjectClosed(closedProject)
+	svc.activeProjectID = ulid.ULID{}
+	svc.reqLogSvc.ActiveProjectID = ulid.ULID{}
+	svc.reqLogSvc.BypassOutOfScopeRequests = false
+	svc.reqLogSvc.FindReqsFilter = reqlog.FindRequestsFilter{}
+	svc.scope.SetRules(nil)
+
+	svc.emitProjectClosed(closedProjectID)
 
 	return nil
 }
 
-// Delete removes a project database file from disk (if there is one).
-func (svc *service) Delete(name string) error {
-	if name == "" {
-		return errors.New("proj: name cannot be empty")
+// DeleteProject removes a project from the repository.
+func (svc *service) DeleteProject(ctx context.Context, projectID ulid.ULID) error {
+	if svc.activeProjectID.Compare(projectID) == 0 {
+		return fmt.Errorf("proj: project (%v) is active", projectID.String())
 	}
 
-	if svc.activeProject == name {
-		return fmt.Errorf("proj: project (%v) is active", name)
-	}
-
-	if err := svc.repo.DeleteProject(name); err != nil {
+	if err := svc.repo.DeleteProject(ctx, projectID); err != nil {
 		return fmt.Errorf("proj: could not delete project: %w", err)
 	}
 
 	return nil
 }
 
-// Open opens a database identified with `name`. If a database with this
-// identifier doesn't exist yet, it will be automatically created.
-func (svc *service) Open(ctx context.Context, name string) (Project, error) {
-	if !nameRegexp.MatchString(name) {
-		return Project{}, ErrInvalidName
-	}
-
+// OpenProject sets a project as the currently active project.
+func (svc *service) OpenProject(ctx context.Context, projectID ulid.ULID) (Project, error) {
 	svc.mu.Lock()
 	defer svc.mu.Unlock()
 
-	if err := svc.repo.Close(); err != nil {
-		return Project{}, fmt.Errorf("proj: could not close previously open database: %w", err)
+	project, err := svc.repo.FindProjectByID(ctx, projectID)
+	if err != nil {
+		return Project{}, fmt.Errorf("proj: failed to get project: %w", err)
 	}
 
-	if err := svc.repo.OpenProject(name); err != nil {
-		return Project{}, fmt.Errorf("proj: could not open database: %w", err)
+	svc.activeProjectID = project.ID
+	svc.reqLogSvc.FindReqsFilter = reqlog.FindRequestsFilter{
+		ProjectID:   project.ID,
+		OnlyInScope: project.Settings.ReqLogOnlyFindInScope,
+		SearchExpr:  project.Settings.SearchExpr,
 	}
+	svc.reqLogSvc.BypassOutOfScopeRequests = project.Settings.ReqLogBypassOutOfScope
+	svc.reqLogSvc.ActiveProjectID = project.ID
 
-	svc.activeProject = name
+	svc.scope.SetRules(project.Settings.ScopeRules)
+
 	svc.emitProjectOpened()
 
-	return Project{
-		Name:     name,
-		IsActive: true,
-	}, nil
+	return project, nil
 }
 
-func (svc *service) ActiveProject() (Project, error) {
-	activeProject := svc.activeProject
-	if activeProject == "" {
+func (svc *service) ActiveProject(ctx context.Context) (Project, error) {
+	activeProjectID := svc.activeProjectID
+	if activeProjectID.Compare(ulid.ULID{}) == 0 {
 		return Project{}, ErrNoProject
 	}
 
-	return Project{
-		Name: activeProject,
-	}, nil
+	project, err := svc.repo.FindProjectByID(ctx, activeProjectID)
+	if err != nil {
+		return Project{}, fmt.Errorf("proj: failed to get active project: %w", err)
+	}
+
+	project.isActive = true
+
+	return project, nil
 }
 
-func (svc *service) Projects() ([]Project, error) {
-	projects, err := svc.repo.Projects()
+func (svc *service) Projects(ctx context.Context) ([]Project, error) {
+	projects, err := svc.repo.Projects(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("proj: could not get projects: %w", err)
 	}
 
 	return projects, nil
+}
+
+func (svc *service) Scope() *scope.Scope {
+	return svc.scope
 }
 
 func (svc *service) OnProjectOpen(fn OnProjectOpenFn) {
@@ -151,16 +214,59 @@ func (svc *service) OnProjectClose(fn OnProjectCloseFn) {
 
 func (svc *service) emitProjectOpened() {
 	for _, fn := range svc.onProjectOpenFns {
-		if err := fn(svc.activeProject); err != nil {
+		if err := fn(svc.activeProjectID); err != nil {
 			log.Printf("[ERROR] Could not execute onProjectOpen function: %v", err)
 		}
 	}
 }
 
-func (svc *service) emitProjectClosed(name string) {
+func (svc *service) emitProjectClosed(projectID ulid.ULID) {
 	for _, fn := range svc.onProjectCloseFns {
-		if err := fn(name); err != nil {
+		if err := fn(projectID); err != nil {
 			log.Printf("[ERROR] Could not execute onProjectClose function: %v", err)
 		}
 	}
+}
+
+func (svc *service) SetScopeRules(ctx context.Context, rules []scope.Rule) error {
+	project, err := svc.ActiveProject(ctx)
+	if err != nil {
+		return err
+	}
+
+	project.Settings.ScopeRules = rules
+
+	err = svc.repo.UpsertProject(ctx, project)
+	if err != nil {
+		return fmt.Errorf("proj: failed to update project: %w", err)
+	}
+
+	svc.scope.SetRules(rules)
+
+	return nil
+}
+
+func (svc *service) SetRequestLogFindFilter(ctx context.Context, filter reqlog.FindRequestsFilter) error {
+	project, err := svc.ActiveProject(ctx)
+	if err != nil {
+		return err
+	}
+
+	filter.ProjectID = project.ID
+
+	project.Settings.ReqLogOnlyFindInScope = filter.OnlyInScope
+	project.Settings.SearchExpr = filter.SearchExpr
+
+	err = svc.repo.UpsertProject(ctx, project)
+	if err != nil {
+		return fmt.Errorf("proj: failed to update project: %w", err)
+	}
+
+	svc.reqLogSvc.FindReqsFilter = filter
+
+	return nil
+}
+
+func (svc *service) IsProjectActive(projectID ulid.ULID) bool {
+	return projectID.Compare(svc.activeProjectID) == 0
 }

@@ -15,12 +15,10 @@ import { useHttpRequestLogs } from "./hooks/useHttpRequestLogs";
 
 function LogsOverview(): JSX.Element {
   const router = useRouter();
-  const detailReqLogId =
-    router.query.id && parseInt(router.query.id as string, 10);
-
+  const detailReqLogId = router.query.id as string | undefined;
   const { loading, error, data } = useHttpRequestLogs();
 
-  const handleLogClick = (reqId: number) => {
+  const handleLogClick = (reqId: string) => {
     router.push("/proxy/logs?id=" + reqId, undefined, {
       shallow: false,
     });

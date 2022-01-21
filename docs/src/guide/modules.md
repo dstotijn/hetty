@@ -14,7 +14,7 @@ The available modules:
 
 ## Projects
 
-Projects are self-contained (SQLite) database files that contain module data.
+Projects are stored in a single BadgerDB database on disk.
 They allow you organize your work, for example to split your work between research
 targets.
 
@@ -25,19 +25,15 @@ typically the first thing you do when you start using Hetty.
 ### Creating a new project
 
 When you open the Hetty admin interface after starting the program, you’ll be prompted
-on the homepage to create a new project. Give it a name (alphanumeric and space character)
-and click the create button:
+on the homepage to “Manage projects”, which leads to the “Projects” page where
+you can open an existing project or create a new one:
 
 ![Creating a project](./create_project.png =417x)
 
-The project name will become the base for the database file on disk. For example,
-if you name your project `My first project`, the file on disk will be
-`My first project.db`.
-
 ::: tip INFO
-Project database files by default are stored in `$HOME/.hetty/projects` on Linux
-and macOS, and `%USERPROFILE%/.hetty` on Windows. You can override this path with
-the `-projects` flag. See: [Usage](/guide/getting-started.md#usage).
+Projects are stored in a single BadgerDB database, stored in `$HOME/.hetty/db` on Linux
+and macOS, and `%USERPROFILE%/.hetty/db` on Windows. You can override this path with
+the `-db` flag. See: [Usage](/guide/getting-started.md#usage).
 :::
 
 ### Managing projects

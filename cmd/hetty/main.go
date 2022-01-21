@@ -15,11 +15,12 @@ import (
 
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
+	badgerdb "github.com/dgraph-io/badger/v3"
 	"github.com/gorilla/mux"
 	"github.com/mitchellh/go-homedir"
 
 	"github.com/dstotijn/hetty/pkg/api"
-	"github.com/dstotijn/hetty/pkg/db/sqlite"
+	"github.com/dstotijn/hetty/pkg/db/badger"
 	"github.com/dstotijn/hetty/pkg/proj"
 	"github.com/dstotijn/hetty/pkg/proxy"
 	"github.com/dstotijn/hetty/pkg/reqlog"
@@ -29,7 +30,7 @@ import (
 var (
 	caCertFile string
 	caKeyFile  string
-	projPath   string
+	dbPath     string
 	addr       string
 )
 
@@ -50,7 +51,7 @@ func run() error {
 		"CA certificate filepath. Creates a new CA certificate if file doesn't exist")
 	flag.StringVar(&caKeyFile, "key", "~/.hetty/hetty_key.pem",
 		"CA private key filepath. Creates a new CA private key if file doesn't exist")
-	flag.StringVar(&projPath, "projects", "~/.hetty/projects", "Projects directory path")
+	flag.StringVar(&dbPath, "db", "~/.hetty/db", "Database directory path")
 	flag.StringVar(&addr, "addr", ":8080", "TCP address to listen on, in the form \"host:port\"")
 	flag.Parse()
 
@@ -65,7 +66,7 @@ func run() error {
 		return fmt.Errorf("could not parse CA private key filepath: %w", err)
 	}
 
-	projPath, err := homedir.Expand(projPath)
+	dbPath, err := homedir.Expand(dbPath)
 	if err != nil {
 		return fmt.Errorf("could not parse projects filepath: %w", err)
 	}
@@ -77,24 +78,27 @@ func run() error {
 		return fmt.Errorf("could not create/load CA key pair: %w", err)
 	}
 
-	db, err := sqlite.New(projPath)
+	badger, err := badger.OpenDatabase(badgerdb.DefaultOptions(dbPath))
 	if err != nil {
-		return fmt.Errorf("could not initialize database client: %w", err)
+		return fmt.Errorf("could not open badger database: %w", err)
 	}
+	defer badger.Close()
 
-	projService, err := proj.NewService(db)
+	scope := &scope.Scope{}
+
+	reqLogService := reqlog.NewService(reqlog.Config{
+		Scope:      scope,
+		Repository: badger,
+	})
+
+	projService, err := proj.NewService(proj.Config{
+		Repository:    badger,
+		ReqLogService: reqLogService,
+		Scope:         scope,
+	})
 	if err != nil {
 		return fmt.Errorf("could not create new project service: %w", err)
 	}
-	defer projService.Close()
-
-	scope := scope.New(db, projService)
-
-	reqLogService := reqlog.NewService(reqlog.Config{
-		Scope:          scope,
-		ProjectService: projService,
-		Repository:     db,
-	})
 
 	p, err := proxy.NewProxy(caCert, caKey)
 	if err != nil {
@@ -123,7 +127,6 @@ func run() error {
 		handler.NewDefaultServer(api.NewExecutableSchema(api.Config{Resolvers: &api.Resolver{
 			RequestLogService: reqLogService,
 			ProjectService:    projService,
-			ScopeService:      scope,
 		}})))
 
 	// Admin interface.

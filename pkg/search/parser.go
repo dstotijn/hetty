@@ -2,6 +2,7 @@ package search
 
 import (
 	"fmt"
+	"regexp"
 )
 
 type precedence int
@@ -99,7 +100,7 @@ func ParseQuery(input string) (expr Expression, err error) {
 		case expr == nil:
 			expr = right
 		default:
-			expr = &InfixExpression{
+			expr = InfixExpression{
 				Operator: TokOpAnd,
 				Left:     expr,
 				Right:    right,
@@ -170,7 +171,7 @@ func (p *Parser) parseExpression(prec precedence) (Expression, error) {
 }
 
 func parsePrefixExpression(p *Parser) (Expression, error) {
-	expr := &PrefixExpression{
+	expr := PrefixExpression{
 		Operator: p.cur.Type,
 	}
 
@@ -187,7 +188,7 @@ func parsePrefixExpression(p *Parser) (Expression, error) {
 }
 
 func parseInfixExpression(p *Parser, left Expression) (Expression, error) {
-	expr := &InfixExpression{
+	expr := InfixExpression{
 		Operator: p.cur.Type,
 		Left:     left,
 	}
@@ -200,13 +201,24 @@ func parseInfixExpression(p *Parser, left Expression) (Expression, error) {
 		return nil, fmt.Errorf("could not parse expression for right operand: %w", err)
 	}
 
+	if expr.Operator == TokOpRe || expr.Operator == TokOpNotRe {
+		if rightStr, ok := right.(StringLiteral); ok {
+			re, err := regexp.Compile(rightStr.Value)
+			if err != nil {
+				return nil, fmt.Errorf("could not compile regular expression %q: %w", rightStr.Value, err)
+			}
+
+			right = re
+		}
+	}
+
 	expr.Right = right
 
 	return expr, nil
 }
 
 func parseStringLiteral(p *Parser) (Expression, error) {
-	return &StringLiteral{Value: p.cur.Literal}, nil
+	return StringLiteral{Value: p.cur.Literal}, nil
 }
 
 func parseGroupedExpression(p *Parser) (Expression, error) {
@@ -227,7 +239,7 @@ func parseGroupedExpression(p *Parser) (Expression, error) {
 			return nil, fmt.Errorf("could not parse expression: %w", err)
 		}
 
-		expr = &InfixExpression{
+		expr = InfixExpression{
 			Operator: TokOpAnd,
 			Left:     expr,
 			Right:    right,
