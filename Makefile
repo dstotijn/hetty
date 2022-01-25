@@ -1,33 +1,21 @@
-PACKAGE_NAME := github.com/dstotijn/hetty
-GOLANG_CROSS_VERSION ?= v1.16.3
+export CGO_ENABLED = 0
+export NEXT_TELEMETRY_DISABLED = 1
+
+.PHONY: clean
+clean:
+	rm -f hetty
+	rm -rf ./cmd/hetty/admin
+	rm -rf ./admin/node_modules
+	rm -rf ./admin/dist
+	rm -rf ./admin/.next
 
 .PHONY: build-admin
 build-admin:
-	NEXT_TELEMETRY_DISABLED=1 cd admin && yarn install && yarn run export
+	cd admin && \
+	yarn install --frozen-lockfile && \
+	yarn run export && \
+    mv dist ../cmd/hetty/admin
 
 .PHONY: build
 build: build-admin
-	CGO_ENABLED=0 mv admin/dist cmd/hetty/admin && go build ./cmd/hetty
-
-.PHONY: release-dry-run
-release-dry-run: build-admin
-	@docker run \
-		--rm \
-		-v `pwd`:/go/src/$(PACKAGE_NAME) \
-		-w /go/src/$(PACKAGE_NAME) \
-		troian/golang-cross:${GOLANG_CROSS_VERSION} \
-		--rm-dist --skip-validate --skip-publish
-
-.PHONY: release
-release: build-admin
-	@if [ ! -f ".release-env" ]; then \
-		echo "\033[91mFile \`.release-env\` is missing.\033[0m";\
-		exit 1;\
-	fi
-	@docker run \
-		--rm \
-		-v `pwd`:/go/src/$(PACKAGE_NAME) \
-		-w /go/src/$(PACKAGE_NAME) \
-		--env-file .release-env \
-		troian/golang-cross:${GOLANG_CROSS_VERSION} \
-		release --rm-dist
+	go build ./cmd/hetty

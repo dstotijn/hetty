@@ -1,60 +1,44 @@
-env:
-  - GO111MODULE=on
-  - CGO_ENABLED=1
+before:
+  hooks:
+    - make clean
+    - make build-admin
+    - go mod tidy
 
 builds:
-  - id: hetty-darwin-amd64
+  - env:
+      - CGO_ENABLED=0
     main: ./cmd/hetty
-    goarch:
-      - amd64
-    goos:
-      - darwin
-    env:
-      - CC=o64-clang
-      - CXX=o64-clang++
-    flags:
-      - -mod=readonly
-
-  - id: hetty-linux-amd64
-    main: ./cmd/hetty
-    goarch:
-      - amd64
+    ldflags:
+      - -s -w -X main.version=v{{.Version}}
     goos:
       - linux
-    flags:
-      - -mod=readonly
-
-  - id: hetty-windows-amd64
-    main: ./cmd/hetty
+      - windows
+      - darwin
     goarch:
       - amd64
-    goos:
-      - windows
-    env:
-      - CC=x86_64-w64-mingw32-gcc
-      - CXX=x86_64-w64-mingw32-g++
-    flags:
-      - -mod=readonly
-    ldflags:
-      - -buildmode=exe
+      - arm64
 
 archives:
-  -
-    replacements:
-        darwin: macOS
-        linux: Linux
-        windows: Windows
-        386: i386
-        amd64: x86_64
+  - replacements:
+      darwin: macOS
+      linux: Linux
+      windows: Windows
+      amd64: x86_64
     format_overrides:
-        - goos: windows
-          format: zip
+      - goos: windows
+        format: zip
+
+gomod:
+  proxy: true
+  env:
+    - GOPROXY=https://proxy.golang.org,direct
+    - GOSUMDB=sum.golang.org
 
 checksum:
   name_template: "checksums.txt"
 
 snapshot:
-  name_template: "{{ .Tag }}-next"
+  name_template: "{{ incpatch .Version }}-next"
 
 changelog:
   sort: asc
