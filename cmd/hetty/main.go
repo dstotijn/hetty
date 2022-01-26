@@ -27,7 +27,7 @@ import (
 	"github.com/dstotijn/hetty/pkg/scope"
 )
 
-var version = "v0.0.0"
+var version = "0.0.0"
 
 // Flag variables.
 var (
@@ -144,7 +144,7 @@ func run() error {
 		TLSNextProto: map[string]func(*http.Server, *tls.Conn, http.Handler){}, // Disable HTTP/2
 	}
 
-	log.Printf("[INFO] Hetty (%v) is running on %v ...", version, addr)
+	log.Printf("[INFO] Hetty (v%v) is running on %v ...", version, addr)
 
 	err = s.ListenAndServe()
 	if err != nil && errors.Is(err, http.ErrServerClosed) {

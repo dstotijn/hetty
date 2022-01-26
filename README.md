@@ -107,7 +107,7 @@ Usage of ./hetty:
 You should see:
 
 ```
-2020/11/01 14:47:10 [INFO] Running server on :8080 ...
+2022/01/26 10:34:24 [INFO] Hetty (v0.3.2) is running on :8080 ...
 ```
 
 Then, visit [http://localhost:8080](http://localhost:8080) to get started.

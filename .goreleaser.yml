@@ -9,7 +9,7 @@ builds:
       - CGO_ENABLED=0
     main: ./cmd/hetty
     ldflags:
-      - -s -w -X main.version=v{{.Version}}
+      - -s -w -X main.version={{.Version}}
     goos:
       - linux
       - windows

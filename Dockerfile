@@ -1,8 +1,6 @@
-ARG GO_VERSION=1.16
-ARG NODE_VERSION=14.11
-ARG ALPINE_VERSION=3.12
-
-ARG CGO_ENABLED=0
+ARG GO_VERSION=1.17
+ARG NODE_VERSION=16.13
+ARG ALPINE_VERSION=3.15
 
 FROM node:${NODE_VERSION}-alpine AS node-builder
 WORKDIR /app
@@ -13,14 +11,15 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN yarn run export
 
 FROM golang:${GO_VERSION}-alpine AS go-builder
+ARG HETTY_VERSION=0.0.0
+ENV CGO_ENABLED=0
 WORKDIR /app
-RUN apk add --no-cache build-base
 COPY go.mod go.sum ./
 RUN go mod download
 COPY cmd ./cmd
 COPY pkg ./pkg
 COPY --from=node-builder /app/dist ./cmd/hetty/admin
-RUN go build ./cmd/hetty
+RUN go build -ldflags="-s -w -X main.version=${HETTY_VERSION}" ./cmd/hetty
 
 FROM alpine:${ALPINE_VERSION}
 WORKDIR /app
