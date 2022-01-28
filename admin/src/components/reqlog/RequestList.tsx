@@ -8,48 +8,23 @@ import {
   TableBody,
   Typography,
   Box,
-  createStyles,
-  makeStyles,
-  Theme,
-  withTheme,
-} from "@material-ui/core";
+  useTheme,
+} from "@mui/material";
 
 import HttpStatusIcon from "./HttpStatusCode";
 import CenteredPaper from "../CenteredPaper";
-
-const useStyles = makeStyles((theme: Theme) =>
-  createStyles({
-    row: {
-      "&:hover": {
-        cursor: "pointer",
-      },
-    },
-    /* Pseudo-class applied to the root element if `hover={true}`. */
-    hover: {},
-  })
-);
+import { RequestLog } from "../../lib/requestLogs";
 
 interface Props {
-  logs: Array<any>;
+  logs: RequestLog[];
   selectedReqLogId?: string;
   onLogClick(requestId: string): void;
-  theme: Theme;
 }
 
-function RequestList({
-  logs,
-  onLogClick,
-  selectedReqLogId,
-  theme,
-}: Props): JSX.Element {
+export default function RequestList({ logs, onLogClick, selectedReqLogId }: Props): JSX.Element {
   return (
     <div>
-      <RequestListTable
-        onLogClick={onLogClick}
-        logs={logs}
-        selectedReqLogId={selectedReqLogId}
-        theme={theme}
-      />
+      <RequestListTable onLogClick={onLogClick} logs={logs} selectedReqLogId={selectedReqLogId} />
       {logs.length === 0 && (
         <Box my={1}>
           <CenteredPaper>
@@ -62,19 +37,14 @@ function RequestList({
 }
 
 interface RequestListTableProps {
-  logs?: any;
+  logs: RequestLog[];
   selectedReqLogId?: string;
   onLogClick(requestId: string): void;
-  theme: Theme;
 }
 
-function RequestListTable({
-  logs,
-  selectedReqLogId,
-  onLogClick,
-  theme,
-}: RequestListTableProps): JSX.Element {
-  const classes = useStyles();
+function RequestListTable({ logs, selectedReqLogId, onLogClick }: RequestListTableProps): JSX.Element {
+  const theme = useTheme();
+
   return (
     <TableContainer
       component={Paper}
@@ -102,26 +72,25 @@ function RequestListTable({
               textOverflow: "ellipsis",
             } as any;
 
-            const rowStyle = {
-              backgroundColor:
-                id === selectedReqLogId && theme.palette.action.selected,
-            };
-
             return (
               <TableRow
                 key={id}
-                className={classes.row}
-                style={rowStyle}
+                sx={{
+                  "&:hover": {
+                    cursor: "pointer",
+                  },
+                  ...(id === selectedReqLogId && {
+                    bgcolor: theme.palette.action.selected,
+                  }),
+                }}
                 hover
                 onClick={() => onLogClick(id)}
               >
                 <TableCell style={{ ...cellStyle, width: "100px" }}>
                   <code>{method}</code>
                 </TableCell>
-                <TableCell style={{ ...cellStyle, maxWidth: "100px" }}>
-                  {origin}
-                </TableCell>
-                <TableCell style={{ ...cellStyle, maxWidth: "200px" }}>
+                <TableCell sx={{ ...cellStyle, maxWidth: "100px" }}>{origin}</TableCell>
+                <TableCell sx={{ ...cellStyle, maxWidth: "200px" }}>
                   {decodeURIComponent(pathname + search + hash)}
                 </TableCell>
                 <TableCell style={{ maxWidth: "100px" }}>
@@ -142,5 +111,3 @@ function RequestListTable({
     </TableContainer>
   );
 }
-
-export default withTheme(RequestList);

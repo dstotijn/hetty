@@ -1,4 +1,4 @@
-import { Box, Divider, Grid, Typography } from "@material-ui/core";
+import { Box, Divider, Grid, Typography } from "@mui/material";
 import Layout, { Page } from "../../components/Layout";
 import NewProject from "../../components/projects/NewProject";
 import ProjectList from "../../components/projects/ProjectList";
@@ -11,8 +11,7 @@ function Index(): JSX.Element {
           <Typography variant="h4">Projects</Typography>
         </Box>
         <Typography paragraph>
-          Projects contain settings and data generated/processed by Hetty. They
-          are stored in a single database on disk.
+          Projects contain settings and data generated/processed by Hetty. They are stored in a single database on disk.
         </Typography>
         <Box my={4}>
           <Divider />

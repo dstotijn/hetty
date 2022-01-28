@@ -1,4 +1,4 @@
-import { Typography, Box, Divider } from "@material-ui/core";
+import { Typography, Box, Divider } from "@mui/material";
 
 import HttpStatusIcon from "./HttpStatusCode";
 import Editor from "./Editor";
@@ -15,30 +15,17 @@ interface Props {
 }
 
 function ResponseDetail({ response }: Props): JSX.Element {
-  const contentType = response.headers.find(
-    (header) => header.key === "Content-Type"
-  )?.value;
+  const contentType = response.headers.find((header) => header.key === "Content-Type")?.value;
   return (
     <div>
       <Box p={2}>
-        <Typography
-          variant="overline"
-          color="textSecondary"
-          style={{ float: "right" }}
-        >
+        <Typography variant="overline" color="textSecondary" style={{ float: "right" }}>
           Response
         </Typography>
-        <Typography
-          variant="h6"
-          style={{ fontSize: "1rem", whiteSpace: "nowrap" }}
-        >
+        <Typography variant="h6" style={{ fontSize: "1rem", whiteSpace: "nowrap" }}>
           <HttpStatusIcon status={response.statusCode} />{" "}
           <Typography component="span" color="textSecondary">
-            <Typography
-              component="span"
-              color="textSecondary"
-              style={{ fontFamily: "'JetBrains Mono', monospace" }}
-            >
+            <Typography component="span" color="textSecondary" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
               {response.proto}
             </Typography>
           </Typography>{" "}
@@ -52,9 +39,7 @@ function ResponseDetail({ response }: Props): JSX.Element {
         <HttpHeadersTable headers={response.headers} />
       </Box>
 
-      {response.body && (
-        <Editor content={response.body} contentType={contentType} />
-      )}
+      {response.body && <Editor content={response.body} contentType={contentType} />}
     </div>
   );
 }

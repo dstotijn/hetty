@@ -1,7 +1,7 @@
-import dynamic from "next/dynamic";
-const MonacoEditor = dynamic(import("react-monaco-editor"), { ssr: false });
+import MonacoEditor from "@monaco-editor/react";
+import monaco from "monaco-editor/esm/vs/editor/editor.api";
 
-const monacoOptions = {
+const monacoOptions: monaco.editor.IEditorOptions = {
   readOnly: true,
   wordWrap: "on",
   minimap: {
@@ -11,20 +11,7 @@ const monacoOptions = {
 
 type language = "html" | "typescript" | "json";
 
-function editorDidMount() {
-  return ((window as any).MonacoEnvironment.getWorkerUrl = (
-    moduleId,
-    label
-  ) => {
-    if (label === "json") return "/_next/static/json.worker.js";
-    if (label === "html") return "/_next/static/html.worker.js";
-    if (label === "javascript") return "/_next/static/ts.worker.js";
-
-    return "/_next/static/editor.worker.js";
-  });
-}
-
-function languageForContentType(contentType: string): language {
+function languageForContentType(contentType?: string): language | undefined {
   switch (contentType) {
     case "text/html":
       return "html";
@@ -41,7 +28,7 @@ function languageForContentType(contentType: string): language {
 
 interface Props {
   content: string;
-  contentType: string;
+  contentType?: string;
 }
 
 function Editor({ content, contentType }: Props): JSX.Element {
@@ -50,8 +37,7 @@ function Editor({ content, contentType }: Props): JSX.Element {
       height={"600px"}
       language={languageForContentType(contentType)}
       theme="vs-dark"
-      editorDidMount={editorDidMount}
-      options={monacoOptions as any}
+      options={monacoOptions}
       value={content}
     />
   );

@@ -1,4 +1,4 @@
-import { Box, Link as MaterialLink, Typography } from "@material-ui/core";
+import { Box, Link as MaterialLink, Typography } from "@mui/material";
 import Link from "next/link";
 
 import React from "react";
@@ -13,17 +13,13 @@ function Index(): JSX.Element {
           <Typography variant="h4">Get started</Typography>
         </Box>
         <Typography paragraph>
-          You’ve loaded a (new) project. What’s next? You can now use the MITM
-          proxy and review HTTP requests and responses via the{" "}
+          You’ve loaded a (new) project. What’s next? You can now use the MITM proxy and review HTTP requests and
+          responses via the{" "}
           <Link href="/proxy/logs" passHref>
-            <MaterialLink color="secondary">Proxy logs</MaterialLink>
+            <MaterialLink color="primary">Proxy logs</MaterialLink>
           </Link>
           . Stuck? Ask for help on the{" "}
-          <MaterialLink
-            href="https://github.com/dstotijn/hetty/discussions"
-            color="secondary"
-            target="_blank"
-          >
+          <MaterialLink href="https://github.com/dstotijn/hetty/discussions" color="primary" target="_blank">
             Discussions forum
           </MaterialLink>
           .

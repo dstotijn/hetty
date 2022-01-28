@@ -1,4 +1,4 @@
-import { Box } from "@material-ui/core";
+import { Box } from "@mui/material";
 
 import LogsOverview from "../../../components/reqlog/LogsOverview";
 import Layout, { Page } from "../../../components/Layout";

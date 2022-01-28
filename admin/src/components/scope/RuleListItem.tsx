@@ -8,11 +8,12 @@ import {
   ListItemSecondaryAction,
   ListItemText,
   Tooltip,
-} from "@material-ui/core";
-import CodeIcon from "@material-ui/icons/Code";
-import DeleteIcon from "@material-ui/icons/Delete";
+} from "@mui/material";
+import CodeIcon from "@mui/icons-material/Code";
+import DeleteIcon from "@mui/icons-material/Delete";
 import React from "react";
 import { SCOPE } from "./Rules";
+import { ScopeRule } from "../../lib/scope";
 
 const SET_SCOPE = gql`
   mutation SetScope($scope: [ScopeRuleInput!]!) {
@@ -22,7 +23,13 @@ const SET_SCOPE = gql`
   }
 `;
 
-function RuleListItem({ scope, rule, index }): JSX.Element {
+type RuleListItemProps = {
+  scope: ScopeRule[];
+  rule: ScopeRule;
+  index: number;
+};
+
+function RuleListItem({ scope, rule, index }: RuleListItemProps): JSX.Element {
   const client = useApolloClient();
   const [setScope, { loading }] = useMutation(SET_SCOPE, {
     update(_, { data: { setScope } }) {
@@ -65,8 +72,8 @@ function RuleListItem({ scope, rule, index }): JSX.Element {
   );
 }
 
-function RuleListItemText({ rule }): JSX.Element {
-  let text: JSX.Element;
+function RuleListItemText({ rule }: { rule: ScopeRule }): JSX.Element {
+  let text: JSX.Element = <div></div>;
 
   if (rule.url) {
     text = <code>{rule.url}</code>;
@@ -77,10 +84,14 @@ function RuleListItemText({ rule }): JSX.Element {
   return <ListItemText>{text}</ListItemText>;
 }
 
-function RuleTypeChip({ rule }): JSX.Element {
+function RuleTypeChip({ rule }: { rule: ScopeRule }): JSX.Element {
+  let label = "Unknown";
+
   if (rule.url) {
-    return <Chip label="URL" variant="outlined" />;
+    label = "URL";
   }
+
+  return <Chip label={label} variant="outlined" />;
 }
 
 export default RuleListItem;

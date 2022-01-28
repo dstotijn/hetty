@@ -4,7 +4,6 @@ import {
   Box,
   Button,
   CircularProgress,
-  createStyles,
   Dialog,
   DialogActions,
   DialogContent,
@@ -16,34 +15,20 @@ import {
   ListItemAvatar,
   ListItemSecondaryAction,
   ListItemText,
-  makeStyles,
+  Paper,
   Snackbar,
-  Theme,
   Tooltip,
   Typography,
-} from "@material-ui/core";
-import CloseIcon from "@material-ui/icons/Close";
-import DescriptionIcon from "@material-ui/icons/Description";
-import DeleteIcon from "@material-ui/icons/Delete";
-import LaunchIcon from "@material-ui/icons/Launch";
-import { Alert } from "@material-ui/lab";
-
+  useTheme,
+} from "@mui/material";
+import CloseIcon from "@mui/icons-material/Close";
+import DescriptionIcon from "@mui/icons-material/Description";
+import DeleteIcon from "@mui/icons-material/Delete";
+import LaunchIcon from "@mui/icons-material/Launch";
+import { Alert } from "@mui/lab";
 import React, { useState } from "react";
 
-const useStyles = makeStyles((theme: Theme) =>
-  createStyles({
-    projectsList: {
-      backgroundColor: theme.palette.background.paper,
-    },
-    activeProject: {
-      color: theme.palette.getContrastText(theme.palette.secondary.main),
-      backgroundColor: theme.palette.secondary.main,
-    },
-    deleteProjectButton: {
-      color: theme.palette.error.main,
-    },
-  })
-);
+import { Project } from "../../lib/Project";
 
 const PROJECTS = gql`
   query Projects {
@@ -82,58 +67,56 @@ const DELETE_PROJECT = gql`
 `;
 
 function ProjectList(): JSX.Element {
-  const classes = useStyles();
-  const { loading: projLoading, error: projErr, data: projData } = useQuery(
-    PROJECTS
+  const theme = useTheme();
+  const { loading: projLoading, error: projErr, data: projData } = useQuery<{ projects: Project[] }>(PROJECTS);
+  const [openProject, { error: openProjErr, loading: openProjLoading }] = useMutation<{ openProject: Project }>(
+    OPEN_PROJECT,
+    {
+      errorPolicy: "all",
+      onError: () => {},
+      update(cache, { data }) {
+        cache.modify({
+          fields: {
+            activeProject() {
+              const activeProjRef = cache.writeFragment({
+                data: data?.openProject,
+                fragment: gql`
+                  fragment ActiveProject on Project {
+                    id
+                    name
+                    isActive
+                    type
+                  }
+                `,
+              });
+              return activeProjRef;
+            },
+            projects(_, { DELETE }) {
+              cache.writeFragment({
+                id: data?.openProject.id,
+                data: openProject,
+                fragment: gql`
+                  fragment OpenProject on Project {
+                    id
+                    name
+                    isActive
+                    type
+                  }
+                `,
+              });
+              return DELETE;
+            },
+            httpRequestLogFilter(_, { DELETE }) {
+              return DELETE;
+            },
+          },
+        });
+      },
+    }
   );
-  const [
-    openProject,
-    { error: openProjErr, loading: openProjLoading },
-  ] = useMutation(OPEN_PROJECT, {
-    errorPolicy: "all",
-    onError: () => { },
-    update(cache, { data: { openProject } }) {
-      cache.modify({
-        fields: {
-          activeProject() {
-            const activeProjRef = cache.writeFragment({
-              data: openProject,
-              fragment: gql`
-                fragment ActiveProject on Project {
-                  id
-                  name
-                  isActive
-                  type
-                }
-              `,
-            });
-            return activeProjRef;
-          },
-          projects(_, { DELETE }) {
-            cache.writeFragment({
-              id: openProject.id,
-              data: openProject,
-              fragment: gql`
-                fragment OpenProject on Project {
-                  id
-                  name
-                  isActive
-                  type
-                }
-              `,
-            });
-            return DELETE;
-          },
-          httpRequestLogFilter(_, { DELETE }) {
-            return DELETE;
-          },
-        },
-      });
-    },
-  });
   const [closeProject, { error: closeProjErr }] = useMutation(CLOSE_PROJECT, {
     errorPolicy: "all",
-    onError: () => { },
+    onError: () => {},
     update(cache) {
       cache.modify({
         fields: {
@@ -150,12 +133,9 @@ function ProjectList(): JSX.Element {
       });
     },
   });
-  const [
-    deleteProject,
-    { loading: deleteProjLoading, error: deleteProjErr },
-  ] = useMutation(DELETE_PROJECT, {
+  const [deleteProject, { loading: deleteProjLoading, error: deleteProjErr }] = useMutation(DELETE_PROJECT, {
     errorPolicy: "all",
-    onError: () => { },
+    onError: () => {},
     update(cache) {
       cache.modify({
         fields: {
@@ -169,21 +149,21 @@ function ProjectList(): JSX.Element {
     },
   });
 
-  const [deleteProj, setDeleteProj] = useState(null);
+  const [deleteProj, setDeleteProj] = useState<Project>();
   const [deleteDiagOpen, setDeleteDiagOpen] = useState(false);
   const handleDeleteButtonClick = (project: any) => {
     setDeleteProj(project);
     setDeleteDiagOpen(true);
   };
   const handleDeleteConfirm = () => {
-    deleteProject({ variables: { id: deleteProj.id } });
+    deleteProject({ variables: { id: deleteProj?.id } });
   };
   const handleDeleteCancel = () => {
     setDeleteDiagOpen(false);
   };
 
   const [deleteNotifOpen, setDeleteNotifOpen] = useState(false);
-  const handleCloseDeleteNotif = (_, reason?: string) => {
+  const handleCloseDeleteNotif = (_: Event | React.SyntheticEvent, reason?: string) => {
     if (reason === "clickaway") {
       return;
     }
@@ -198,23 +178,25 @@ function ProjectList(): JSX.Element {
         </DialogTitle>
         <DialogContent>
           <DialogContentText>
-            Deleting a project permanently removes its database file from disk.
-            This action is irreversible.
+            Deleting a project permanently removes all its data from the database. This action is irreversible.
           </DialogContentText>
-          {deleteProjErr && (
-            <Alert severity="error">
-              Error closing project: {deleteProjErr.message}
-            </Alert>
-          )}
+          {deleteProjErr && <Alert severity="error">Error closing project: {deleteProjErr.message}</Alert>}
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleDeleteCancel} autoFocus>
+          <Button onClick={handleDeleteCancel} autoFocus color="secondary" variant="contained">
             Cancel
           </Button>
           <Button
-            className={classes.deleteProjectButton}
+            sx={{
+              color: "white",
+              backgroundColor: "error.main",
+              "&:hover": {
+                backgroundColor: "error.dark",
+              },
+            }}
             onClick={handleDeleteConfirm}
             disabled={deleteProjLoading}
+            variant="contained"
           >
             Delete
           </Button>
@@ -225,6 +207,7 @@ function ProjectList(): JSX.Element {
         open={deleteNotifOpen}
         autoHideDuration={3000}
         onClose={handleCloseDeleteNotif}
+        anchorOrigin={{ horizontal: "center", vertical: "bottom" }}
       >
         <Alert onClose={handleCloseDeleteNotif} severity="info">
           Project <strong>{deleteProj?.name}</strong> was deleted.
@@ -237,82 +220,70 @@ function ProjectList(): JSX.Element {
 
       <Box mb={4}>
         {projLoading && <CircularProgress />}
-        {projErr && (
-          <Alert severity="error">
-            Error fetching projects: {projErr.message}
-          </Alert>
-        )}
-        {openProjErr && (
-          <Alert severity="error">
-            Error opening project: {openProjErr.message}
-          </Alert>
-        )}
-        {closeProjErr && (
-          <Alert severity="error">
-            Error closing project: {closeProjErr.message}
-          </Alert>
-        )}
+        {projErr && <Alert severity="error">Error fetching projects: {projErr.message}</Alert>}
+        {openProjErr && <Alert severity="error">Error opening project: {openProjErr.message}</Alert>}
+        {closeProjErr && <Alert severity="error">Error closing project: {closeProjErr.message}</Alert>}
       </Box>
 
-      {projData?.projects.length > 0 && (
-        <List className={classes.projectsList}>
-          {projData.projects.map((project) => (
-            <ListItem key={project.id}>
-              <ListItemAvatar>
-                <Avatar
-                  className={
-                    project.isActive ? classes.activeProject : undefined
-                  }
-                >
-                  <DescriptionIcon />
-                </Avatar>
-              </ListItemAvatar>
-              <ListItemText>
-                {project.name} {project.isActive && <em>(Active)</em>}
-              </ListItemText>
-              <ListItemSecondaryAction>
-                {project.isActive && (
-                  <Tooltip title="Close project">
-                    <IconButton onClick={() => closeProject()}>
-                      <CloseIcon />
-                    </IconButton>
-                  </Tooltip>
-                )}
-                {!project.isActive && (
-                  <Tooltip title="Open project">
+      {projData && projData.projects.length > 0 && (
+        <Paper>
+          <List>
+            {projData.projects.map((project) => (
+              <ListItem key={project.id}>
+                <ListItemAvatar>
+                  <Avatar
+                    sx={{
+                      ...(project.isActive && {
+                        color: theme.palette.secondary.dark,
+                        backgroundColor: theme.palette.primary.main,
+                      }),
+                    }}
+                  >
+                    <DescriptionIcon />
+                  </Avatar>
+                </ListItemAvatar>
+                <ListItemText>
+                  {project.name} {project.isActive && <em>(Active)</em>}
+                </ListItemText>
+                <ListItemSecondaryAction>
+                  {project.isActive && (
+                    <Tooltip title="Close project">
+                      <IconButton onClick={() => closeProject()}>
+                        <CloseIcon />
+                      </IconButton>
+                    </Tooltip>
+                  )}
+                  {!project.isActive && (
+                    <Tooltip title="Open project">
+                      <span>
+                        <IconButton
+                          disabled={openProjLoading || projLoading}
+                          onClick={() =>
+                            openProject({
+                              variables: { id: project.id },
+                            })
+                          }
+                        >
+                          <LaunchIcon />
+                        </IconButton>
+                      </span>
+                    </Tooltip>
+                  )}
+                  <Tooltip title="Delete project">
                     <span>
-                      <IconButton
-                        disabled={openProjLoading || projLoading}
-                        onClick={() =>
-                          openProject({
-                            variables: { id: project.id },
-                          })
-                        }
-                      >
-                        <LaunchIcon />
+                      <IconButton onClick={() => handleDeleteButtonClick(project)} disabled={project.isActive}>
+                        <DeleteIcon />
                       </IconButton>
                     </span>
                   </Tooltip>
-                )}
-                <Tooltip title="Delete project">
-                  <span>
-                    <IconButton
-                      onClick={() => handleDeleteButtonClick(project)}
-                      disabled={project.isActive}
-                    >
-                      <DeleteIcon />
-                    </IconButton>
-                  </span>
-                </Tooltip>
-              </ListItemSecondaryAction>
-            </ListItem>
-          ))}
-        </List>
+                </ListItemSecondaryAction>
+              </ListItem>
+            ))}
+          </List>
+        </Paper>
       )}
       {projData?.projects.length === 0 && (
-        <Alert severity="info">
-          There are no projects. Create one to get started.
-        </Alert>
+        <Alert severity="info">There are no projects. Create one to get started.</Alert>
       )}
     </div>
   );

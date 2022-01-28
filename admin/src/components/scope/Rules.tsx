@@ -1,22 +1,9 @@
 import { gql, useQuery } from "@apollo/client";
-import {
-  CircularProgress,
-  createStyles,
-  List,
-  makeStyles,
-  Theme,
-} from "@material-ui/core";
-import { Alert } from "@material-ui/lab";
+import { CircularProgress, List } from "@mui/material";
+import { Alert } from "@mui/lab";
 import React from "react";
 import RuleListItem from "./RuleListItem";
-
-const useStyles = makeStyles((theme: Theme) =>
-  createStyles({
-    rulesList: {
-      backgroundColor: theme.palette.background.paper,
-    },
-  })
-);
+import { ScopeRule } from "../../lib/scope";
 
 export const SCOPE = gql`
   query Scope {
@@ -27,24 +14,20 @@ export const SCOPE = gql`
 `;
 
 function Rules(): JSX.Element {
-  const classes = useStyles();
-  const { loading, error, data } = useQuery(SCOPE);
+  const { loading, error, data } = useQuery<{ scope: ScopeRule[] }>(SCOPE);
 
   return (
     <div>
       {loading && <CircularProgress />}
-      {error && (
-        <Alert severity="error">Error fetching scope: {error.message}</Alert>
-      )}
-      {data?.scope.length > 0 && (
-        <List className={classes.rulesList}>
+      {error && <Alert severity="error">Error fetching scope: {error.message}</Alert>}
+      {data && data.scope.length > 0 && (
+        <List
+          sx={{
+            bgcolor: "background.paper",
+          }}
+        >
           {data.scope.map((rule, index) => (
-            <RuleListItem
-              key={index}
-              rule={rule}
-              scope={data.scope}
-              index={index}
-            />
+            <RuleListItem key={index} rule={rule} scope={data.scope} index={index} />
           ))}
         </List>
       )}

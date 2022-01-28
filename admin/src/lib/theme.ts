@@ -1,49 +1,51 @@
-import { createMuiTheme } from "@material-ui/core/styles";
-import grey from "@material-ui/core/colors/grey";
-import teal from "@material-ui/core/colors/teal";
+import { createTheme } from "@mui/material/styles";
+import * as colors from "@mui/material/colors";
 
-const theme = createMuiTheme({
+const heading = {
+  fontFamily: "'JetBrains Mono', monospace",
+  fontWeight: 600,
+};
+
+let theme = createTheme({
   palette: {
-    type: "dark",
+    mode: "dark",
     primary: {
-      main: grey[900],
+      main: colors.teal["A400"],
     },
     secondary: {
-      main: teal["A400"],
-    },
-    info: {
-      main: teal["A400"],
-    },
-    success: {
-      main: teal["A400"],
+      main: colors.grey[900],
+      light: "#333",
+      dark: colors.common.black,
     },
   },
   typography: {
-    h2: {
-      fontFamily: "'JetBrains Mono', monospace",
-      fontWeight: 600,
+    h2: heading,
+    h3: heading,
+    h4: heading,
+    h5: heading,
+    h6: heading,
+  },
+});
+
+theme = createTheme(theme, {
+  palette: {
+    background: {
+      default: theme.palette.secondary.main,
+      paper: theme.palette.secondary.light,
     },
-    h3: {
-      fontFamily: "'JetBrains Mono', monospace",
-      fontWeight: 600,
+    info: {
+      main: theme.palette.primary.main,
     },
-    h4: {
-      fontFamily: "'JetBrains Mono', monospace",
-      fontWeight: 600,
-    },
-    h5: {
-      fontFamily: "'JetBrains Mono', monospace",
-      fontWeight: 600,
-    },
-    h6: {
-      fontFamily: "'JetBrains Mono', monospace",
-      fontWeight: 600,
+    success: {
+      main: theme.palette.primary.main,
     },
   },
-  overrides: {
+  components: {
     MuiTableCell: {
-      stickyHeader: {
-        backgroundColor: grey[900],
+      styleOverrides: {
+        stickyHeader: {
+          backgroundColor: theme.palette.secondary.dark,
+        },
       },
     },
   },

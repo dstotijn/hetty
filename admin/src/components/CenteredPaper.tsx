@@ -1,10 +1,6 @@
-import { Paper } from "@material-ui/core";
+import { Paper } from "@mui/material";
 
-function CenteredPaper({
-  children,
-}: {
-  children: React.ReactNode;
-}): JSX.Element {
+function CenteredPaper({ children }: { children: React.ReactNode }): JSX.Element {
   return (
     <div>
       <Paper

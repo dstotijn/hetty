@@ -1,7 +1,7 @@
 before:
   hooks:
     - make clean
-    - make build-admin
+    - sh -c "NEXT_PUBLIC_VERSION={{ .Version}} make build-admin"
     - go mod tidy
 
 builds:

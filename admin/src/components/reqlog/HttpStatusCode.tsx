@@ -1,31 +1,25 @@
-import { Theme, withTheme } from "@material-ui/core";
-import { orange, red } from "@material-ui/core/colors";
-import FiberManualRecordIcon from "@material-ui/icons/FiberManualRecord";
+import { SvgIconTypeMap } from "@mui/material";
+import FiberManualRecordIcon from "@mui/icons-material/FiberManualRecord";
 
 interface Props {
   status: number;
-  theme: Theme;
 }
 
-function HttpStatusIcon({ status, theme }: Props): JSX.Element {
-  const style = { marginTop: "-.25rem", verticalAlign: "middle" };
+export default function HttpStatusIcon({ status }: Props): JSX.Element {
+  let color: SvgIconTypeMap["props"]["color"] = "inherit";
+
   switch (Math.floor(status / 100)) {
     case 2:
     case 3:
-      return (
-        <FiberManualRecordIcon
-          style={{ ...style, color: theme.palette.secondary.main }}
-        />
-      );
+      color = "primary";
+      break;
     case 4:
-      return (
-        <FiberManualRecordIcon style={{ ...style, color: orange["A400"] }} />
-      );
+      color = "warning";
+      break;
     case 5:
-      return <FiberManualRecordIcon style={{ ...style, color: red["A400"] }} />;
-    default:
-      return <FiberManualRecordIcon style={style} />;
+      color = "error";
+      break;
   }
-}
 
-export default withTheme(HttpStatusIcon);
+  return <FiberManualRecordIcon sx={{ marginTop: "-.25rem", verticalAlign: "middle" }} color={color} />;
+}

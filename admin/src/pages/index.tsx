@@ -1,61 +1,46 @@
-import {
-  Box,
-  Button,
-  createStyles,
-  makeStyles,
-  Theme,
-  Typography,
-} from "@material-ui/core";
-import FolderIcon from "@material-ui/icons/Folder";
+import { Box, Button, Typography } from "@mui/material";
+import FolderIcon from "@mui/icons-material/Folder";
 import Link from "next/link";
-
-import { useRouter } from "next/router";
 
 import Layout, { Page } from "../components/Layout";
 
-const useStyles = makeStyles((theme: Theme) =>
-  createStyles({
-    titleHighlight: {
-      color: theme.palette.secondary.main,
-    },
-    subtitle: {
-      fontSize: "1.6rem",
-      width: "60%",
-      lineHeight: 2,
-      marginBottom: theme.spacing(5),
-    },
-    button: {
-      marginRight: theme.spacing(2),
-    },
-  })
-);
-
 function Index(): JSX.Element {
-  const classes = useStyles();
+  const highlightSx = { color: "primary.main" };
 
   return (
     <Layout page={Page.Home} title="">
       <Box p={4}>
         <Box mb={4} width="60%">
           <Typography variant="h2">
-            <span className={classes.titleHighlight}>Hetty://</span>
+            <Box component="span" sx={highlightSx}>
+              Hetty://
+            </Box>
             <br />
             The simple HTTP toolkit for security research.
           </Typography>
         </Box>
 
-        <Typography className={classes.subtitle} paragraph>
-          What if security testing was intuitive, powerful, and good looking?
-          What if it was <strong>free</strong>, instead of $400 per year?{" "}
-          <span className={classes.titleHighlight}>Hetty</span> is listening on{" "}
-          <code>:8080</code>…
+        <Typography
+          paragraph
+          sx={{
+            fontSize: "1.6rem",
+            width: "60%",
+            lineHeight: 2,
+            mb: 5,
+          }}
+        >
+          Welcome to{" "}
+          <Box component="span" sx={highlightSx}>
+            Hetty
+          </Box>
+          . Get started by creating a project.
         </Typography>
 
         <Link href="/projects" passHref>
           <Button
-            className={classes.button}
+            sx={{ mr: 2 }}
             variant="contained"
-            color="secondary"
+            color="primary"
             component="a"
             size="large"
             startIcon={<FolderIcon />}

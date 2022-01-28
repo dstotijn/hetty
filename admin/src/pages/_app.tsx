@@ -1,32 +1,31 @@
-import React from "react";
+import * as React from "react";
+import Head from "next/head";
 import { AppProps } from "next/app";
 import { ApolloProvider } from "@apollo/client";
-import Head from "next/head";
-import { ThemeProvider } from "@material-ui/core/styles";
-import CssBaseline from "@material-ui/core/CssBaseline";
+import { ThemeProvider } from "@mui/material/styles";
+import CssBaseline from "@mui/material/CssBaseline";
+import { CacheProvider, EmotionCache } from "@emotion/react";
 
+import createEmotionCache from "../lib/createEmotionCache";
 import theme from "../lib/theme";
 import { useApollo } from "../lib/graphql";
 
-function App({ Component, pageProps }: AppProps): JSX.Element {
-  const apolloClient = useApollo(pageProps.initialApolloState);
+// Client-side cache, shared for the whole session of the user in the browser.
+const clientSideEmotionCache = createEmotionCache();
 
-  React.useEffect(() => {
-    // Remove the server-side injected CSS.
-    const jssStyles = document.querySelector("#jss-server-side");
-    if (jssStyles) {
-      jssStyles.parentElement.removeChild(jssStyles);
-    }
-  }, []);
+interface MyAppProps extends AppProps {
+  emotionCache?: EmotionCache;
+}
+
+export default function MyApp(props: MyAppProps) {
+  const { Component, emotionCache = clientSideEmotionCache, pageProps } = props;
+  const apolloClient = useApollo(pageProps);
 
   return (
-    <React.Fragment>
+    <CacheProvider value={emotionCache}>
       <Head>
         <title>Hetty://</title>
-        <meta
-          name="viewport"
-          content="minimum-scale=1, initial-scale=1, width=device-width"
-        />
+        <meta name="viewport" content="initial-scale=1, width=device-width" />
       </Head>
       <ApolloProvider client={apolloClient}>
         <ThemeProvider theme={theme}>
@@ -34,8 +33,6 @@ function App({ Component, pageProps }: AppProps): JSX.Element {
           <Component {...pageProps} />
         </ThemeProvider>
       </ApolloProvider>
-    </React.Fragment>
+    </CacheProvider>
   );
 }
-
-export default App;

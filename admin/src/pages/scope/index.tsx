@@ -1,4 +1,4 @@
-import { Box, Divider, Grid, Typography } from "@material-ui/core";
+import { Box, Divider, Grid, Typography } from "@mui/material";
 import React from "react";
 
 import Layout, { Page } from "../../components/Layout";
@@ -13,11 +13,9 @@ function Index(): JSX.Element {
           <Typography variant="h4">Scope</Typography>
         </Box>
         <Typography paragraph>
-          Scope rules are used by various modules in Hetty and can influence
-          their behavior. For example: the Proxy logs module can match incoming
-          requests against scope rules and decide its behavior (e.g. log or
-          bypass) based on the outcome of the match. All scope configuration is
-          stored per project.
+          Scope rules are used by various modules in Hetty and can influence their behavior. For example: the Proxy logs
+          module can match incoming requests against scope rules and decide its behavior (e.g. log or bypass) based on
+          the outcome of the match. All scope configuration is stored per project.
         </Typography>
         <Box my={4}>
           <Divider />

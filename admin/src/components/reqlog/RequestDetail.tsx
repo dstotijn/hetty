@@ -1,41 +1,8 @@
 import React from "react";
-import {
-  Typography,
-  Box,
-  createStyles,
-  makeStyles,
-  Theme,
-  Divider,
-} from "@material-ui/core";
+import { Typography, Box, Divider } from "@mui/material";
 
 import HttpHeadersTable from "./HttpHeadersTable";
 import Editor from "./Editor";
-
-const useStyles = makeStyles((theme: Theme) =>
-  createStyles({
-    requestTitle: {
-      width: "calc(100% - 80px)",
-      fontSize: "1rem",
-      wordBreak: "break-all",
-      whiteSpace: "pre-wrap",
-    },
-    headersTable: {
-      tableLayout: "fixed",
-      width: "100%",
-    },
-    headerKeyCell: {
-      verticalAlign: "top",
-      width: "30%",
-      fontWeight: "bold",
-    },
-    headerValueCell: {
-      width: "70%",
-      verticalAlign: "top",
-      wordBreak: "break-all",
-      whiteSpace: "pre-wrap",
-    },
-  })
-);
 
 interface Props {
   request: {
@@ -49,29 +16,27 @@ interface Props {
 
 function RequestDetail({ request }: Props): JSX.Element {
   const { method, url, proto, headers, body } = request;
-  const classes = useStyles();
 
-  const contentType = headers.find((header) => header.key === "Content-Type")
-    ?.value;
+  const contentType = headers.find((header) => header.key === "Content-Type")?.value;
   const parsedUrl = new URL(url);
 
   return (
     <div>
       <Box p={2}>
-        <Typography
-          variant="overline"
-          color="textSecondary"
-          style={{ float: "right" }}
-        >
+        <Typography variant="overline" color="textSecondary" style={{ float: "right" }}>
           Request
         </Typography>
-        <Typography className={classes.requestTitle} variant="h6">
+        <Typography
+          sx={{
+            width: "calc(100% - 80px)",
+            fontSize: "1rem",
+            wordBreak: "break-all",
+            whiteSpace: "pre-wrap",
+          }}
+          variant="h6"
+        >
           {method} {decodeURIComponent(parsedUrl.pathname + parsedUrl.search)}{" "}
-          <Typography
-            component="span"
-            color="textSecondary"
-            style={{ fontFamily: "'JetBrains Mono', monospace" }}
-          >
+          <Typography component="span" color="textSecondary" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
             {proto}
           </Typography>
         </Typography>

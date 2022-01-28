@@ -1,9 +1,9 @@
 import { gql, useQuery } from "@apollo/client";
-import { Box, Grid, Paper, CircularProgress } from "@material-ui/core";
+import { Box, Grid, Paper, CircularProgress } from "@mui/material";
 
 import ResponseDetail from "./ResponseDetail";
 import RequestDetail from "./RequestDetail";
-import Alert from "@material-ui/lab/Alert";
+import Alert from "@mui/lab/Alert";
 
 const HTTP_REQUEST_LOG = gql`
   query HttpRequestLog($id: ID!) {
@@ -44,11 +44,7 @@ function LogDetail({ requestId: id }: Props): JSX.Element {
     return <CircularProgress />;
   }
   if (error) {
-    return (
-      <Alert severity="error">
-        Error fetching logs details: {error.message}
-      </Alert>
-    );
+    return <Alert severity="error">Error fetching logs details: {error.message}</Alert>;
   }
 
   if (!data.httpRequestLog) {

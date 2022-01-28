@@ -1,12 +1,7 @@
 import { useRouter } from "next/router";
 import Link from "next/link";
-import {
-  Box,
-  CircularProgress,
-  Link as MaterialLink,
-  Typography,
-} from "@material-ui/core";
-import Alert from "@material-ui/lab/Alert";
+import { Box, CircularProgress, Link as MaterialLink, Typography } from "@mui/material";
+import Alert from "@mui/lab/Alert";
 
 import RequestList from "./RequestList";
 import LogDetail from "./LogDetail";
@@ -33,7 +28,7 @@ function LogsOverview(): JSX.Element {
         <Alert severity="info">
           There is no project active.{" "}
           <Link href="/projects" passHref>
-            <MaterialLink color="secondary">Create or open</MaterialLink>
+            <MaterialLink color="primary">Create or open</MaterialLink>
           </Link>{" "}
           one first.
         </Alert>
@@ -47,11 +42,7 @@ function LogsOverview(): JSX.Element {
   return (
     <div>
       <Box mb={2}>
-        <RequestList
-          logs={logs}
-          selectedReqLogId={detailReqLogId}
-          onLogClick={handleLogClick}
-        />
+        <RequestList logs={logs || []} selectedReqLogId={detailReqLogId} onLogClick={handleLogClick} />
       </Box>
       <Box>
         {detailReqLogId && <LogDetail requestId={detailReqLogId} />}

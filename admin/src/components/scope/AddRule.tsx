@@ -3,20 +3,18 @@ import {
   Box,
   Button,
   CircularProgress,
-  createStyles,
   FormControl,
   FormControlLabel,
   FormLabel,
-  makeStyles,
   Radio,
   RadioGroup,
   TextField,
-  Theme,
-} from "@material-ui/core";
-import AddIcon from "@material-ui/icons/Add";
-import { Alert } from "@material-ui/lab";
+} from "@mui/material";
+import AddIcon from "@mui/icons-material/Add";
+import { Alert } from "@mui/lab";
 import React from "react";
 import { SCOPE } from "./Rules";
+import { ScopeRule } from "../../lib/scope";
 
 const SET_SCOPE = gql`
   mutation SetScope($scope: [ScopeRuleInput!]!) {
@@ -26,25 +24,15 @@ const SET_SCOPE = gql`
   }
 `;
 
-const useStyles = makeStyles((theme: Theme) =>
-  createStyles({
-    ruleExpression: {
-      fontFamily: "'JetBrains Mono', monospace",
-    },
-  })
-);
-
 function AddRule(): JSX.Element {
-  const classes = useStyles();
-
   const [ruleType, setRuleType] = React.useState("url");
-  const [expression, setExpression] = React.useState(null);
+  const [expression, setExpression] = React.useState("");
 
   const client = useApolloClient();
   const [setScope, { error, loading }] = useMutation(SET_SCOPE, {
     onError() {},
     onCompleted() {
-      expression.value = "";
+      setExpression("");
     },
     update(_, { data: { setScope } }) {
       client.writeQuery({
@@ -59,21 +47,20 @@ function AddRule(): JSX.Element {
   };
   const handleSubmit = (e: React.SyntheticEvent) => {
     e.preventDefault();
-    let scope = [];
+    let scope: ScopeRule[] = [];
 
     try {
-      const data = client.readQuery({
+      const data = client.readQuery<{ scope: ScopeRule[] }>({
         query: SCOPE,
       });
-      scope = data.scope;
+      if (data) {
+        scope = data.scope;
+      }
     } catch (e) {}
 
     setScope({
       variables: {
-        scope: [
-          ...scope.map(({ url }) => ({ url })),
-          { url: expression.value },
-        ],
+        scope: [...scope.map(({ url }) => ({ url })), { url: expression }],
       },
     });
   };
@@ -87,15 +74,10 @@ function AddRule(): JSX.Element {
       )}
       <form onSubmit={handleSubmit} autoComplete="off">
         <FormControl fullWidth>
-          <FormLabel color="secondary" component="legend">
+          <FormLabel color="primary" component="legend">
             Rule Type
           </FormLabel>
-          <RadioGroup
-            row
-            name="ruleType"
-            value={ruleType}
-            onChange={handleTypeChange}
-          >
+          <RadioGroup row name="ruleType" value={ruleType} onChange={handleTypeChange}>
             <FormControlLabel value="url" control={<Radio />} label="URL" />
           </RadioGroup>
         </FormControl>
@@ -104,19 +86,16 @@ function AddRule(): JSX.Element {
             label="Expression"
             placeholder="^https:\/\/(.*)example.com(.*)"
             helperText="Regular expression to match on."
-            color="secondary"
+            color="primary"
             variant="outlined"
             required
+            value={expression}
+            onChange={(e) => setExpression(e.target.value)}
             InputProps={{
-              className: classes.ruleExpression,
+              sx: { fontFamily: "'JetBrains Mono', monospace" },
             }}
             InputLabelProps={{
               shrink: true,
-            }}
-            inputProps={{
-              ref: (node) => {
-                setExpression(node);
-              },
             }}
             margin="normal"
           />
@@ -125,7 +104,7 @@ function AddRule(): JSX.Element {
           <Button
             type="submit"
             variant="contained"
-            color="secondary"
+            color="primary"
             disabled={loading}
             startIcon={loading ? <CircularProgress size={22} /> : <AddIcon />}
           >
