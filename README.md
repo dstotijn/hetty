@@ -19,7 +19,7 @@ features tailored to the needs of the infosec and bug bounty community.
 ## Features
 
 - Man-in-the-middle (MITM) HTTP/1.1 proxy with logs
-- Project based database storage (SQLite)
+- Project based database storage (BadgerDB)
 - Scope support
 - Headless management API using GraphQL
 - Embedded web interface (Next.js)
