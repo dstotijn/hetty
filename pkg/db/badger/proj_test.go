@@ -56,6 +56,7 @@ func TestUpsertProject(t *testing.T) {
 		Settings: proj.Settings{
 			ReqLogBypassOutOfScope: true,
 			ReqLogOnlyFindInScope:  true,
+			ReqLogSearchExpr:       searchExpr,
 			ScopeRules: []scope.Rule{
 				{
 					URL: regexp.MustCompile("^https://(.*)example.com(.*)$"),
@@ -66,7 +67,6 @@ func TestUpsertProject(t *testing.T) {
 					Body: regexp.MustCompile("^foo(.*)"),
 				},
 			},
-			SearchExpr: searchExpr,
 		},
 	}
 
@@ -178,21 +178,38 @@ func TestDeleteProject(t *testing.T) {
 	// Store fixtures.
 	projectID := ulid.MustNew(ulid.Timestamp(time.Now()), ulidEntropy)
 	reqLogID := ulid.MustNew(ulid.Timestamp(time.Now()), ulidEntropy)
+	senderReqID := ulid.MustNew(ulid.Timestamp(time.Now()), ulidEntropy)
 
 	err = badgerDB.Update(func(txn *badgerdb.Txn) error {
+		// Project item.
 		if err := txn.Set(entryKey(projectPrefix, 0, projectID[:]), nil); err != nil {
 			return err
 		}
+
+		// Sender request items.
+		if err := txn.Set(entryKey(senderReqPrefix, 0, senderReqID[:]), nil); err != nil {
+			return err
+		}
+		if err := txn.Set(entryKey(resLogPrefix, 0, senderReqID[:]), nil); err != nil {
+			return err
+		}
+		err := txn.Set(entryKey(senderReqPrefix, senderReqProjectIDIndex, append(projectID[:], senderReqID[:]...)), nil)
+		if err != nil {
+			return err
+		}
+
+		// Request log items.
 		if err := txn.Set(entryKey(reqLogPrefix, 0, reqLogID[:]), nil); err != nil {
 			return err
 		}
 		if err := txn.Set(entryKey(resLogPrefix, 0, reqLogID[:]), nil); err != nil {
 			return err
 		}
-		err := txn.Set(entryKey(reqLogPrefix, reqLogProjectIDIndex, append(projectID[:], reqLogID[:]...)), nil)
+		err = txn.Set(entryKey(reqLogPrefix, reqLogProjectIDIndex, append(projectID[:], reqLogID[:]...)), nil)
 		if err != nil {
 			return err
 		}
+
 		return nil
 	})
 	if err != nil {
@@ -222,7 +239,7 @@ func TestDeleteProject(t *testing.T) {
 		t.Fatalf("expected `badger.ErrKeyNotFound`, got: %v", err)
 	}
 
-	// Assert response log item was deleted.
+	// Assert response log item related to request log was deleted.
 	err = badgerDB.View(func(txn *badgerdb.Txn) error {
 		_, err := txn.Get(entryKey(resLogPrefix, 0, reqLogID[:]))
 		return err
@@ -234,6 +251,33 @@ func TestDeleteProject(t *testing.T) {
 	// Assert request log project ID index key was deleted.
 	err = badgerDB.View(func(txn *badgerdb.Txn) error {
 		_, err := txn.Get(entryKey(reqLogPrefix, reqLogProjectIDIndex, append(projectID[:], reqLogID[:]...)))
+		return err
+	})
+	if !errors.Is(err, badgerdb.ErrKeyNotFound) {
+		t.Fatalf("expected `badger.ErrKeyNotFound`, got: %v", err)
+	}
+
+	// Assert sender request item was deleted.
+	err = badgerDB.View(func(txn *badgerdb.Txn) error {
+		_, err := txn.Get(entryKey(senderReqPrefix, 0, senderReqID[:]))
+		return err
+	})
+	if !errors.Is(err, badgerdb.ErrKeyNotFound) {
+		t.Fatalf("expected `badger.ErrKeyNotFound`, got: %v", err)
+	}
+
+	// Assert response log item related to sender request was deleted.
+	err = badgerDB.View(func(txn *badgerdb.Txn) error {
+		_, err := txn.Get(entryKey(resLogPrefix, 0, senderReqID[:]))
+		return err
+	})
+	if !errors.Is(err, badgerdb.ErrKeyNotFound) {
+		t.Fatalf("expected `badger.ErrKeyNotFound`, got: %v", err)
+	}
+
+	// Assert sender request project ID index key was deleted.
+	err = badgerDB.View(func(txn *badgerdb.Txn) error {
+		_, err := txn.Get(entryKey(senderReqPrefix, senderReqProjectIDIndex, append(projectID[:], senderReqID[:]...)))
 		return err
 	})
 	if !errors.Is(err, badgerdb.ErrKeyNotFound) {

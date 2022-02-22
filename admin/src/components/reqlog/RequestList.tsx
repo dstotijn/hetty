@@ -9,11 +9,18 @@ import {
   Typography,
   Box,
   useTheme,
+  MenuItem,
+  Snackbar,
+  Alert,
+  Link,
 } from "@mui/material";
 
-import HttpStatusIcon from "./HttpStatusCode";
-import CenteredPaper from "../CenteredPaper";
+import HttpStatusIcon from "../common/HttpStatusIcon";
+import CenteredPaper from "../common/CenteredPaper";
 import { RequestLog } from "../../lib/requestLogs";
+import useContextMenu from "../common/useContextMenu";
+import React, { useState } from "react";
+import { useCreateSenderRequestFromHttpRequestLogMutation } from "../../generated/graphql";
 
 interface Props {
   logs: RequestLog[];
@@ -45,69 +52,117 @@ interface RequestListTableProps {
 function RequestListTable({ logs, selectedReqLogId, onLogClick }: RequestListTableProps): JSX.Element {
   const theme = useTheme();
 
+  const [createSenderReqFromLog] = useCreateSenderRequestFromHttpRequestLogMutation({});
+
+  const [copyToSenderId, setCopyToSenderId] = useState("");
+  const [Menu, handleContextMenu, handleContextMenuClose] = useContextMenu();
+
+  const handleCopyToSenderClick = () => {
+    createSenderReqFromLog({
+      variables: {
+        id: copyToSenderId,
+      },
+      onCompleted({ createSenderRequestFromHttpRequestLog }) {
+        const { id } = createSenderRequestFromHttpRequestLog;
+        setNewSenderReqId(id);
+        setCopiedReqNotifOpen(true);
+      },
+    });
+    handleContextMenuClose();
+  };
+
+  const [newSenderReqId, setNewSenderReqId] = React.useState("");
+  const [copiedReqNotifOpen, setCopiedReqNotifOpen] = React.useState(false);
+  const handleCloseCopiedNotif = (_: Event | React.SyntheticEvent, reason?: string) => {
+    if (reason === "clickaway") {
+      return;
+    }
+    setCopiedReqNotifOpen(false);
+  };
+
   return (
-    <TableContainer
-      component={Paper}
-      style={{
-        minHeight: logs.length ? 200 : 0,
-        height: logs.length ? "24vh" : "inherit",
-      }}
-    >
-      <Table stickyHeader size="small">
-        <TableHead>
-          <TableRow>
-            <TableCell>Method</TableCell>
-            <TableCell>Origin</TableCell>
-            <TableCell>Path</TableCell>
-            <TableCell>Status</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {logs.map(({ id, method, url, response }) => {
-            const { origin, pathname, search, hash } = new URL(url);
+    <div>
+      <Menu>
+        <MenuItem onClick={handleCopyToSenderClick}>Copy request to Sender</MenuItem>
+      </Menu>
+      <Snackbar
+        open={copiedReqNotifOpen}
+        autoHideDuration={3000}
+        onClose={handleCloseCopiedNotif}
+        anchorOrigin={{ horizontal: "center", vertical: "bottom" }}
+      >
+        <Alert onClose={handleCloseCopiedNotif} severity="info">
+          Request was copied. <Link href={`/sender?id=${newSenderReqId}`}>Edit in Sender.</Link>
+        </Alert>
+      </Snackbar>
 
-            const cellStyle = {
-              whiteSpace: "nowrap",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-            } as any;
+      <TableContainer
+        component={Paper}
+        style={{
+          minHeight: logs.length ? 200 : 0,
+          height: logs.length ? "24vh" : "inherit",
+        }}
+      >
+        <Table stickyHeader size="small">
+          <TableHead>
+            <TableRow>
+              <TableCell>Method</TableCell>
+              <TableCell>Origin</TableCell>
+              <TableCell>Path</TableCell>
+              <TableCell>Status</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {logs.map(({ id, method, url, response }) => {
+              const { origin, pathname, search, hash } = new URL(url);
 
-            return (
-              <TableRow
-                key={id}
-                sx={{
-                  "&:hover": {
-                    cursor: "pointer",
-                  },
-                  ...(id === selectedReqLogId && {
-                    bgcolor: theme.palette.action.selected,
-                  }),
-                }}
-                hover
-                onClick={() => onLogClick(id)}
-              >
-                <TableCell style={{ ...cellStyle, width: "100px" }}>
-                  <code>{method}</code>
-                </TableCell>
-                <TableCell sx={{ ...cellStyle, maxWidth: "100px" }}>{origin}</TableCell>
-                <TableCell sx={{ ...cellStyle, maxWidth: "200px" }}>
-                  {decodeURIComponent(pathname + search + hash)}
-                </TableCell>
-                <TableCell style={{ maxWidth: "100px" }}>
-                  {response && (
-                    <div>
-                      <HttpStatusIcon status={response.statusCode} />{" "}
-                      <code>
-                        {response.statusCode} {response.statusReason}
-                      </code>
-                    </div>
-                  )}
-                </TableCell>
-              </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
-    </TableContainer>
+              const cellStyle = {
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              } as any;
+
+              return (
+                <TableRow
+                  key={id}
+                  sx={{
+                    "&:hover": {
+                      cursor: "pointer",
+                    },
+                    ...(id === selectedReqLogId && {
+                      bgcolor: theme.palette.action.selected,
+                    }),
+                  }}
+                  hover
+                  onClick={() => onLogClick(id)}
+                  onContextMenu={(e) => {
+                    setCopyToSenderId(id);
+                    handleContextMenu(e);
+                  }}
+                >
+                  <TableCell style={{ ...cellStyle, width: "100px" }}>
+                    <code>{method}</code>
+                  </TableCell>
+                  <TableCell sx={{ ...cellStyle, maxWidth: "100px" }}>{origin}</TableCell>
+                  <TableCell sx={{ ...cellStyle, maxWidth: "200px" }}>
+                    {decodeURIComponent(pathname + search + hash)}
+                  </TableCell>
+                  <TableCell style={{ maxWidth: "100px" }}>
+                    {response && (
+                      <div>
+                        <HttpStatusIcon status={response.statusCode} />{" "}
+                        <code>
+                          {response.statusCode} {response.statusReason}
+                        </code>
+                      </div>
+                    )}
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    </div>
   );
 }

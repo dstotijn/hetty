@@ -2,7 +2,7 @@ import React from "react";
 import { Typography, Box, Divider } from "@mui/material";
 
 import HttpHeadersTable from "./HttpHeadersTable";
-import Editor from "./Editor";
+import Editor from "../common/Editor";
 
 interface Props {
   request: {

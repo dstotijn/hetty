@@ -66,7 +66,11 @@ func (db *Database) FindRequestLogs(ctx context.Context, filter reqlog.FindReque
 
 func getRequestLogWithResponse(txn *badger.Txn, reqLogID ulid.ULID) (reqlog.RequestLog, error) {
 	item, err := txn.Get(entryKey(reqLogPrefix, 0, reqLogID[:]))
-	if err != nil {
+
+	switch {
+	case errors.Is(err, badger.ErrKeyNotFound):
+		return reqlog.RequestLog{}, reqlog.ErrRequestNotFound
+	case err != nil:
 		return reqlog.RequestLog{}, fmt.Errorf("failed to lookup request log item: %w", err)
 	}
 

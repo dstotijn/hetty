@@ -9,6 +9,7 @@ import { CacheProvider, EmotionCache } from "@emotion/react";
 import createEmotionCache from "../lib/createEmotionCache";
 import theme from "../lib/theme";
 import { useApollo } from "../lib/graphql";
+import "../styles.css";
 
 // Client-side cache, shared for the whole session of the user in the browser.
 const clientSideEmotionCache = createEmotionCache();

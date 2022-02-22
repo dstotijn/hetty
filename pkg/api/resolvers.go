@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"regexp"
 	"strings"
 
@@ -17,11 +18,23 @@ import (
 	"github.com/dstotijn/hetty/pkg/reqlog"
 	"github.com/dstotijn/hetty/pkg/scope"
 	"github.com/dstotijn/hetty/pkg/search"
+	"github.com/dstotijn/hetty/pkg/sender"
 )
+
+var httpProtocolMap = map[string]HTTPProtocol{
+	sender.HTTPProto1: HTTPProtocolHTTP1,
+	sender.HTTPProto2: HTTPProtocolHTTP2,
+}
+
+var revHTTPProtocolMap = map[HTTPProtocol]string{
+	HTTPProtocolHTTP1: sender.HTTPProto1,
+	HTTPProtocolHTTP2: sender.HTTPProto2,
+}
 
 type Resolver struct {
 	ProjectService    proj.Service
-	RequestLogService *reqlog.Service
+	RequestLogService reqlog.Service
+	SenderService     sender.Service
 }
 
 type (
@@ -54,8 +67,8 @@ func (r *queryResolver) HTTPRequestLogs(ctx context.Context) ([]HTTPRequestLog, 
 	return logs, nil
 }
 
-func (r *queryResolver) HTTPRequestLog(ctx context.Context, id ULID) (*HTTPRequestLog, error) {
-	log, err := r.RequestLogService.FindRequestLogByID(ctx, ulid.ULID(id))
+func (r *queryResolver) HTTPRequestLog(ctx context.Context, id ulid.ULID) (*HTTPRequestLog, error) {
+	log, err := r.RequestLogService.FindRequestLogByID(ctx, id)
 	if errors.Is(err, reqlog.ErrRequestNotFound) {
 		return nil, nil
 	} else if err != nil {
@@ -77,7 +90,7 @@ func parseRequestLog(reqLog reqlog.RequestLog) (HTTPRequestLog, error) {
 	}
 
 	log := HTTPRequestLog{
-		ID:        ULID(reqLog.ID),
+		ID:        reqLog.ID,
 		Proto:     reqLog.Proto,
 		Method:    method,
 		Timestamp: ulid.Time(reqLog.ID.Time()),
@@ -106,36 +119,54 @@ func parseRequestLog(reqLog reqlog.RequestLog) (HTTPRequestLog, error) {
 	}
 
 	if reqLog.Response != nil {
-		log.Response = &HTTPResponseLog{
-			Proto:      reqLog.Response.Proto,
-			StatusCode: reqLog.Response.StatusCode,
-		}
-		statusReasonSubs := strings.SplitN(reqLog.Response.Status, " ", 2)
-
-		if len(statusReasonSubs) == 2 {
-			log.Response.StatusReason = statusReasonSubs[1]
+		resLog, err := parseResponseLog(*reqLog.Response)
+		if err != nil {
+			return HTTPRequestLog{}, err
 		}
 
-		if len(reqLog.Response.Body) > 0 {
-			bodyStr := string(reqLog.Response.Body)
-			log.Response.Body = &bodyStr
-		}
+		resLog.ID = reqLog.ID
 
-		if reqLog.Response.Header != nil {
-			log.Response.Headers = make([]HTTPHeader, 0)
+		log.Response = &resLog
+	}
 
-			for key, values := range reqLog.Response.Header {
-				for _, value := range values {
-					log.Response.Headers = append(log.Response.Headers, HTTPHeader{
-						Key:   key,
-						Value: value,
-					})
-				}
+	return log, nil
+}
+
+func parseResponseLog(resLog reqlog.ResponseLog) (HTTPResponseLog, error) {
+	proto := httpProtocolMap[resLog.Proto]
+	if !proto.IsValid() {
+		return HTTPResponseLog{}, fmt.Errorf("sender response has invalid protocol: %v", resLog.Proto)
+	}
+
+	httpResLog := HTTPResponseLog{
+		Proto:      proto,
+		StatusCode: resLog.StatusCode,
+	}
+	statusReasonSubs := strings.SplitN(resLog.Status, " ", 2)
+
+	if len(statusReasonSubs) == 2 {
+		httpResLog.StatusReason = statusReasonSubs[1]
+	}
+
+	if len(resLog.Body) > 0 {
+		bodyStr := string(resLog.Body)
+		httpResLog.Body = &bodyStr
+	}
+
+	if resLog.Header != nil {
+		httpResLog.Headers = make([]HTTPHeader, 0)
+
+		for key, values := range resLog.Header {
+			for _, value := range values {
+				httpResLog.Headers = append(httpResLog.Headers, HTTPHeader{
+					Key:   key,
+					Value: value,
+				})
 			}
 		}
 	}
 
-	return log, nil
+	return httpResLog, nil
 }
 
 func (r *mutationResolver) CreateProject(ctx context.Context, name string) (*Project, error) {
@@ -147,14 +178,14 @@ func (r *mutationResolver) CreateProject(ctx context.Context, name string) (*Pro
 	}
 
 	return &Project{
-		ID:       ULID(p.ID),
+		ID:       p.ID,
 		Name:     p.Name,
 		IsActive: r.ProjectService.IsProjectActive(p.ID),
 	}, nil
 }
 
-func (r *mutationResolver) OpenProject(ctx context.Context, id ULID) (*Project, error) {
-	p, err := r.ProjectService.OpenProject(ctx, ulid.ULID(id))
+func (r *mutationResolver) OpenProject(ctx context.Context, id ulid.ULID) (*Project, error) {
+	p, err := r.ProjectService.OpenProject(ctx, id)
 	if errors.Is(err, proj.ErrInvalidName) {
 		return nil, gqlerror.Errorf("Project name must only contain alphanumeric or space chars.")
 	} else if err != nil {
@@ -162,7 +193,7 @@ func (r *mutationResolver) OpenProject(ctx context.Context, id ULID) (*Project, 
 	}
 
 	return &Project{
-		ID:       ULID(p.ID),
+		ID:       p.ID,
 		Name:     p.Name,
 		IsActive: r.ProjectService.IsProjectActive(p.ID),
 	}, nil
@@ -177,7 +208,7 @@ func (r *queryResolver) ActiveProject(ctx context.Context) (*Project, error) {
 	}
 
 	return &Project{
-		ID:       ULID(p.ID),
+		ID:       p.ID,
 		Name:     p.Name,
 		IsActive: r.ProjectService.IsProjectActive(p.ID),
 	}, nil
@@ -192,7 +223,7 @@ func (r *queryResolver) Projects(ctx context.Context) ([]Project, error) {
 	projects := make([]Project, len(p))
 	for i, proj := range p {
 		projects[i] = Project{
-			ID:       ULID(proj.ID),
+			ID:       proj.ID,
 			Name:     proj.Name,
 			IsActive: r.ProjectService.IsProjectActive(proj.ID),
 		}
@@ -224,8 +255,8 @@ func (r *mutationResolver) CloseProject(ctx context.Context) (*CloseProjectResul
 	return &CloseProjectResult{true}, nil
 }
 
-func (r *mutationResolver) DeleteProject(ctx context.Context, id ULID) (*DeleteProjectResult, error) {
-	if err := r.ProjectService.DeleteProject(ctx, ulid.ULID(id)); err != nil {
+func (r *mutationResolver) DeleteProject(ctx context.Context, id ulid.ULID) (*DeleteProjectResult, error) {
+	if err := r.ProjectService.DeleteProject(ctx, id); err != nil {
 		return nil, fmt.Errorf("could not delete project: %w", err)
 	}
 
@@ -296,7 +327,7 @@ func (r *mutationResolver) SetScope(ctx context.Context, input []ScopeRuleInput)
 }
 
 func (r *queryResolver) HTTPRequestLogFilter(ctx context.Context) (*HTTPRequestLogFilter, error) {
-	return findReqFilterToHTTPReqLogFilter(r.RequestLogService.FindReqsFilter), nil
+	return findReqFilterToHTTPReqLogFilter(r.RequestLogService.FindReqsFilter()), nil
 }
 
 func (r *mutationResolver) SetHTTPRequestLogFilter(
@@ -316,6 +347,221 @@ func (r *mutationResolver) SetHTTPRequestLogFilter(
 	}
 
 	return findReqFilterToHTTPReqLogFilter(filter), nil
+}
+
+func (r *queryResolver) SenderRequest(ctx context.Context, id ulid.ULID) (*SenderRequest, error) {
+	senderReq, err := r.SenderService.FindRequestByID(ctx, id)
+	if errors.Is(err, sender.ErrRequestNotFound) {
+		return nil, nil
+	} else if err != nil {
+		return nil, fmt.Errorf("could not get request by ID: %w", err)
+	}
+
+	req, err := parseSenderRequest(senderReq)
+	if err != nil {
+		return nil, err
+	}
+
+	return &req, nil
+}
+
+func (r *queryResolver) SenderRequests(ctx context.Context) ([]SenderRequest, error) {
+	reqs, err := r.SenderService.FindRequests(ctx)
+	if errors.Is(err, proj.ErrNoProject) {
+		return nil, noActiveProjectErr(ctx)
+	} else if err != nil {
+		return nil, fmt.Errorf("failed to find sender requests: %w", err)
+	}
+
+	senderReqs := make([]SenderRequest, len(reqs))
+
+	for i, req := range reqs {
+		req, err := parseSenderRequest(req)
+		if err != nil {
+			return nil, err
+		}
+
+		senderReqs[i] = req
+	}
+
+	return senderReqs, nil
+}
+
+func (r *mutationResolver) SetSenderRequestFilter(
+	ctx context.Context,
+	input *SenderRequestFilterInput,
+) (*SenderRequestFilter, error) {
+	filter, err := findSenderRequestsFilterFromInput(input)
+	if err != nil {
+		return nil, fmt.Errorf("could not parse request log filter: %w", err)
+	}
+
+	err = r.ProjectService.SetSenderRequestFindFilter(ctx, filter)
+	if errors.Is(err, proj.ErrNoProject) {
+		return nil, noActiveProjectErr(ctx)
+	} else if err != nil {
+		return nil, fmt.Errorf("could not set request log filter: %w", err)
+	}
+
+	return findReqFilterToSenderReqFilter(filter), nil
+}
+
+func (r *mutationResolver) CreateOrUpdateSenderRequest(ctx context.Context, input SenderRequestInput) (*SenderRequest, error) {
+	req := sender.Request{
+		URL:    input.URL,
+		Header: make(http.Header),
+	}
+
+	if input.ID != nil {
+		req.ID = *input.ID
+	}
+
+	if input.Method != nil {
+		req.Method = input.Method.String()
+	}
+
+	if input.Proto != nil {
+		req.Proto = revHTTPProtocolMap[*input.Proto]
+	}
+
+	for _, header := range input.Headers {
+		req.Header.Add(header.Key, header.Value)
+	}
+
+	if input.Body != nil {
+		req.Body = []byte(*input.Body)
+	}
+
+	req, err := r.SenderService.CreateOrUpdateRequest(ctx, req)
+	if errors.Is(err, proj.ErrNoProject) {
+		return nil, noActiveProjectErr(ctx)
+	} else if err != nil {
+		return nil, fmt.Errorf("could not create sender request: %w", err)
+	}
+
+	senderReq, err := parseSenderRequest(req)
+	if err != nil {
+		return nil, err
+	}
+
+	return &senderReq, nil
+}
+
+func (r *mutationResolver) CreateSenderRequestFromHTTPRequestLog(ctx context.Context, id ulid.ULID) (*SenderRequest, error) {
+	req, err := r.SenderService.CloneFromRequestLog(ctx, id)
+	if errors.Is(err, proj.ErrNoProject) {
+		return nil, noActiveProjectErr(ctx)
+	} else if err != nil {
+		return nil, fmt.Errorf("could not create sender request from http request log: %w", err)
+	}
+
+	senderReq, err := parseSenderRequest(req)
+	if err != nil {
+		return nil, err
+	}
+
+	return &senderReq, nil
+}
+
+func (r *mutationResolver) SendRequest(ctx context.Context, id ulid.ULID) (*SenderRequest, error) {
+	// Use new context, because we don't want to risk interrupting sending the request
+	// or the subsequent storing of the response, e.g. if ctx gets cancelled or
+	// times out.
+	ctx2 := context.Background()
+
+	var sendErr *sender.SendError
+
+	req, err := r.SenderService.SendRequest(ctx2, id)
+	if errors.Is(err, proj.ErrNoProject) {
+		return nil, noActiveProjectErr(ctx)
+	} else if errors.As(err, &sendErr) {
+		return nil, &gqlerror.Error{
+			Path:    graphql.GetPath(ctx),
+			Message: fmt.Sprintf("Sending request failed: %v", sendErr.Unwrap()),
+			Extensions: map[string]interface{}{
+				"code": "send_request_failed",
+			},
+		}
+	} else if err != nil {
+		return nil, fmt.Errorf("could not send request: %w", err)
+	}
+
+	senderReq, err := parseSenderRequest(req)
+	if err != nil {
+		return nil, err
+	}
+
+	return &senderReq, nil
+}
+
+func (r *mutationResolver) DeleteSenderRequests(ctx context.Context) (*DeleteSenderRequestsResult, error) {
+	project, err := r.ProjectService.ActiveProject(ctx)
+	if errors.Is(err, proj.ErrNoProject) {
+		return nil, noActiveProjectErr(ctx)
+	} else if err != nil {
+		return nil, fmt.Errorf("could not get active project: %w", err)
+	}
+
+	if err := r.SenderService.DeleteRequests(ctx, project.ID); err != nil {
+		return nil, fmt.Errorf("could not clear request log: %w", err)
+	}
+
+	return &DeleteSenderRequestsResult{true}, nil
+}
+
+func parseSenderRequest(req sender.Request) (SenderRequest, error) {
+	method := HTTPMethod(req.Method)
+	if method != "" && !method.IsValid() {
+		return SenderRequest{}, fmt.Errorf("sender request has invalid method: %v", method)
+	}
+
+	reqProto := httpProtocolMap[req.Proto]
+	if !reqProto.IsValid() {
+		return SenderRequest{}, fmt.Errorf("sender request has invalid protocol: %v", req.Proto)
+	}
+
+	senderReq := SenderRequest{
+		ID:        req.ID,
+		URL:       req.URL,
+		Method:    method,
+		Proto:     HTTPProtocol(req.Proto),
+		Timestamp: ulid.Time(req.ID.Time()),
+	}
+
+	if req.SourceRequestLogID.Compare(ulid.ULID{}) != 0 {
+		senderReq.SourceRequestLogID = &req.SourceRequestLogID
+	}
+
+	if req.Header != nil {
+		senderReq.Headers = make([]HTTPHeader, 0)
+
+		for key, values := range req.Header {
+			for _, value := range values {
+				senderReq.Headers = append(senderReq.Headers, HTTPHeader{
+					Key:   key,
+					Value: value,
+				})
+			}
+		}
+	}
+
+	if len(req.Body) > 0 {
+		bodyStr := string(req.Body)
+		senderReq.Body = &bodyStr
+	}
+
+	if req.Response != nil {
+		resLog, err := parseResponseLog(*req.Response)
+		if err != nil {
+			return SenderRequest{}, err
+		}
+
+		resLog.ID = req.ID
+
+		senderReq.Response = &resLog
+	}
+
+	return senderReq, nil
 }
 
 func stringPtrToRegexp(s *string) (*regexp.Regexp, error) {
@@ -364,6 +610,27 @@ func findRequestsFilterFromInput(input *HTTPRequestLogFilterInput) (filter reqlo
 	return
 }
 
+func findSenderRequestsFilterFromInput(input *SenderRequestFilterInput) (filter sender.FindRequestsFilter, err error) {
+	if input == nil {
+		return
+	}
+
+	if input.OnlyInScope != nil {
+		filter.OnlyInScope = *input.OnlyInScope
+	}
+
+	if input.SearchExpression != nil && *input.SearchExpression != "" {
+		expr, err := search.ParseQuery(*input.SearchExpression)
+		if err != nil {
+			return sender.FindRequestsFilter{}, fmt.Errorf("could not parse search query: %w", err)
+		}
+
+		filter.SearchExpr = expr
+	}
+
+	return
+}
+
 func findReqFilterToHTTPReqLogFilter(findReqFilter reqlog.FindRequestsFilter) *HTTPRequestLogFilter {
 	empty := reqlog.FindRequestsFilter{}
 	if findReqFilter == empty {
@@ -380,6 +647,24 @@ func findReqFilterToHTTPReqLogFilter(findReqFilter reqlog.FindRequestsFilter) *H
 	}
 
 	return httpReqLogFilter
+}
+
+func findReqFilterToSenderReqFilter(findReqFilter sender.FindRequestsFilter) *SenderRequestFilter {
+	empty := sender.FindRequestsFilter{}
+	if findReqFilter == empty {
+		return nil
+	}
+
+	senderReqFilter := &SenderRequestFilter{
+		OnlyInScope: findReqFilter.OnlyInScope,
+	}
+
+	if findReqFilter.SearchExpr != nil {
+		searchExpr := findReqFilter.SearchExpr.String()
+		senderReqFilter.SearchExpression = &searchExpr
+	}
+
+	return senderReqFilter
 }
 
 func noActiveProjectErr(ctx context.Context) error {

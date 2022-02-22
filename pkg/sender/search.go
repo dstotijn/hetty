@@ -1,59 +1,52 @@
-package reqlog
+package sender
 
 import (
 	"errors"
 	"fmt"
 	"regexp"
-	"strconv"
 	"strings"
 
 	"github.com/oklog/ulid"
 
+	"github.com/dstotijn/hetty/pkg/reqlog"
 	"github.com/dstotijn/hetty/pkg/scope"
 	"github.com/dstotijn/hetty/pkg/search"
 )
 
-var reqLogSearchKeyFns = map[string]func(rl RequestLog) string{
-	"req.id":    func(rl RequestLog) string { return rl.ID.String() },
-	"req.proto": func(rl RequestLog) string { return rl.Proto },
-	"req.url": func(rl RequestLog) string {
-		if rl.URL == nil {
+var senderReqSearchKeyFns = map[string]func(req Request) string{
+	"req.id":    func(req Request) string { return req.ID.String() },
+	"req.proto": func(req Request) string { return req.Proto },
+	"req.url": func(req Request) string {
+		if req.URL == nil {
 			return ""
 		}
-		return rl.URL.String()
+		return req.URL.String()
 	},
-	"req.method":    func(rl RequestLog) string { return rl.Method },
-	"req.body":      func(rl RequestLog) string { return string(rl.Body) },
-	"req.timestamp": func(rl RequestLog) string { return ulid.Time(rl.ID.Time()).String() },
-}
-
-var ResLogSearchKeyFns = map[string]func(rl ResponseLog) string{
-	"res.proto":        func(rl ResponseLog) string { return rl.Proto },
-	"res.statusCode":   func(rl ResponseLog) string { return strconv.Itoa(rl.StatusCode) },
-	"res.statusReason": func(rl ResponseLog) string { return rl.Status },
-	"res.body":         func(rl ResponseLog) string { return string(rl.Body) },
+	"req.method":    func(req Request) string { return req.Method },
+	"req.body":      func(req Request) string { return string(req.Body) },
+	"req.timestamp": func(req Request) string { return ulid.Time(req.ID.Time()).String() },
 }
 
 // TODO: Request and response headers search key functions.
 
 // Matches returns true if the supplied search expression evaluates to true.
-func (reqLog RequestLog) Matches(expr search.Expression) (bool, error) {
+func (req Request) Matches(expr search.Expression) (bool, error) {
 	switch e := expr.(type) {
 	case search.PrefixExpression:
-		return reqLog.matchPrefixExpr(e)
+		return req.matchPrefixExpr(e)
 	case search.InfixExpression:
-		return reqLog.matchInfixExpr(e)
+		return req.matchInfixExpr(e)
 	case search.StringLiteral:
-		return reqLog.matchStringLiteral(e)
+		return req.matchStringLiteral(e)
 	default:
 		return false, fmt.Errorf("expression type (%T) not supported", expr)
 	}
 }
 
-func (reqLog RequestLog) matchPrefixExpr(expr search.PrefixExpression) (bool, error) {
+func (req Request) matchPrefixExpr(expr search.PrefixExpression) (bool, error) {
 	switch expr.Operator {
 	case search.TokOpNot:
-		match, err := reqLog.Matches(expr.Right)
+		match, err := req.Matches(expr.Right)
 		if err != nil {
 			return false, err
 		}
@@ -64,27 +57,27 @@ func (reqLog RequestLog) matchPrefixExpr(expr search.PrefixExpression) (bool, er
 	}
 }
 
-func (reqLog RequestLog) matchInfixExpr(expr search.InfixExpression) (bool, error) {
+func (req Request) matchInfixExpr(expr search.InfixExpression) (bool, error) {
 	switch expr.Operator {
 	case search.TokOpAnd:
-		left, err := reqLog.Matches(expr.Left)
+		left, err := req.Matches(expr.Left)
 		if err != nil {
 			return false, err
 		}
 
-		right, err := reqLog.Matches(expr.Right)
+		right, err := req.Matches(expr.Right)
 		if err != nil {
 			return false, err
 		}
 
 		return left && right, nil
 	case search.TokOpOr:
-		left, err := reqLog.Matches(expr.Left)
+		left, err := req.Matches(expr.Left)
 		if err != nil {
 			return false, err
 		}
 
-		right, err := reqLog.Matches(expr.Right)
+		right, err := req.Matches(expr.Right)
 		if err != nil {
 			return false, err
 		}
@@ -97,7 +90,7 @@ func (reqLog RequestLog) matchInfixExpr(expr search.InfixExpression) (bool, erro
 		return false, errors.New("left operand must be a string literal")
 	}
 
-	leftVal := reqLog.getMappedStringLiteral(left.Value)
+	leftVal := req.getMappedStringLiteral(left.Value)
 
 	if expr.Operator == search.TokOpRe || expr.Operator == search.TokOpNotRe {
 		right, ok := expr.Right.(*regexp.Regexp)
@@ -118,7 +111,7 @@ func (reqLog RequestLog) matchInfixExpr(expr search.InfixExpression) (bool, erro
 		return false, errors.New("right operand must be a string literal")
 	}
 
-	rightVal := reqLog.getMappedStringLiteral(right.Value)
+	rightVal := req.getMappedStringLiteral(right.Value)
 
 	switch expr.Operator {
 	case search.TokOpEq:
@@ -142,41 +135,41 @@ func (reqLog RequestLog) matchInfixExpr(expr search.InfixExpression) (bool, erro
 	}
 }
 
-func (reqLog RequestLog) getMappedStringLiteral(s string) string {
+func (req Request) getMappedStringLiteral(s string) string {
 	switch {
 	case strings.HasPrefix(s, "req."):
-		fn, ok := reqLogSearchKeyFns[s]
+		fn, ok := senderReqSearchKeyFns[s]
 		if ok {
-			return fn(reqLog)
+			return fn(req)
 		}
 	case strings.HasPrefix(s, "res."):
-		if reqLog.Response == nil {
+		if req.Response == nil {
 			return ""
 		}
 
-		fn, ok := ResLogSearchKeyFns[s]
+		fn, ok := reqlog.ResLogSearchKeyFns[s]
 		if ok {
-			return fn(*reqLog.Response)
+			return fn(*req.Response)
 		}
 	}
 
 	return s
 }
 
-func (reqLog RequestLog) matchStringLiteral(strLiteral search.StringLiteral) (bool, error) {
-	for _, fn := range reqLogSearchKeyFns {
+func (req Request) matchStringLiteral(strLiteral search.StringLiteral) (bool, error) {
+	for _, fn := range senderReqSearchKeyFns {
 		if strings.Contains(
-			strings.ToLower(fn(reqLog)),
+			strings.ToLower(fn(req)),
 			strings.ToLower(strLiteral.Value),
 		) {
 			return true, nil
 		}
 	}
 
-	if reqLog.Response != nil {
-		for _, fn := range ResLogSearchKeyFns {
+	if req.Response != nil {
+		for _, fn := range reqlog.ResLogSearchKeyFns {
 			if strings.Contains(
-				strings.ToLower(fn(*reqLog.Response)),
+				strings.ToLower(fn(*req.Response)),
 				strings.ToLower(strLiteral.Value),
 			) {
 				return true, nil
@@ -187,15 +180,15 @@ func (reqLog RequestLog) matchStringLiteral(strLiteral search.StringLiteral) (bo
 	return false, nil
 }
 
-func (reqLog RequestLog) MatchScope(s *scope.Scope) bool {
+func (req Request) MatchScope(s *scope.Scope) bool {
 	for _, rule := range s.Rules() {
-		if rule.URL != nil && reqLog.URL != nil {
-			if matches := rule.URL.MatchString(reqLog.URL.String()); matches {
+		if rule.URL != nil && req.URL != nil {
+			if matches := rule.URL.MatchString(req.URL.String()); matches {
 				return true
 			}
 		}
 
-		for key, values := range reqLog.Header {
+		for key, values := range req.Header {
 			var keyMatches, valueMatches bool
 
 			if rule.Header.Key != nil {
@@ -225,7 +218,7 @@ func (reqLog RequestLog) MatchScope(s *scope.Scope) bool {
 		}
 
 		if rule.Body != nil {
-			if matches := rule.Body.Match(reqLog.Body); matches {
+			if matches := rule.Body.Match(req.Body); matches {
 				return true
 			}
 		}

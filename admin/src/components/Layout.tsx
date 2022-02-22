@@ -151,7 +151,7 @@ export function Layout({ title, page, children }: Props): JSX.Element {
   });
 
   return (
-    <Box sx={{ display: "flex" }}>
+    <Box sx={{ display: "flex", height: "100%" }}>
       <AppBar position="fixed" open={open}>
         <Toolbar>
           <IconButton
@@ -241,8 +241,7 @@ export function Layout({ title, page, children }: Props): JSX.Element {
           </Link>
         </List>
       </Drawer>
-      <Box component="main" sx={{ flexGrow: 1, p: 3 }}>
-        <DrawerHeader />
+      <Box component="main" sx={{ flexGrow: 1, mx: 3, mt: 11 }}>
         {children}
       </Box>
     </Box>

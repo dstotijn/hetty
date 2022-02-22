@@ -54,13 +54,26 @@ type ResponseLog struct {
 	Body       []byte
 }
 
-type Service struct {
-	BypassOutOfScopeRequests bool
-	FindReqsFilter           FindRequestsFilter
-	ActiveProjectID          ulid.ULID
+type Service interface {
+	FindRequests(ctx context.Context) ([]RequestLog, error)
+	FindRequestLogByID(ctx context.Context, id ulid.ULID) (RequestLog, error)
+	ClearRequests(ctx context.Context, projectID ulid.ULID) error
+	RequestModifier(next proxy.RequestModifyFunc) proxy.RequestModifyFunc
+	ResponseModifier(next proxy.ResponseModifyFunc) proxy.ResponseModifyFunc
+	SetActiveProjectID(id ulid.ULID)
+	ActiveProjectID() ulid.ULID
+	SetBypassOutOfScopeRequests(bool)
+	BypassOutOfScopeRequests() bool
+	SetFindReqsFilter(filter FindRequestsFilter)
+	FindReqsFilter() FindRequestsFilter
+}
 
-	scope *scope.Scope
-	repo  Repository
+type service struct {
+	bypassOutOfScopeRequests bool
+	findReqsFilter           FindRequestsFilter
+	activeProjectID          ulid.ULID
+	scope                    *scope.Scope
+	repo                     Repository
 }
 
 type FindRequestsFilter struct {
@@ -74,59 +87,35 @@ type Config struct {
 	Repository Repository
 }
 
-func NewService(cfg Config) *Service {
-	return &Service{
+func NewService(cfg Config) Service {
+	return &service{
 		repo:  cfg.Repository,
 		scope: cfg.Scope,
 	}
 }
 
-func (svc *Service) FindRequests(ctx context.Context) ([]RequestLog, error) {
-	return svc.repo.FindRequestLogs(ctx, svc.FindReqsFilter, svc.scope)
+func (svc *service) FindRequests(ctx context.Context) ([]RequestLog, error) {
+	return svc.repo.FindRequestLogs(ctx, svc.findReqsFilter, svc.scope)
 }
 
-func (svc *Service) FindRequestLogByID(ctx context.Context, id ulid.ULID) (RequestLog, error) {
+func (svc *service) FindRequestLogByID(ctx context.Context, id ulid.ULID) (RequestLog, error) {
 	return svc.repo.FindRequestLogByID(ctx, id)
 }
 
-func (svc *Service) ClearRequests(ctx context.Context, projectID ulid.ULID) error {
+func (svc *service) ClearRequests(ctx context.Context, projectID ulid.ULID) error {
 	return svc.repo.ClearRequestLogs(ctx, projectID)
 }
 
-func (svc *Service) storeResponse(ctx context.Context, reqLogID ulid.ULID, res *http.Response) error {
-	if res.Header.Get("Content-Encoding") == "gzip" {
-		gzipReader, err := gzip.NewReader(res.Body)
-		if err != nil {
-			return fmt.Errorf("could not create gzip reader: %w", err)
-		}
-		defer gzipReader.Close()
-
-		buf := &bytes.Buffer{}
-
-		if _, err := io.Copy(buf, gzipReader); err != nil {
-			return fmt.Errorf("could not read gzipped response body: %w", err)
-		}
-
-		res.Body = io.NopCloser(buf)
-	}
-
-	body, err := io.ReadAll(res.Body)
+func (svc *service) storeResponse(ctx context.Context, reqLogID ulid.ULID, res *http.Response) error {
+	resLog, err := ParseHTTPResponse(res)
 	if err != nil {
-		return fmt.Errorf("could not read body: %w", err)
-	}
-
-	resLog := ResponseLog{
-		Proto:      res.Proto,
-		StatusCode: res.StatusCode,
-		Status:     res.Status,
-		Header:     res.Header,
-		Body:       body,
+		return err
 	}
 
 	return svc.repo.StoreResponseLog(ctx, reqLogID, resLog)
 }
 
-func (svc *Service) RequestModifier(next proxy.RequestModifyFunc) proxy.RequestModifyFunc {
+func (svc *service) RequestModifier(next proxy.RequestModifyFunc) proxy.RequestModifyFunc {
 	return func(req *http.Request) {
 		next(req)
 
@@ -149,7 +138,7 @@ func (svc *Service) RequestModifier(next proxy.RequestModifyFunc) proxy.RequestM
 		}
 
 		// Bypass logging if no project is active.
-		if svc.ActiveProjectID.Compare(ulid.ULID{}) == 0 {
+		if svc.activeProjectID.Compare(ulid.ULID{}) == 0 {
 			ctx := context.WithValue(req.Context(), LogBypassedKey, true)
 			*req = *req.WithContext(ctx)
 
@@ -158,7 +147,7 @@ func (svc *Service) RequestModifier(next proxy.RequestModifyFunc) proxy.RequestM
 
 		// Bypass logging if this setting is enabled and the incoming request
 		// doesn't match any scope rules.
-		if svc.BypassOutOfScopeRequests && !svc.scope.Match(clone, body) {
+		if svc.bypassOutOfScopeRequests && !svc.scope.Match(clone, body) {
 			ctx := context.WithValue(req.Context(), LogBypassedKey, true)
 			*req = *req.WithContext(ctx)
 
@@ -167,7 +156,7 @@ func (svc *Service) RequestModifier(next proxy.RequestModifyFunc) proxy.RequestM
 
 		reqLog := RequestLog{
 			ID:        ulid.MustNew(ulid.Timestamp(time.Now()), ulidEntropy),
-			ProjectID: svc.ActiveProjectID,
+			ProjectID: svc.activeProjectID,
 			Method:    clone.Method,
 			URL:       clone.URL,
 			Proto:     clone.Proto,
@@ -186,7 +175,7 @@ func (svc *Service) RequestModifier(next proxy.RequestModifyFunc) proxy.RequestM
 	}
 }
 
-func (svc *Service) ResponseModifier(next proxy.ResponseModifyFunc) proxy.ResponseModifyFunc {
+func (svc *service) ResponseModifier(next proxy.ResponseModifyFunc) proxy.ResponseModifyFunc {
 	return func(res *http.Response) error {
 		if err := next(res); err != nil {
 			return err
@@ -220,4 +209,59 @@ func (svc *Service) ResponseModifier(next proxy.ResponseModifyFunc) proxy.Respon
 
 		return nil
 	}
+}
+
+func (svc *service) SetActiveProjectID(id ulid.ULID) {
+	svc.activeProjectID = id
+}
+
+func (svc *service) ActiveProjectID() ulid.ULID {
+	return svc.activeProjectID
+}
+
+func (svc *service) SetFindReqsFilter(filter FindRequestsFilter) {
+	svc.findReqsFilter = filter
+}
+
+func (svc *service) FindReqsFilter() FindRequestsFilter {
+	return svc.findReqsFilter
+}
+
+func (svc *service) SetBypassOutOfScopeRequests(bypass bool) {
+	svc.bypassOutOfScopeRequests = bypass
+}
+
+func (svc *service) BypassOutOfScopeRequests() bool {
+	return svc.bypassOutOfScopeRequests
+}
+
+func ParseHTTPResponse(res *http.Response) (ResponseLog, error) {
+	if res.Header.Get("Content-Encoding") == "gzip" {
+		gzipReader, err := gzip.NewReader(res.Body)
+		if err != nil {
+			return ResponseLog{}, fmt.Errorf("reqlog: could not create gzip reader: %w", err)
+		}
+		defer gzipReader.Close()
+
+		buf := &bytes.Buffer{}
+
+		if _, err := io.Copy(buf, gzipReader); err != nil {
+			return ResponseLog{}, fmt.Errorf("reqlog: could not read gzipped response body: %w", err)
+		}
+
+		res.Body = io.NopCloser(buf)
+	}
+
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		return ResponseLog{}, fmt.Errorf("reqlog: could not read body: %w", err)
+	}
+
+	return ResponseLog{
+		Proto:      res.Proto,
+		StatusCode: res.StatusCode,
+		Status:     res.Status,
+		Header:     res.Header,
+		Body:       body,
+	}, nil
 }

@@ -25,6 +25,7 @@ import (
 	"github.com/dstotijn/hetty/pkg/proxy"
 	"github.com/dstotijn/hetty/pkg/reqlog"
 	"github.com/dstotijn/hetty/pkg/scope"
+	"github.com/dstotijn/hetty/pkg/sender"
 )
 
 var version = "0.0.0"
@@ -94,9 +95,15 @@ func run() error {
 		Repository: badger,
 	})
 
+	senderService := sender.NewService(sender.Config{
+		Repository:    badger,
+		ReqLogService: reqLogService,
+	})
+
 	projService, err := proj.NewService(proj.Config{
 		Repository:    badger,
 		ReqLogService: reqLogService,
+		SenderService: senderService,
 		Scope:         scope,
 	})
 	if err != nil {
@@ -128,8 +135,9 @@ func run() error {
 	adminRouter.Path("/api/playground/").Handler(playground.Handler("GraphQL Playground", "/api/graphql/"))
 	adminRouter.Path("/api/graphql/").Handler(
 		handler.NewDefaultServer(api.NewExecutableSchema(api.Config{Resolvers: &api.Resolver{
-			RequestLogService: reqLogService,
 			ProjectService:    projService,
+			RequestLogService: reqLogService,
+			SenderService:     senderService,
 		}})))
 
 	// Admin interface.

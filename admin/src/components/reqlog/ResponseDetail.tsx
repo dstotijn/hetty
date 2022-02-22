@@ -1,7 +1,7 @@
 import { Typography, Box, Divider } from "@mui/material";
 
-import HttpStatusIcon from "./HttpStatusCode";
-import Editor from "./Editor";
+import HttpStatusIcon from "../common/HttpStatusIcon";
+import Editor from "../common/Editor";
 import HttpHeadersTable from "./HttpHeadersTable";
 
 interface Props {

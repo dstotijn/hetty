@@ -1,0 +1,12 @@
+query GetSenderRequests {
+  senderRequests {
+    id
+    url
+    method
+    response {
+      id
+      statusCode
+      statusReason
+    }
+  }
+}

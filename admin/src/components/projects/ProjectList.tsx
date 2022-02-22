@@ -68,7 +68,13 @@ const DELETE_PROJECT = gql`
 
 function ProjectList(): JSX.Element {
   const theme = useTheme();
-  const { loading: projLoading, error: projErr, data: projData } = useQuery<{ projects: Project[] }>(PROJECTS);
+  const {
+    loading: projLoading,
+    error: projErr,
+    data: projData,
+  } = useQuery<{ projects: Project[] }>(PROJECTS, {
+    fetchPolicy: "network-only",
+  });
   const [openProject, { error: openProjErr, loading: openProjLoading }] = useMutation<{ openProject: Project }>(
     OPEN_PROJECT,
     {
@@ -114,9 +120,12 @@ function ProjectList(): JSX.Element {
       },
     }
   );
-  const [closeProject, { error: closeProjErr }] = useMutation(CLOSE_PROJECT, {
+  const [closeProject, { error: closeProjErr, client }] = useMutation(CLOSE_PROJECT, {
     errorPolicy: "all",
     onError: () => {},
+    onCompleted() {
+      client.resetStore();
+    },
     update(cache) {
       cache.modify({
         fields: {

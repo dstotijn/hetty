@@ -34,7 +34,7 @@ func TestRequestModifier(t *testing.T) {
 		Repository: repoMock,
 		Scope:      &scope.Scope{},
 	})
-	svc.ActiveProjectID = ulid.MustNew(ulid.Timestamp(time.Now()), ulidEntropy)
+	svc.SetActiveProjectID(ulid.MustNew(ulid.Timestamp(time.Now()), ulidEntropy))
 
 	next := func(req *http.Request) {
 		req.Body = io.NopCloser(strings.NewReader("modified body"))
@@ -52,7 +52,7 @@ func TestRequestModifier(t *testing.T) {
 
 		exp := reqlog.RequestLog{
 			ID:        ulid.ULID{}, // Empty value
-			ProjectID: svc.ActiveProjectID,
+			ProjectID: svc.ActiveProjectID(),
 			Method:    req.Method,
 			URL:       req.URL,
 			Proto:     req.Proto,
@@ -78,7 +78,7 @@ func TestResponseModifier(t *testing.T) {
 	svc := reqlog.NewService(reqlog.Config{
 		Repository: repoMock,
 	})
-	svc.ActiveProjectID = ulid.MustNew(ulid.Timestamp(time.Now()), ulidEntropy)
+	svc.SetActiveProjectID(ulid.MustNew(ulid.Timestamp(time.Now()), ulidEntropy))
 
 	next := func(res *http.Response) error {
 		res.Body = io.NopCloser(strings.NewReader("modified body"))

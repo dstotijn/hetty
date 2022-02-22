@@ -46,6 +46,9 @@ models:
   ID:
     model:
       - github.com/dstotijn/hetty/pkg/api.ULID
+  URL:
+    model:
+      - github.com/dstotijn/hetty/pkg/api.URL
 #   Int:
 #     model:
 #       - github.com/99designs/gqlgen/graphql.Int

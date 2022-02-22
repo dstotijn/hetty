@@ -15,6 +15,7 @@ import (
 	"github.com/dstotijn/hetty/pkg/reqlog"
 	"github.com/dstotijn/hetty/pkg/scope"
 	"github.com/dstotijn/hetty/pkg/search"
+	"github.com/dstotijn/hetty/pkg/sender"
 )
 
 //nolint:gosec
@@ -37,13 +38,15 @@ type Service interface {
 	Scope() *scope.Scope
 	SetScopeRules(ctx context.Context, rules []scope.Rule) error
 	SetRequestLogFindFilter(ctx context.Context, filter reqlog.FindRequestsFilter) error
+	SetSenderRequestFindFilter(ctx context.Context, filter sender.FindRequestsFilter) error
 	OnProjectOpen(fn OnProjectOpenFn)
 	OnProjectClose(fn OnProjectCloseFn)
 }
 
 type service struct {
 	repo              Repository
-	reqLogSvc         *reqlog.Service
+	reqLogSvc         reqlog.Service
+	senderSvc         sender.Service
 	scope             *scope.Scope
 	activeProjectID   ulid.ULID
 	onProjectOpenFns  []OnProjectOpenFn
@@ -62,8 +65,12 @@ type Project struct {
 type Settings struct {
 	ReqLogBypassOutOfScope bool
 	ReqLogOnlyFindInScope  bool
-	ScopeRules             []scope.Rule
-	SearchExpr             search.Expression
+	ReqLogSearchExpr       search.Expression
+
+	SenderOnlyFindInScope bool
+	SenderSearchExpr      search.Expression
+
+	ScopeRules []scope.Rule
 }
 
 var (
@@ -77,7 +84,8 @@ var nameRegexp = regexp.MustCompile(`^[\w\d\s]+$`)
 
 type Config struct {
 	Repository    Repository
-	ReqLogService *reqlog.Service
+	ReqLogService reqlog.Service
+	SenderService sender.Service
 	Scope         *scope.Scope
 }
 
@@ -86,6 +94,7 @@ func NewService(cfg Config) (Service, error) {
 	return &service{
 		repo:      cfg.Repository,
 		reqLogSvc: cfg.ReqLogService,
+		senderSvc: cfg.SenderService,
 		scope:     cfg.Scope,
 	}, nil
 }
@@ -120,9 +129,11 @@ func (svc *service) CloseProject() error {
 	closedProjectID := svc.activeProjectID
 
 	svc.activeProjectID = ulid.ULID{}
-	svc.reqLogSvc.ActiveProjectID = ulid.ULID{}
-	svc.reqLogSvc.BypassOutOfScopeRequests = false
-	svc.reqLogSvc.FindReqsFilter = reqlog.FindRequestsFilter{}
+	svc.reqLogSvc.SetActiveProjectID(ulid.ULID{})
+	svc.reqLogSvc.SetBypassOutOfScopeRequests(false)
+	svc.reqLogSvc.SetFindReqsFilter(reqlog.FindRequestsFilter{})
+	svc.senderSvc.SetActiveProjectID(ulid.ULID{})
+	svc.senderSvc.SetFindReqsFilter(sender.FindRequestsFilter{})
 	svc.scope.SetRules(nil)
 
 	svc.emitProjectClosed(closedProjectID)
@@ -154,13 +165,21 @@ func (svc *service) OpenProject(ctx context.Context, projectID ulid.ULID) (Proje
 	}
 
 	svc.activeProjectID = project.ID
-	svc.reqLogSvc.FindReqsFilter = reqlog.FindRequestsFilter{
+
+	svc.reqLogSvc.SetFindReqsFilter(reqlog.FindRequestsFilter{
 		ProjectID:   project.ID,
 		OnlyInScope: project.Settings.ReqLogOnlyFindInScope,
-		SearchExpr:  project.Settings.SearchExpr,
-	}
-	svc.reqLogSvc.BypassOutOfScopeRequests = project.Settings.ReqLogBypassOutOfScope
-	svc.reqLogSvc.ActiveProjectID = project.ID
+		SearchExpr:  project.Settings.ReqLogSearchExpr,
+	})
+	svc.reqLogSvc.SetBypassOutOfScopeRequests(project.Settings.ReqLogBypassOutOfScope)
+	svc.reqLogSvc.SetActiveProjectID(project.ID)
+
+	svc.senderSvc.SetActiveProjectID(project.ID)
+	svc.senderSvc.SetFindReqsFilter(sender.FindRequestsFilter{
+		ProjectID:   project.ID,
+		OnlyInScope: project.Settings.SenderOnlyFindInScope,
+		SearchExpr:  project.Settings.SenderSearchExpr,
+	})
 
 	svc.scope.SetRules(project.Settings.ScopeRules)
 
@@ -255,14 +274,35 @@ func (svc *service) SetRequestLogFindFilter(ctx context.Context, filter reqlog.F
 	filter.ProjectID = project.ID
 
 	project.Settings.ReqLogOnlyFindInScope = filter.OnlyInScope
-	project.Settings.SearchExpr = filter.SearchExpr
+	project.Settings.ReqLogSearchExpr = filter.SearchExpr
 
 	err = svc.repo.UpsertProject(ctx, project)
 	if err != nil {
 		return fmt.Errorf("proj: failed to update project: %w", err)
 	}
 
-	svc.reqLogSvc.FindReqsFilter = filter
+	svc.reqLogSvc.SetFindReqsFilter(filter)
+
+	return nil
+}
+
+func (svc *service) SetSenderRequestFindFilter(ctx context.Context, filter sender.FindRequestsFilter) error {
+	project, err := svc.ActiveProject(ctx)
+	if err != nil {
+		return err
+	}
+
+	filter.ProjectID = project.ID
+
+	project.Settings.SenderOnlyFindInScope = filter.OnlyInScope
+	project.Settings.SenderSearchExpr = filter.SearchExpr
+
+	err = svc.repo.UpsertProject(ctx, project)
+	if err != nil {
+		return fmt.Errorf("proj: failed to update project: %w", err)
+	}
+
+	svc.senderSvc.SetFindReqsFilter(filter)
 
 	return nil
 }

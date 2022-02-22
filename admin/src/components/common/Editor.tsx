@@ -1,7 +1,6 @@
-import MonacoEditor from "@monaco-editor/react";
-import monaco from "monaco-editor/esm/vs/editor/editor.api";
+import MonacoEditor, { EditorProps } from "@monaco-editor/react";
 
-const monacoOptions: monaco.editor.IEditorOptions = {
+const defaultMonacoOptions: EditorProps["options"] = {
   readOnly: true,
   wordWrap: "on",
   minimap: {
@@ -12,8 +11,9 @@ const monacoOptions: monaco.editor.IEditorOptions = {
 type language = "html" | "typescript" | "json";
 
 function languageForContentType(contentType?: string): language | undefined {
-  switch (contentType) {
+  switch (contentType?.toLowerCase()) {
     case "text/html":
+    case "text/html; charset=utf-8":
       return "html";
     case "application/json":
     case "application/json; charset=utf-8":
@@ -29,16 +29,19 @@ function languageForContentType(contentType?: string): language | undefined {
 interface Props {
   content: string;
   contentType?: string;
+  monacoOptions?: EditorProps["options"];
+  onChange?: EditorProps["onChange"];
 }
 
-function Editor({ content, contentType }: Props): JSX.Element {
+function Editor({ content, contentType, monacoOptions, onChange }: Props): JSX.Element {
+  console.log(content);
   return (
     <MonacoEditor
-      height={"600px"}
       language={languageForContentType(contentType)}
       theme="vs-dark"
-      options={monacoOptions}
+      options={{ ...defaultMonacoOptions, ...monacoOptions }}
       value={content}
+      onChange={onChange}
     />
   );
 }

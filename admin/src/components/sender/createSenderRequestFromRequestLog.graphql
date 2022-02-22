@@ -1,0 +1,5 @@
+mutation CreateSenderRequestFromHttpRequestLog($id: ID!) {
+  createSenderRequestFromHttpRequestLog(id: $id) {
+    id
+  }
+}

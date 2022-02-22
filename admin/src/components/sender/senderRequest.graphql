@@ -1,0 +1,26 @@
+query GetSenderRequest($id: ID!) {
+  senderRequest(id: $id) {
+    id
+    sourceRequestLogID
+    url
+    method
+    proto
+    headers {
+      key
+      value
+    }
+    body
+    timestamp
+    response {
+      id
+      proto
+      statusCode
+      statusReason
+      body
+      headers {
+        key
+        value
+      }
+    }
+  }
+}

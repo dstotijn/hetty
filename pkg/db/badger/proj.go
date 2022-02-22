@@ -65,6 +65,11 @@ func (db *Database) DeleteProject(ctx context.Context, projectID ulid.ULID) erro
 		return fmt.Errorf("badger: failed to delete project request logs: %w", err)
 	}
 
+	err = db.DeleteSenderRequests(ctx, projectID)
+	if err != nil {
+		return fmt.Errorf("badger: failed to delete project sender requests: %w", err)
+	}
+
 	err = db.badger.Update(func(txn *badger.Txn) error {
 		return txn.Delete(entryKey(projectPrefix, 0, projectID[:]))
 	})

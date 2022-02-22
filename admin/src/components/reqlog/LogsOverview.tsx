@@ -5,7 +5,7 @@ import Alert from "@mui/lab/Alert";
 
 import RequestList from "./RequestList";
 import LogDetail from "./LogDetail";
-import CenteredPaper from "../CenteredPaper";
+import CenteredPaper from "../common/CenteredPaper";
 import { useHttpRequestLogs } from "./hooks/useHttpRequestLogs";
 
 function LogsOverview(): JSX.Element {

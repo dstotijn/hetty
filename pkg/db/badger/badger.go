@@ -8,12 +8,16 @@ import (
 
 const (
 	// Key prefixes. Each prefix value should be unique.
-	projectPrefix = 0x00
-	reqLogPrefix  = 0x01
-	resLogPrefix  = 0x02
+	projectPrefix   = 0x00
+	reqLogPrefix    = 0x01
+	resLogPrefix    = 0x02
+	senderReqPrefix = 0x03
 
 	// Request log indices.
 	reqLogProjectIDIndex = 0x00
+
+	// Sender request indices.
+	senderReqProjectIDIndex = 0x00
 )
 
 // Database is used to store and retrieve data from an underlying Badger database.

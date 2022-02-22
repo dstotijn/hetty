@@ -10,7 +10,11 @@ type HttpRequestLog {
 }
 
 type HttpResponseLog {
-  proto: String!
+  """
+  Will be the same ID as its related request ID.
+  """
+  id: ID!
+  proto: HttpProtocol!
   statusCode: Int!
   statusReason: String!
   body: String
@@ -62,12 +66,52 @@ type ClearHTTPRequestLogResult {
   success: Boolean!
 }
 
+type DeleteSenderRequestsResult {
+  success: Boolean!
+}
+
 input HttpRequestLogFilterInput {
   onlyInScope: Boolean
   searchExpression: String
 }
 
 type HttpRequestLogFilter {
+  onlyInScope: Boolean!
+  searchExpression: String
+}
+
+input SenderRequestInput {
+  id: ID
+  url: URL!
+  method: HttpMethod
+  proto: HttpProtocol
+  headers: [HttpHeaderInput!]
+  body: String
+}
+
+input HttpHeaderInput {
+  key: String!
+  value: String!
+}
+
+type SenderRequest {
+  id: ID!
+  sourceRequestLogID: ID
+  url: URL!
+  method: HttpMethod!
+  proto: HttpProtocol!
+  headers: [HttpHeader!]
+  body: String
+  timestamp: Time!
+  response: HttpResponseLog
+}
+
+input SenderRequestFilterInput {
+  onlyInScope: Boolean
+  searchExpression: String
+}
+
+type SenderRequestFilter {
   onlyInScope: Boolean!
   searchExpression: String
 }
@@ -79,6 +123,8 @@ type Query {
   activeProject: Project
   projects: [Project!]!
   scope: [ScopeRule!]!
+  senderRequest(id: ID!): SenderRequest
+  senderRequests: [SenderRequest!]!
 }
 
 type Mutation {
@@ -91,6 +137,11 @@ type Mutation {
   setHttpRequestLogFilter(
     filter: HttpRequestLogFilterInput
   ): HttpRequestLogFilter
+  setSenderRequestFilter(filter: SenderRequestFilterInput): SenderRequestFilter
+  createOrUpdateSenderRequest(request: SenderRequestInput!): SenderRequest!
+  createSenderRequestFromHttpRequestLog(id: ID!): SenderRequest!
+  sendRequest(id: ID!): SenderRequest!
+  deleteSenderRequests: DeleteSenderRequestsResult!
 }
 
 enum HttpMethod {
@@ -105,5 +156,11 @@ enum HttpMethod {
   PATCH
 }
 
+enum HttpProtocol {
+  HTTP1
+  HTTP2
+}
+
 scalar Time
 scalar Regexp
+scalar URL

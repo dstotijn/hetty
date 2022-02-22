@@ -1,0 +1,5 @@
+mutation SendRequest($id: ID!) {
+  sendRequest(id: $id) {
+    id
+  }
+}
