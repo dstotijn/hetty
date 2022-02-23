@@ -1,0 +1,12 @@
+query HttpRequestLogs {
+  httpRequestLogs {
+    id
+    method
+    url
+    timestamp
+    response {
+      statusCode
+      statusReason
+    }
+  }
+}

@@ -3,9 +3,9 @@ import { AllotmentProps } from "allotment";
 import { PaneProps } from "allotment/dist/types/src/allotment";
 import { ComponentType, useEffect, useRef, useState } from "react";
 
-import Layout, { Page } from "../../components/Layout";
-import EditRequest from "../../components/sender/EditRequest";
-import History from "../../components/sender/History";
+import { Layout, Page } from "features/Layout";
+import EditRequest from "features/sender/components/EditRequest";
+import History from "features/sender/components/History";
 
 function Index(): JSX.Element {
   const isMountedRef = useRef(false);

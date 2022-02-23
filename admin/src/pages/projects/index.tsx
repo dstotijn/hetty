@@ -1,7 +1,8 @@
 import { Box, Divider, Grid, Typography } from "@mui/material";
-import Layout, { Page } from "../../components/Layout";
-import NewProject from "../../components/projects/NewProject";
-import ProjectList from "../../components/projects/ProjectList";
+
+import { Layout, Page } from "features/Layout";
+import NewProject from "features/projects/components/NewProject";
+import ProjectList from "features/projects/components/ProjectList";
 
 function Index(): JSX.Element {
   return (

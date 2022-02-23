@@ -1,9 +1,9 @@
-import React from "react";
-import { Button, Typography } from "@mui/material";
 import ListIcon from "@mui/icons-material/List";
+import { Button, Typography } from "@mui/material";
 import Link from "next/link";
+import React from "react";
 
-import Layout, { Page } from "../../components/Layout";
+import { Layout, Page } from "features/Layout";
 
 function Index(): JSX.Element {
   return (

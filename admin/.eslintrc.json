@@ -1,18 +1,51 @@
 {
-  "extends": ["next/core-web-vitals", "prettier"],
+  "root": true,
+  "extends": ["next/core-web-vitals", "prettier", "plugin:@typescript-eslint/recommended", "plugin:import/typescript"],
+  "plugins": ["prettier", "@typescript-eslint", "import"],
+  "ignorePatterns": ["next*", "src/lib/graphql/generated.tsx"],
+  "settings": {
+    "import/parsers": {
+      "@typescript-eslint/parser": [".ts", ".tsx"]
+    },
+    "import/resolver": {
+      "typescript": {
+        "alwaysTryTypes": true
+      }
+    }
+  },
   "rules": {
+    "prettier/prettier": ["error"],
     "@next/next/no-css-tags": "off",
-    "@typescript-eslint/no-unused-vars": "off",
-    "unused-imports/no-unused-imports": "error",
-    "unused-imports/no-unused-vars": [
+    "no-unused-vars": "off",
+    "@typescript-eslint/no-unused-vars": "error",
+
+    "import/default": "off",
+
+    "import/no-unresolved": "error",
+    "import/named": "error",
+    "import/namespace": "error",
+    "import/export": "error",
+    "import/no-deprecated": "error",
+    "import/no-cycle": "error",
+
+    "import/no-named-as-default": "warn",
+    "import/no-named-as-default-member": "warn",
+    "import/no-duplicates": "warn",
+    "import/newline-after-import": "warn",
+    "import/order": [
       "warn",
       {
-        "vars": "all",
-        "varsIgnorePattern": "^_",
-        "args": "after-used",
-        "argsIgnorePattern": "^_"
+        "alphabetize": { "order": "asc", "caseInsensitive": false },
+        "newlines-between": "always",
+        "groups": ["builtin", "external", "parent", "sibling", "index"]
+      }
+    ],
+    "import/no-unused-modules": [
+      "error",
+      {
+        "missingExports": true,
+        "ignoreExports": ["./src/pages"]
       }
     ]
-  },
-  "plugins": ["unused-imports", "prettier"]
+  }
 }

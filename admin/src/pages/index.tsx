@@ -1,8 +1,8 @@
-import { Box, Button, Typography } from "@mui/material";
 import FolderIcon from "@mui/icons-material/Folder";
+import { Box, Button, Typography } from "@mui/material";
 import Link from "next/link";
 
-import Layout, { Page } from "../components/Layout";
+import { Layout, Page } from "features/Layout";
 
 function Index(): JSX.Element {
   const highlightSx = { color: "primary.main" };

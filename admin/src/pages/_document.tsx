@@ -1,11 +1,12 @@
-import * as React from "react";
-import Document, { Html, Head, Main, NextScript } from "next/document";
 import createEmotionServer from "@emotion/server/create-instance";
+import Document, { Html, Head, Main, NextScript } from "next/document";
+import React from "react";
 
-import createEmotionCache from "../lib/createEmotionCache";
-import theme from "../lib/theme";
+import createEmotionCache from "lib/mui/createEmotionCache";
+import theme from "lib/mui/theme";
 
 export default class MyDocument extends Document {
+  /* eslint-disable */
   render() {
     return (
       <Html lang="en">

@@ -1,9 +1,9 @@
 import { Box, Divider, Grid, Typography } from "@mui/material";
 import React from "react";
 
-import Layout, { Page } from "../../components/Layout";
-import AddRule from "../../components/scope/AddRule";
-import Rules from "../../components/scope/Rules";
+import { Layout, Page } from "features/Layout";
+import AddRule from "features/scope/components/AddRule";
+import Rules from "features/scope/components/Rules";
 
 function Index(): JSX.Element {
   return (

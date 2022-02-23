@@ -1,0 +1,7 @@
+mutation OpenProject($id: ID!) {
+  openProject(id: $id) {
+    id
+    name
+    isActive
+  }
+}

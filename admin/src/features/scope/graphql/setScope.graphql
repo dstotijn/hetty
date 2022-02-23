@@ -1,0 +1,5 @@
+mutation SetScope($scope: [ScopeRuleInput!]!) {
+  setScope(scope: $scope) {
+    url
+  }
+}

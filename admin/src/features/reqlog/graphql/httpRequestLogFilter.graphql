@@ -1,0 +1,6 @@
+query HttpRequestLogFilter {
+  httpRequestLogFilter {
+    onlyInScope
+    searchExpression
+  }
+}
