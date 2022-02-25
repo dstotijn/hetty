@@ -10,6 +10,7 @@ query HttpRequestLog($id: ID!) {
     }
     body
     response {
+      id
       proto
       headers {
         key

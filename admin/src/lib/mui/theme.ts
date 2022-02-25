@@ -1,6 +1,12 @@
 import * as colors from "@mui/material/colors";
 import { createTheme } from "@mui/material/styles";
 
+declare module "@mui/material/Paper" {
+  interface PaperPropsVariantOverrides {
+    centered: true;
+  }
+}
+
 const heading = {
   fontFamily: "'JetBrains Mono', monospace",
   fontWeight: 600,
@@ -41,12 +47,27 @@ theme = createTheme(theme, {
     },
   },
   components: {
-    MuiTableCell: {
+    MuiTableRow: {
       styleOverrides: {
-        stickyHeader: {
-          backgroundColor: theme.palette.secondary.dark,
+        root: {
+          "&.Mui-selected, &.Mui-selected:hover": {
+            backgroundColor: theme.palette.grey[700],
+          },
         },
       },
+    },
+    MuiPaper: {
+      variants: [
+        {
+          props: { variant: "centered" },
+          style: {
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            padding: theme.spacing(4),
+          },
+        },
+      ],
     },
   },
 });

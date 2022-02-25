@@ -27,6 +27,8 @@ import MuiListItemIcon, { ListItemIconProps } from "@mui/material/ListItemIcon";
 import Link from "next/link";
 import React, { useState } from "react";
 
+import { useActiveProject } from "lib/ActiveProjectContext";
+
 export enum Page {
   Home,
   GetStarted,
@@ -132,6 +134,7 @@ interface Props {
 }
 
 export function Layout({ title, page, children }: Props): JSX.Element {
+  const activeProject = useActiveProject();
   const theme = useTheme();
   const [open, setOpen] = useState(false);
 
@@ -200,7 +203,7 @@ export function Layout({ title, page, children }: Props): JSX.Element {
             </ListItemButton>
           </Link>
           <Link href="/proxy/logs" passHref>
-            <ListItemButton key="proxyLogs" selected={page === Page.ProxyLogs}>
+            <ListItemButton key="proxyLogs" disabled={!activeProject} selected={page === Page.ProxyLogs}>
               <Tooltip title="Proxy">
                 <ListItemIcon>
                   <SettingsEthernetIcon />
@@ -210,7 +213,7 @@ export function Layout({ title, page, children }: Props): JSX.Element {
             </ListItemButton>
           </Link>
           <Link href="/sender" passHref>
-            <ListItemButton key="sender" selected={page === Page.Sender}>
+            <ListItemButton key="sender" disabled={!activeProject} selected={page === Page.Sender}>
               <Tooltip title="Sender">
                 <ListItemIcon>
                   <SendIcon />
@@ -220,7 +223,7 @@ export function Layout({ title, page, children }: Props): JSX.Element {
             </ListItemButton>
           </Link>
           <Link href="/scope" passHref>
-            <ListItemButton key="scope" selected={page === Page.Scope}>
+            <ListItemButton key="scope" disabled={!activeProject} selected={page === Page.Scope}>
               <Tooltip title="Scope">
                 <ListItemIcon>
                   <LocationSearchingIcon />

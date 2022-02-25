@@ -12,18 +12,18 @@ enum TabValue {
   Body = "body",
 }
 
-interface EditRequestTabsProps {
+interface RequestTabsProps {
   queryParams: KeyValuePair[];
   headers: KeyValuePair[];
-  onQueryParamChange: KeyValuePairTableProps["onChange"];
-  onQueryParamDelete: KeyValuePairTableProps["onDelete"];
-  onHeaderChange: KeyValuePairTableProps["onChange"];
-  onHeaderDelete: KeyValuePairTableProps["onDelete"];
-  body: string;
-  onBodyChange: (value: string) => void;
+  onQueryParamChange?: KeyValuePairTableProps["onChange"];
+  onQueryParamDelete?: KeyValuePairTableProps["onDelete"];
+  onHeaderChange?: KeyValuePairTableProps["onChange"];
+  onHeaderDelete?: KeyValuePairTableProps["onDelete"];
+  body?: string | null;
+  onBodyChange?: (value: string) => void;
 }
 
-function EditRequestTabs(props: EditRequestTabsProps): JSX.Element {
+function RequestTabs(props: RequestTabsProps): JSX.Element {
   const {
     queryParams,
     onQueryParamChange,
@@ -40,46 +40,45 @@ function EditRequestTabs(props: EditRequestTabsProps): JSX.Element {
     textTransform: "none",
   };
 
+  const queryParamsLength = onQueryParamChange ? queryParams.length - 1 : queryParams.length;
+  const headersLength = onHeaderChange ? headers.length - 1 : headers.length;
+
   return (
-    <Box height="100%" sx={{ display: "flex", flexDirection: "column" }}>
+    <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
       <TabContext value={tabValue}>
-        <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 2 }}>
+        <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 1 }}>
           <TabList onChange={(_, value) => setTabValue(value)}>
             <Tab
               value={TabValue.QueryParams}
-              label={"Query Params" + (queryParams.length - 1 ? ` (${queryParams.length - 1})` : "")}
+              label={"Query Params" + (queryParamsLength ? ` (${queryParamsLength})` : "")}
               sx={tabSx}
             />
-            <Tab
-              value={TabValue.Headers}
-              label={"Headers" + (headers.length - 1 ? ` (${headers.length - 1})` : "")}
-              sx={tabSx}
-            />
+            <Tab value={TabValue.Headers} label={"Headers" + (headersLength ? ` (${headersLength})` : "")} sx={tabSx} />
             <Tab
               value={TabValue.Body}
-              label={"Body" + (body.length ? ` (${body.length} byte` + (body.length > 1 ? "s" : "") + ")" : "")}
+              label={"Body" + (body?.length ? ` (${body.length} byte` + (body.length > 1 ? "s" : "") + ")" : "")}
               sx={tabSx}
             />
           </TabList>
         </Box>
-        <Box flex="1 auto" overflow="hidden">
-          <TabPanel value={TabValue.QueryParams} sx={{ p: 0, height: "100%", overflow: "scroll" }}>
+        <Box flex="1 auto" overflow="scroll" height="100%">
+          <TabPanel value={TabValue.QueryParams} sx={{ p: 0, height: "100%" }}>
             <Box>
               <KeyValuePairTable items={queryParams} onChange={onQueryParamChange} onDelete={onQueryParamDelete} />
             </Box>
           </TabPanel>
-          <TabPanel value={TabValue.Headers} sx={{ p: 0, height: "100%", overflow: "scroll" }}>
+          <TabPanel value={TabValue.Headers} sx={{ p: 0, height: "100%" }}>
             <Box>
               <KeyValuePairTable items={headers} onChange={onHeaderChange} onDelete={onHeaderDelete} />
             </Box>
           </TabPanel>
           <TabPanel value={TabValue.Body} sx={{ p: 0, height: "100%" }}>
             <Editor
-              content={body}
+              content={body || ""}
               onChange={(value) => {
-                onBodyChange(value || "");
+                onBodyChange && onBodyChange(value || "");
               }}
-              monacoOptions={{ readOnly: false }}
+              monacoOptions={{ readOnly: onBodyChange === undefined }}
               contentType={headers.find(({ key }) => key.toLowerCase() === "content-type")?.value}
             />
           </TabPanel>
@@ -89,4 +88,4 @@ function EditRequestTabs(props: EditRequestTabsProps): JSX.Element {
   );
 }
 
-export default EditRequestTabs;
+export default RequestTabs;

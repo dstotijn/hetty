@@ -17,8 +17,7 @@ import {
 import IconButton from "@mui/material/IconButton";
 import React, { useRef, useState } from "react";
 
-import { ConfirmationDialog, useConfirmationDialog } from "./ConfirmationDialog";
-
+import { ConfirmationDialog, useConfirmationDialog } from "lib/components/ConfirmationDialog";
 import {
   HttpRequestLogFilterDocument,
   HttpRequestLogsDocument,

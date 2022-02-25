@@ -10,14 +10,13 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { AllotmentProps, PaneProps } from "allotment/dist/types/src/allotment";
 import { useRouter } from "next/router";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useState } from "react";
 
-import EditRequestTabs from "./EditRequestTabs";
-import { KeyValuePair, sortKeyValuePairs } from "./KeyValuePair";
-import Response from "./Response";
-
+import { KeyValuePair, sortKeyValuePairs } from "lib/components/KeyValuePair";
+import RequestTabs from "lib/components/RequestTabs";
+import Response from "lib/components/Response";
+import SplitPane from "lib/components/SplitPane";
 import {
   GetSenderRequestQuery,
   useCreateOrUpdateSenderRequestMutation,
@@ -25,8 +24,7 @@ import {
   useGetSenderRequestQuery,
   useSendRequestMutation,
 } from "lib/graphql/generated";
-
-import "allotment/dist/style.css";
+import { queryParamsFromURL } from "lib/queryParamsFromURL";
 
 enum HttpMethod {
   Get = "GET",
@@ -86,22 +84,6 @@ function updateURLQueryParams(url: string, queryParams: KeyValuePair[]) {
   }
 
   return newURL + "?" + rawQueryParams;
-}
-
-function queryParamsFromURL(url: string): KeyValuePair[] {
-  const questionMarkIndex = url.indexOf("?");
-  if (questionMarkIndex === -1) {
-    return [];
-  }
-
-  const queryParams: KeyValuePair[] = [];
-
-  const searchParams = new URLSearchParams(url.slice(questionMarkIndex + 1));
-  for (const [key, value] of searchParams) {
-    queryParams.push({ key, value });
-  }
-
-  return queryParams;
 }
 
 function EditRequest(): JSX.Element {
@@ -219,28 +201,6 @@ function EditRequest(): JSX.Element {
     createOrUpdateRequestAndSend();
   };
 
-  const isMountedRef = useRef(false);
-  const [Allotment, setAllotment] = useState<
-    (React.ComponentType<AllotmentProps> & { Pane: React.ComponentType<PaneProps> }) | null
-  >(null);
-  useEffect(() => {
-    isMountedRef.current = true;
-    import("allotment")
-      .then((mod) => {
-        if (!isMountedRef.current) {
-          return;
-        }
-        setAllotment(mod.Allotment);
-      })
-      .catch((err) => console.error(err, `could not import allotment ${err.message}`));
-    return () => {
-      isMountedRef.current = false;
-    };
-  }, []);
-  if (!Allotment) {
-    return <div>Loading...</div>;
-  }
-
   return (
     <Box display="flex" flexDirection="column" height="100%" gap={2}>
       <Box component="form" autoComplete="off" onSubmit={handleFormSubmit}>
@@ -276,31 +236,27 @@ function EditRequest(): JSX.Element {
         )}
       </Box>
 
-      <Box flex="1 auto" overflow="hidden">
-        <Allotment>
-          <Box pr={2} pb={2} height="100%" overflow="hidden">
-            <Box height="100%" position="relative">
-              <Typography variant="overline" color="textSecondary" sx={{ position: "absolute", right: 0, mt: 1.2 }}>
-                Request
-              </Typography>
-              <EditRequestTabs
-                queryParams={queryParams}
-                headers={headers}
-                body={body}
-                onQueryParamChange={handleQueryParamChange}
-                onQueryParamDelete={handleQueryParamDelete}
-                onHeaderChange={handleHeaderChange}
-                onHeaderDelete={handleHeaderDelete}
-                onBodyChange={setBody}
-              />
-            </Box>
+      <Box flex="1 auto" position="relative">
+        <SplitPane split="vertical" size={"50%"}>
+          <Box sx={{ height: "100%", mr: 2, pb: 2, position: "relative" }}>
+            <Typography variant="overline" color="textSecondary" sx={{ position: "absolute", right: 0, mt: 1.2 }}>
+              Request
+            </Typography>
+            <RequestTabs
+              queryParams={queryParams}
+              headers={headers}
+              body={body}
+              onQueryParamChange={handleQueryParamChange}
+              onQueryParamDelete={handleQueryParamDelete}
+              onHeaderChange={handleHeaderChange}
+              onHeaderDelete={handleHeaderDelete}
+              onBodyChange={setBody}
+            />
           </Box>
-          <Box pb={2} pl={2} height="100%" overflow="hidden">
-            <Box height="100%" position="relative">
-              <Response response={response} />
-            </Box>
+          <Box sx={{ height: "100%", position: "relative", ml: 2, pb: 2 }}>
+            <Response response={response} />
           </Box>
-        </Allotment>
+        </SplitPane>
       </Box>
     </Box>
   );

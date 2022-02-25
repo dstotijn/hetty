@@ -1,18 +1,20 @@
 import Alert from "@mui/lab/Alert";
-import { Box, Grid, Paper, CircularProgress } from "@mui/material";
+import { Box, CircularProgress, Paper, Typography } from "@mui/material";
 
 import RequestDetail from "./RequestDetail";
-import ResponseDetail from "./ResponseDetail";
 
+import Response from "lib/components/Response";
+import SplitPane from "lib/components/SplitPane";
 import { useHttpRequestLogQuery } from "lib/graphql/generated";
 
 interface Props {
-  requestId: string;
+  id?: string;
 }
 
-function LogDetail({ requestId: id }: Props): JSX.Element {
+function LogDetail({ id }: Props): JSX.Element {
   const { loading, error, data } = useHttpRequestLogQuery({
-    variables: { id },
+    variables: { id: id as string },
+    skip: id === undefined,
   });
 
   if (loading) {
@@ -31,28 +33,24 @@ function LogDetail({ requestId: id }: Props): JSX.Element {
   }
 
   if (!data?.httpRequestLog) {
-    return <div></div>;
+    return (
+      <Paper variant="centered" sx={{ mt: 2 }}>
+        <Typography>Select a log entry…</Typography>
+      </Paper>
+    );
   }
 
-  const httpRequestLog = data.httpRequestLog;
+  const reqLog = data.httpRequestLog;
 
   return (
-    <div>
-      <Grid container item spacing={2}>
-        <Grid item xs={6}>
-          <Box component={Paper}>
-            <RequestDetail request={httpRequestLog} />
-          </Box>
-        </Grid>
-        <Grid item xs={6}>
-          {httpRequestLog.response && (
-            <Box component={Paper}>
-              <ResponseDetail response={httpRequestLog.response} />
-            </Box>
-          )}
-        </Grid>
-      </Grid>
-    </div>
+    <SplitPane split="vertical" size={"50%"}>
+      <RequestDetail request={reqLog} />
+      {reqLog.response && (
+        <Box sx={{ height: "100%", pt: 1, pl: 2, pb: 2 }}>
+          <Response response={reqLog.response} />
+        </Box>
+      )}
+    </SplitPane>
   );
 }
 

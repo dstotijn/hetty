@@ -288,7 +288,7 @@ export type HttpRequestLogQueryVariables = Exact<{
 }>;
 
 
-export type HttpRequestLogQuery = { __typename?: 'Query', httpRequestLog?: { __typename?: 'HttpRequestLog', id: string, method: HttpMethod, url: string, proto: string, body?: string | null, headers: Array<{ __typename?: 'HttpHeader', key: string, value: string }>, response?: { __typename?: 'HttpResponseLog', proto: HttpProtocol, statusCode: number, statusReason: string, body?: string | null, headers: Array<{ __typename?: 'HttpHeader', key: string, value: string }> } | null } | null };
+export type HttpRequestLogQuery = { __typename?: 'Query', httpRequestLog?: { __typename?: 'HttpRequestLog', id: string, method: HttpMethod, url: string, proto: string, body?: string | null, headers: Array<{ __typename?: 'HttpHeader', key: string, value: string }>, response?: { __typename?: 'HttpResponseLog', id: string, proto: HttpProtocol, statusCode: number, statusReason: string, body?: string | null, headers: Array<{ __typename?: 'HttpHeader', key: string, value: string }> } | null } | null };
 
 export type HttpRequestLogFilterQueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -568,6 +568,7 @@ export const HttpRequestLogDocument = gql`
     }
     body
     response {
+      id
       proto
       headers {
         key

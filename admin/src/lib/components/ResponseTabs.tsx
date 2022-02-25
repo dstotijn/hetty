@@ -1,11 +1,9 @@
 import { TabContext, TabList, TabPanel } from "@mui/lab";
-import { Box, Tab, Typography } from "@mui/material";
+import { Box, Paper, Tab, Typography } from "@mui/material";
 import React, { useState } from "react";
 
-import { KeyValuePairTable } from "./KeyValuePair";
-
-import CenteredPaper from "lib/components/CenteredPaper";
 import Editor from "lib/components/Editor";
+import { KeyValuePairTable } from "lib/components/KeyValuePair";
 import { HttpResponseLog } from "lib/graphql/generated";
 
 interface ResponseTabsProps {
@@ -20,9 +18,9 @@ enum TabValue {
 }
 
 const reqNotSent = (
-  <CenteredPaper>
+  <Paper variant="centered">
     <Typography>Response not received yet.</Typography>
-  </CenteredPaper>
+  </Paper>
 );
 
 function ResponseTabs(props: ResponseTabsProps): JSX.Element {
@@ -38,7 +36,7 @@ function ResponseTabs(props: ResponseTabsProps): JSX.Element {
   return (
     <Box height="100%" sx={{ display: "flex", flexDirection: "column" }}>
       <TabContext value={tabValue}>
-        <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 2 }}>
+        <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 1 }}>
           <TabList onChange={(_, value) => setTabValue(value)}>
             <Tab
               value={TabValue.Body}

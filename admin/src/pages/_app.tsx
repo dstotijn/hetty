@@ -1,11 +1,12 @@
 import { ApolloProvider } from "@apollo/client";
 import { CacheProvider, EmotionCache } from "@emotion/react";
+import { ThemeProvider } from "@mui/material";
 import CssBaseline from "@mui/material/CssBaseline";
-import { ThemeProvider } from "@mui/material/styles";
 import { AppProps } from "next/app";
 import Head from "next/head";
 import React from "react";
 
+import { ActiveProjectProvider } from "lib/ActiveProjectContext";
 import { useApollo } from "lib/graphql/useApollo";
 import createEmotionCache from "lib/mui/createEmotionCache";
 import theme from "lib/mui/theme";
@@ -30,10 +31,12 @@ export default function MyApp(props: MyAppProps) {
         <meta name="viewport" content="initial-scale=1, width=device-width" />
       </Head>
       <ApolloProvider client={apolloClient}>
-        <ThemeProvider theme={theme}>
-          <CssBaseline />
-          <Component {...pageProps} />
-        </ThemeProvider>
+        <ActiveProjectProvider>
+          <ThemeProvider theme={theme}>
+            <CssBaseline />
+            <Component {...pageProps} />
+          </ThemeProvider>
+        </ActiveProjectProvider>
       </ApolloProvider>
     </CacheProvider>
   );
