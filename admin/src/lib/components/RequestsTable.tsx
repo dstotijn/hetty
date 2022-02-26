@@ -64,10 +64,11 @@ interface Props {
   activeRowId?: string;
   onRowClick?: (id: string) => void;
   onContextMenu?: (e: React.MouseEvent, id: string) => void;
+  rowActions?: (id: string) => JSX.Element;
 }
 
 export default function RequestsTable(props: Props): JSX.Element {
-  const { requests, activeRowId, onRowClick, onContextMenu } = props;
+  const { requests, activeRowId, onRowClick, onContextMenu, rowActions } = props;
 
   return (
     <TableContainer sx={{ overflowX: "initial" }}>
@@ -78,6 +79,7 @@ export default function RequestsTable(props: Props): JSX.Element {
             <TableCell>Origin</TableCell>
             <TableCell>Path</TableCell>
             <TableCell>Status</TableCell>
+            {rowActions && <TableCell padding="checkbox" />}
           </TableRow>
         </TableHead>
         <TableBody>
@@ -104,6 +106,7 @@ export default function RequestsTable(props: Props): JSX.Element {
                 <StatusTableCell>
                   {response && <Status code={response.statusCode} reason={response.statusReason} />}
                 </StatusTableCell>
+                {rowActions && <TableCell sx={{ py: 0 }}>{rowActions(id)}</TableCell>}
               </RequestTableRow>
             );
           })}

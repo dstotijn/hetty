@@ -154,7 +154,6 @@ function EditRequest(): JSX.Element {
 
       const newHeaders = sortKeyValuePairs(senderRequest.headers || []);
       setHeaders([...newHeaders.map(({ key, value }) => ({ key, value })), { key: "", value: "" }]);
-      console.log(senderRequest.response);
       setResponse(senderRequest.response);
     },
   });

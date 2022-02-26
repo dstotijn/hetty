@@ -34,7 +34,6 @@ interface Props {
 }
 
 function Editor({ content, contentType, monacoOptions, onChange }: Props): JSX.Element {
-  console.log(content);
   return (
     <MonacoEditor
       language={languageForContentType(contentType)}

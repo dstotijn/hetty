@@ -1,4 +1,5 @@
-import { Alert, Box, Link, MenuItem, Snackbar } from "@mui/material";
+import { ContentCopy } from "@mui/icons-material";
+import { Alert, Box, IconButton, Link, MenuItem, Snackbar, Tooltip } from "@mui/material";
 import { useRouter } from "next/router";
 import { useState } from "react";
 
@@ -17,7 +18,13 @@ export function RequestLogs(): JSX.Element {
     pollInterval: 1000,
   });
 
-  const [createSenderReqFromLog] = useCreateSenderRequestFromHttpRequestLogMutation({});
+  const [createSenderReqFromLog] = useCreateSenderRequestFromHttpRequestLogMutation({
+    onCompleted({ createSenderRequestFromHttpRequestLog }) {
+      const { id } = createSenderRequestFromHttpRequestLog;
+      setNewSenderReqId(id);
+      setCopiedReqNotifOpen(true);
+    },
+  });
 
   const [copyToSenderId, setCopyToSenderId] = useState("");
   const [Menu, handleContextMenu, handleContextMenuClose] = useContextMenu();
@@ -26,11 +33,6 @@ export function RequestLogs(): JSX.Element {
     createSenderReqFromLog({
       variables: {
         id: copyToSenderId,
-      },
-      onCompleted({ createSenderRequestFromHttpRequestLog }) {
-        const { id } = createSenderRequestFromHttpRequestLog;
-        setNewSenderReqId(id);
-        setCopiedReqNotifOpen(true);
       },
     });
     handleContextMenuClose();
@@ -53,6 +55,23 @@ export function RequestLogs(): JSX.Element {
     setCopyToSenderId(id);
     handleContextMenu(e);
   };
+
+  const handleCopyToSenderActionClick = (id: string) => {
+    setCopyToSenderId(id);
+    createSenderReqFromLog({
+      variables: {
+        id,
+      },
+    });
+  };
+
+  const rowActions = (id: string): JSX.Element => (
+    <Tooltip title="Copy to Sender">
+      <IconButton size="small" onClick={() => handleCopyToSenderActionClick(id)}>
+        <ContentCopy fontSize="inherit" />
+      </IconButton>
+    </Tooltip>
+  );
 
   return (
     <Box display="flex" flexDirection="column" height="100%">
@@ -79,6 +98,7 @@ export function RequestLogs(): JSX.Element {
                 activeRowId={id}
                 onRowClick={handleRowClick}
                 onContextMenu={handleRowContextClick}
+                rowActions={rowActions}
               />
             </Box>
           </Box>
