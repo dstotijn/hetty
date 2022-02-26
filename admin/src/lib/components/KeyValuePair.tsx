@@ -9,7 +9,6 @@ import {
   Table,
   TableBody,
   TableCell,
-  TableCellProps,
   TableContainer,
   TableHead,
   TableRow,
@@ -74,19 +73,6 @@ export function KeyValuePairTable({ items, onChange, onDelete }: KeyValuePairTab
     setCopyConfOpen(false);
   };
 
-  const baseCellStyle = {
-    "&:hover": {
-      cursor: "copy",
-    },
-  };
-
-  const KeyTableCell = styled(TableCell)<TableCellProps>(() => (!onChange ? baseCellStyle : {}));
-  const ValueTableCell = styled(TableCell)<TableCellProps>(() => ({
-    ...(!onChange && baseCellStyle),
-    width: "60%",
-    wordBreak: "break-all",
-  }));
-
   return (
     <div>
       <Snackbar open={copyConfOpen} autoHideDuration={3000} onClose={handleCopyConfClose}>
@@ -118,11 +104,18 @@ export function KeyValuePairTable({ items, onChange, onDelete }: KeyValuePairTab
           >
             {items.map(({ key, value }, idx) => (
               <StyledTableRow key={idx} hover>
-                <KeyTableCell
+                <TableCell
                   component="th"
                   scope="row"
                   onClick={(e) => {
                     !onChange && handleCellClick(e);
+                  }}
+                  sx={{
+                    ...(!onChange && {
+                      "&:hover": {
+                        cursor: "copy",
+                      },
+                    }),
                   }}
                 >
                   {!onChange && <span>{key}</span>}
@@ -137,10 +130,19 @@ export function KeyValuePairTable({ items, onChange, onDelete }: KeyValuePairTab
                       }}
                     />
                   )}
-                </KeyTableCell>
-                <ValueTableCell
+                </TableCell>
+                <TableCell
                   onClick={(e) => {
                     !onChange && handleCellClick(e);
+                  }}
+                  sx={{
+                    width: "60%",
+                    wordBreak: "break-all",
+                    ...(!onChange && {
+                      "&:hover": {
+                        cursor: "copy",
+                      },
+                    }),
                   }}
                 >
                   {!onChange && value}
@@ -155,7 +157,7 @@ export function KeyValuePairTable({ items, onChange, onDelete }: KeyValuePairTab
                       }}
                     />
                   )}
-                </ValueTableCell>
+                </TableCell>
                 {onDelete && (
                   <TableCell>
                     <div className="delete-button">
