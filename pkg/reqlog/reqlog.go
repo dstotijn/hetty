@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"math/rand"
 	"net/http"
 	"net/url"
@@ -16,6 +15,7 @@ import (
 
 	"github.com/oklog/ulid"
 
+	"github.com/dstotijn/hetty/pkg/log"
 	"github.com/dstotijn/hetty/pkg/proxy"
 	"github.com/dstotijn/hetty/pkg/scope"
 	"github.com/dstotijn/hetty/pkg/search"
@@ -74,6 +74,7 @@ type service struct {
 	activeProjectID          ulid.ULID
 	scope                    *scope.Scope
 	repo                     Repository
+	logger                   log.Logger
 }
 
 type FindRequestsFilter struct {
@@ -85,13 +86,21 @@ type FindRequestsFilter struct {
 type Config struct {
 	Scope      *scope.Scope
 	Repository Repository
+	Logger     log.Logger
 }
 
 func NewService(cfg Config) Service {
-	return &service{
-		repo:  cfg.Repository,
-		scope: cfg.Scope,
+	s := &service{
+		repo:   cfg.Repository,
+		scope:  cfg.Scope,
+		logger: cfg.Logger,
 	}
+
+	if s.logger == nil {
+		s.logger = log.NewNopLogger()
+	}
+
+	return s
 }
 
 func (svc *service) FindRequests(ctx context.Context) ([]RequestLog, error) {
@@ -129,7 +138,8 @@ func (svc *service) RequestModifier(next proxy.RequestModifyFunc) proxy.RequestM
 
 			body, err = ioutil.ReadAll(req.Body)
 			if err != nil {
-				log.Printf("[ERROR] Could not read request body for logging: %v", err)
+				svc.logger.Errorw("Failed to read request body for logging.",
+					"error", err)
 				return
 			}
 
@@ -142,6 +152,9 @@ func (svc *service) RequestModifier(next proxy.RequestModifyFunc) proxy.RequestM
 			ctx := context.WithValue(req.Context(), LogBypassedKey, true)
 			*req = *req.WithContext(ctx)
 
+			svc.logger.Debugw("Bypassed logging: no active project.",
+				"url", req.URL.String())
+
 			return
 		}
 
@@ -150,6 +163,9 @@ func (svc *service) RequestModifier(next proxy.RequestModifyFunc) proxy.RequestM
 		if svc.bypassOutOfScopeRequests && !svc.scope.Match(clone, body) {
 			ctx := context.WithValue(req.Context(), LogBypassedKey, true)
 			*req = *req.WithContext(ctx)
+
+			svc.logger.Debugw("Bypassed logging: request doesn't match any scope rules.",
+				"url", req.URL.String())
 
 			return
 		}
@@ -166,9 +182,14 @@ func (svc *service) RequestModifier(next proxy.RequestModifyFunc) proxy.RequestM
 
 		err := svc.repo.StoreRequestLog(req.Context(), reqLog)
 		if err != nil {
-			log.Printf("[ERROR] Could not store request log: %v", err)
+			svc.logger.Errorw("Failed to store request log.",
+				"error", err)
 			return
 		}
+
+		svc.logger.Debugw("Stored request log.",
+			"reqLogID", reqLog.ID.String(),
+			"url", reqLog.URL.String())
 
 		ctx := context.WithValue(req.Context(), proxy.ReqLogIDKey, reqLog.ID)
 		*req = *req.WithContext(ctx)
@@ -203,7 +224,11 @@ func (svc *service) ResponseModifier(next proxy.ResponseModifyFunc) proxy.Respon
 
 		go func() {
 			if err := svc.storeResponse(context.Background(), reqLogID, &clone); err != nil {
-				log.Printf("[ERROR] Could not store response log: %v", err)
+				svc.logger.Errorw("Failed to store response log.",
+					"error", err)
+			} else {
+				svc.logger.Debugw("Stored response log.",
+					"reqLogID", reqLogID.String())
 			}
 		}()
 

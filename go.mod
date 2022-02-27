@@ -11,6 +11,7 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/oklog/ulid v1.3.1
 	github.com/vektah/gqlparser/v2 v2.2.0
+	go.uber.org/zap v1.21.0
 )
 
 require (
@@ -36,10 +37,12 @@ require (
 	github.com/urfave/cli/v2 v2.1.1 // indirect
 	github.com/vektah/dataloaden v0.2.1-0.20190515034641-a19b9a6e7c9e // indirect
 	go.opencensus.io v0.22.5 // indirect
-	golang.org/x/mod v0.3.0 // indirect
-	golang.org/x/net v0.0.0-20201021035429-f5854403a974 // indirect
-	golang.org/x/sys v0.0.0-20210124154548-22da62e12c0c // indirect
-	golang.org/x/tools v0.0.0-20210106214847-113979e3529a // indirect
+	go.uber.org/atomic v1.7.0 // indirect
+	go.uber.org/multierr v1.6.0 // indirect
+	golang.org/x/mod v0.4.2 // indirect
+	golang.org/x/net v0.0.0-20210405180319-a5a99cb37ef4 // indirect
+	golang.org/x/sys v0.0.0-20210510120138-977fb7262007 // indirect
+	golang.org/x/tools v0.1.5 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
-	gopkg.in/yaml.v2 v2.2.4 // indirect
+	gopkg.in/yaml.v2 v2.2.8 // indirect
 )

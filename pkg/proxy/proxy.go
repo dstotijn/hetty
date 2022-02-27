@@ -7,10 +7,11 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
-	"log"
 	"net"
 	"net/http"
 	"net/http/httputil"
+
+	"github.com/dstotijn/hetty/pkg/log"
 )
 
 type contextKey int
@@ -22,15 +23,22 @@ const ReqLogIDKey contextKey = 0
 type Proxy struct {
 	certConfig *CertConfig
 	handler    http.Handler
+	logger     log.Logger
 
 	// TODO: Add mutex for modifier funcs.
 	reqModifiers []RequestModifyMiddleware
 	resModifiers []ResponseModifyMiddleware
 }
 
+type Config struct {
+	CACert *x509.Certificate
+	CAKey  crypto.PrivateKey
+	Logger log.Logger
+}
+
 // NewProxy returns a new Proxy.
-func NewProxy(ca *x509.Certificate, key crypto.PrivateKey) (*Proxy, error) {
-	certConfig, err := NewCertConfig(ca, key)
+func NewProxy(cfg Config) (*Proxy, error) {
+	certConfig, err := NewCertConfig(cfg.CACert, cfg.CAKey)
 	if err != nil {
 		return nil, err
 	}
@@ -39,12 +47,17 @@ func NewProxy(ca *x509.Certificate, key crypto.PrivateKey) (*Proxy, error) {
 		certConfig:   certConfig,
 		reqModifiers: make([]RequestModifyMiddleware, 0),
 		resModifiers: make([]ResponseModifyMiddleware, 0),
+		logger:       cfg.Logger,
+	}
+
+	if p.logger == nil {
+		p.logger = log.NewNopLogger()
 	}
 
 	p.handler = &httputil.ReverseProxy{
 		Director:       p.modifyRequest,
 		ModifyResponse: p.modifyResponse,
-		ErrorHandler:   errorHandler,
+		ErrorHandler:   p.errorHandler,
 	}
 
 	return p, nil
@@ -103,7 +116,8 @@ func (p *Proxy) modifyResponse(res *http.Response) error {
 func (p *Proxy) handleConnect(w http.ResponseWriter) {
 	hj, ok := w.(http.Hijacker)
 	if !ok {
-		log.Printf("[ERROR] handleConnect: ResponseWriter is not a http.Hijacker (type: %T)", w)
+		p.logger.Errorw("ResponseWriter is not a http.Hijacker.",
+			"type", fmt.Sprintf("%T", w))
 		writeError(w, http.StatusServiceUnavailable)
 
 		return
@@ -113,7 +127,8 @@ func (p *Proxy) handleConnect(w http.ResponseWriter) {
 
 	clientConn, _, err := hj.Hijack()
 	if err != nil {
-		log.Printf("[ERROR] Hijacking client connection failed: %v", err)
+		p.logger.Errorw("Hijacking client connection failed.",
+			"error", err)
 		writeError(w, http.StatusServiceUnavailable)
 
 		return
@@ -121,18 +136,21 @@ func (p *Proxy) handleConnect(w http.ResponseWriter) {
 	defer clientConn.Close()
 
 	// Secure connection to client.
-	clientConn, err = p.clientTLSConn(clientConn)
+	tlsConn, err := p.clientTLSConn(clientConn)
 	if err != nil {
-		log.Printf("[ERROR] Securing client connection failed: %v", err)
+		p.logger.Errorw("Securing client connection failed.",
+			"error", err,
+			"remoteAddr", clientConn.RemoteAddr().String())
 		return
 	}
 
-	clientConnNotify := ConnNotify{clientConn, make(chan struct{})}
+	clientConnNotify := ConnNotify{tlsConn, make(chan struct{})}
 	l := &OnceAcceptListener{clientConnNotify.Conn}
 
 	err = http.Serve(l, p)
 	if err != nil && !errors.Is(err, ErrAlreadyAccepted) {
-		log.Printf("[ERROR] Serving HTTP request failed: %v", err)
+		p.logger.Errorw("Serving HTTP request failed.",
+			"error", err)
 	}
 
 	<-clientConnNotify.closed
@@ -150,12 +168,13 @@ func (p *Proxy) clientTLSConn(conn net.Conn) (*tls.Conn, error) {
 	return tlsConn, nil
 }
 
-func errorHandler(w http.ResponseWriter, r *http.Request, err error) {
+func (p *Proxy) errorHandler(w http.ResponseWriter, r *http.Request, err error) {
 	if errors.Is(err, context.Canceled) {
 		return
 	}
 
-	log.Printf("[ERROR]: Proxy error: %v", err)
+	p.logger.Errorw("Failed to proxy request.",
+		"error", err)
 
 	w.WriteHeader(http.StatusBadGateway)
 }

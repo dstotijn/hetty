@@ -7,7 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"io/fs"
-	"log"
+	llog "log"
 	"net"
 	"net/http"
 	"os"
@@ -18,9 +18,12 @@ import (
 	badgerdb "github.com/dgraph-io/badger/v3"
 	"github.com/gorilla/mux"
 	"github.com/mitchellh/go-homedir"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 
 	"github.com/dstotijn/hetty/pkg/api"
 	"github.com/dstotijn/hetty/pkg/db/badger"
+	"github.com/dstotijn/hetty/pkg/log"
 	"github.com/dstotijn/hetty/pkg/proj"
 	"github.com/dstotijn/hetty/pkg/proxy"
 	"github.com/dstotijn/hetty/pkg/reqlog"
@@ -32,10 +35,12 @@ var version = "0.0.0"
 
 // Flag variables.
 var (
-	caCertFile string
-	caKeyFile  string
-	dbPath     string
-	addr       string
+	caCertFile   string
+	caKeyFile    string
+	dbPath       string
+	addr         string
+	debug        bool
+	noPrettyLogs bool
 )
 
 //go:embed admin
@@ -45,46 +50,58 @@ var (
 var adminContent embed.FS
 
 func main() {
-	if err := run(); err != nil {
-		log.Fatalf("[ERROR]: %v", err)
-	}
-}
-
-func run() error {
 	flag.StringVar(&caCertFile, "cert", "~/.hetty/hetty_cert.pem",
 		"CA certificate filepath. Creates a new CA certificate if file doesn't exist")
 	flag.StringVar(&caKeyFile, "key", "~/.hetty/hetty_key.pem",
 		"CA private key filepath. Creates a new CA private key if file doesn't exist")
 	flag.StringVar(&dbPath, "db", "~/.hetty/db", "Database directory path")
 	flag.StringVar(&addr, "addr", ":8080", "TCP address to listen on, in the form \"host:port\"")
+	flag.BoolVar(&debug, "debug", false, "Enable debug mode")
+	flag.BoolVar(&noPrettyLogs, "disable-pretty-logs", false, "Disable human readable console logs and encode with JSON.")
 	flag.Parse()
+
+	logger, err := log.NewZapLogger(debug, !noPrettyLogs)
+	if err != nil {
+		llog.Fatal(err)
+	}
+	defer logger.Sync()
+
+	mainLogger := logger.Named("main")
 
 	// Expand `~` in filepaths.
 	caCertFile, err := homedir.Expand(caCertFile)
 	if err != nil {
-		return fmt.Errorf("could not parse CA certificate filepath: %w", err)
+		logger.Fatal("Failed to parse CA certificate filepath.", zap.Error(err))
 	}
 
 	caKeyFile, err := homedir.Expand(caKeyFile)
 	if err != nil {
-		return fmt.Errorf("could not parse CA private key filepath: %w", err)
+		logger.Fatal("Failed to parse CA private key filepath.", zap.Error(err))
 	}
 
 	dbPath, err := homedir.Expand(dbPath)
 	if err != nil {
-		return fmt.Errorf("could not parse projects filepath: %w", err)
+		logger.Fatal("Failed to parse database path.", zap.Error(err))
 	}
 
 	// Load existing CA certificate and key from disk, or generate and write
 	// to disk if no files exist yet.
 	caCert, caKey, err := proxy.LoadOrCreateCA(caKeyFile, caCertFile)
 	if err != nil {
-		return fmt.Errorf("could not create/load CA key pair: %w", err)
+		logger.Fatal("Failed to load or create CA key pair.", zap.Error(err))
 	}
 
-	badger, err := badger.OpenDatabase(badgerdb.DefaultOptions(dbPath))
+	// BadgerDB logs some verbose entries with `INFO` level, so unless
+	// we're running in debug mode, bump the minimal level to `WARN`.
+	dbLogger := logger.Named("badgerdb").WithOptions(zap.IncreaseLevel(zapcore.WarnLevel))
+
+	dbSugaredLogger := dbLogger.Sugar()
+
+	badger, err := badger.OpenDatabase(
+		badgerdb.DefaultOptions(dbPath).WithLogger(badger.NewLogger(dbSugaredLogger)),
+	)
 	if err != nil {
-		return fmt.Errorf("could not open badger database: %w", err)
+		logger.Fatal("Failed to open database.", zap.Error(err))
 	}
 	defer badger.Close()
 
@@ -93,6 +110,7 @@ func run() error {
 	reqLogService := reqlog.NewService(reqlog.Config{
 		Scope:      scope,
 		Repository: badger,
+		Logger:     logger.Named("reqlog").Sugar(),
 	})
 
 	senderService := sender.NewService(sender.Config{
@@ -107,12 +125,16 @@ func run() error {
 		Scope:         scope,
 	})
 	if err != nil {
-		return fmt.Errorf("could not create new project service: %w", err)
+		logger.Fatal("Failed to create new projects service.", zap.Error(err))
 	}
 
-	p, err := proxy.NewProxy(caCert, caKey)
+	p, err := proxy.NewProxy(proxy.Config{
+		CACert: caCert,
+		CAKey:  caKey,
+		Logger: logger.Named("proxy").Sugar(),
+	})
 	if err != nil {
-		return fmt.Errorf("could not create proxy: %w", err)
+		logger.Fatal("Failed to create new proxy.", zap.Error(err))
 	}
 
 	p.UseRequestModifier(reqLogService.RequestModifier)
@@ -120,7 +142,7 @@ func run() error {
 
 	fsSub, err := fs.Sub(adminContent, "admin")
 	if err != nil {
-		return fmt.Errorf("could not prepare subtree file system: %w", err)
+		logger.Fatal("Failed to construct file system subtree from admin dir.", zap.Error(err))
 	}
 
 	adminHandler := http.FileServer(http.FS(fsSub))
@@ -146,18 +168,28 @@ func run() error {
 	// Fallback (default) is the Proxy handler.
 	router.PathPrefix("").Handler(p)
 
-	s := &http.Server{
+	httpServer := &http.Server{
 		Addr:         addr,
 		Handler:      router,
 		TLSNextProto: map[string]func(*http.Server, *tls.Conn, http.Handler){}, // Disable HTTP/2
+		ErrorLog:     zap.NewStdLog(logger.Named("http")),
 	}
 
-	log.Printf("[INFO] Hetty (v%v) is running on %v ...", version, addr)
+	host, port, err := net.SplitHostPort(addr)
+	if err != nil {
+		mainLogger.Fatal("Failed to parse listening address.", zap.Error(err))
+	}
 
-	err = s.ListenAndServe()
+	url := fmt.Sprintf("http://%v:%v", host, port)
+	if host == "" || host == "0.0.0.0" || host == "127.0.0.1" {
+		url = fmt.Sprintf("http://localhost:%v", port)
+	}
+
+	mainLogger.Info(fmt.Sprintf("Hetty (v%v) is running on %v ...", version, addr))
+	mainLogger.Info(fmt.Sprintf("\x1b[%dm%s\x1b[0m", uint8(32), "Get started at "+url))
+
+	err = httpServer.ListenAndServe()
 	if err != nil && errors.Is(err, http.ErrServerClosed) {
-		return fmt.Errorf("http server closed unexpected: %w", err)
+		mainLogger.Fatal("HTTP server closed unexpected.", zap.Error(err))
 	}
-
-	return nil
 }
