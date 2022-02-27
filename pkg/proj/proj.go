@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"math/rand"
 	"regexp"
 	"sync"
@@ -21,11 +20,6 @@ import (
 //nolint:gosec
 var ulidEntropy = rand.New(rand.NewSource(time.Now().UnixNano()))
 
-type (
-	OnProjectOpenFn  func(projectID ulid.ULID) error
-	OnProjectCloseFn func(projectID ulid.ULID) error
-)
-
 // Service is used for managing projects.
 type Service interface {
 	CreateProject(ctx context.Context, name string) (Project, error)
@@ -39,19 +33,15 @@ type Service interface {
 	SetScopeRules(ctx context.Context, rules []scope.Rule) error
 	SetRequestLogFindFilter(ctx context.Context, filter reqlog.FindRequestsFilter) error
 	SetSenderRequestFindFilter(ctx context.Context, filter sender.FindRequestsFilter) error
-	OnProjectOpen(fn OnProjectOpenFn)
-	OnProjectClose(fn OnProjectCloseFn)
 }
 
 type service struct {
-	repo              Repository
-	reqLogSvc         reqlog.Service
-	senderSvc         sender.Service
-	scope             *scope.Scope
-	activeProjectID   ulid.ULID
-	onProjectOpenFns  []OnProjectOpenFn
-	onProjectCloseFns []OnProjectCloseFn
-	mu                sync.RWMutex
+	repo            Repository
+	reqLogSvc       reqlog.Service
+	senderSvc       sender.Service
+	scope           *scope.Scope
+	activeProjectID ulid.ULID
+	mu              sync.RWMutex
 }
 
 type Project struct {
@@ -126,8 +116,6 @@ func (svc *service) CloseProject() error {
 		return nil
 	}
 
-	closedProjectID := svc.activeProjectID
-
 	svc.activeProjectID = ulid.ULID{}
 	svc.reqLogSvc.SetActiveProjectID(ulid.ULID{})
 	svc.reqLogSvc.SetBypassOutOfScopeRequests(false)
@@ -135,8 +123,6 @@ func (svc *service) CloseProject() error {
 	svc.senderSvc.SetActiveProjectID(ulid.ULID{})
 	svc.senderSvc.SetFindReqsFilter(sender.FindRequestsFilter{})
 	svc.scope.SetRules(nil)
-
-	svc.emitProjectClosed(closedProjectID)
 
 	return nil
 }
@@ -183,8 +169,6 @@ func (svc *service) OpenProject(ctx context.Context, projectID ulid.ULID) (Proje
 
 	svc.scope.SetRules(project.Settings.ScopeRules)
 
-	svc.emitProjectOpened()
-
 	return project, nil
 }
 
@@ -215,36 +199,6 @@ func (svc *service) Projects(ctx context.Context) ([]Project, error) {
 
 func (svc *service) Scope() *scope.Scope {
 	return svc.scope
-}
-
-func (svc *service) OnProjectOpen(fn OnProjectOpenFn) {
-	svc.mu.Lock()
-	defer svc.mu.Unlock()
-
-	svc.onProjectOpenFns = append(svc.onProjectOpenFns, fn)
-}
-
-func (svc *service) OnProjectClose(fn OnProjectCloseFn) {
-	svc.mu.Lock()
-	defer svc.mu.Unlock()
-
-	svc.onProjectCloseFns = append(svc.onProjectCloseFns, fn)
-}
-
-func (svc *service) emitProjectOpened() {
-	for _, fn := range svc.onProjectOpenFns {
-		if err := fn(svc.activeProjectID); err != nil {
-			log.Printf("[ERROR] Could not execute onProjectOpen function: %v", err)
-		}
-	}
-}
-
-func (svc *service) emitProjectClosed(projectID ulid.ULID) {
-	for _, fn := range svc.onProjectCloseFns {
-		if err := fn(projectID); err != nil {
-			log.Printf("[ERROR] Could not execute onProjectClose function: %v", err)
-		}
-	}
 }
 
 func (svc *service) SetScopeRules(ctx context.Context, rules []scope.Rule) error {
