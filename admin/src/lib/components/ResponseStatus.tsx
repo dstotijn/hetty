@@ -12,9 +12,11 @@ type ResponseStatusProps = {
 
 function mapProto(proto: HttpProtocol): string {
   switch (proto) {
-    case HttpProtocol.Http1:
+    case HttpProtocol.Http10:
+      return "HTTP/1.0";
+    case HttpProtocol.Http11:
       return "HTTP/1.1";
-    case HttpProtocol.Http2:
+    case HttpProtocol.Http20:
       return "HTTP/2.0";
     default:
       return proto;

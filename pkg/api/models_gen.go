@@ -186,18 +186,20 @@ func (e HTTPMethod) MarshalGQL(w io.Writer) {
 type HTTPProtocol string
 
 const (
-	HTTPProtocolHTTP1 HTTPProtocol = "HTTP1"
-	HTTPProtocolHTTP2 HTTPProtocol = "HTTP2"
+	HTTPProtocolHTTP10 HTTPProtocol = "HTTP10"
+	HTTPProtocolHTTP11 HTTPProtocol = "HTTP11"
+	HTTPProtocolHTTP20 HTTPProtocol = "HTTP20"
 )
 
 var AllHTTPProtocol = []HTTPProtocol{
-	HTTPProtocolHTTP1,
-	HTTPProtocolHTTP2,
+	HTTPProtocolHTTP10,
+	HTTPProtocolHTTP11,
+	HTTPProtocolHTTP20,
 }
 
 func (e HTTPProtocol) IsValid() bool {
 	switch e {
-	case HTTPProtocolHTTP1, HTTPProtocolHTTP2:
+	case HTTPProtocolHTTP10, HTTPProtocolHTTP11, HTTPProtocolHTTP20:
 		return true
 	}
 	return false

@@ -897,8 +897,9 @@ enum HttpMethod {
 }
 
 enum HttpProtocol {
-  HTTP1
-  HTTP2
+  HTTP10
+  HTTP11
+  HTTP20
 }
 
 scalar Time

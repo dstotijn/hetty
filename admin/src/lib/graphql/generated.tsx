@@ -62,8 +62,9 @@ export enum HttpMethod {
 }
 
 export enum HttpProtocol {
-  Http1 = 'HTTP1',
-  Http2 = 'HTTP2'
+  Http10 = 'HTTP10',
+  Http11 = 'HTTP11',
+  Http20 = 'HTTP20'
 }
 
 export type HttpRequestLog = {

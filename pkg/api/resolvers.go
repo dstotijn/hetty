@@ -22,13 +22,15 @@ import (
 )
 
 var httpProtocolMap = map[string]HTTPProtocol{
-	sender.HTTPProto1: HTTPProtocolHTTP1,
-	sender.HTTPProto2: HTTPProtocolHTTP2,
+	sender.HTTPProto10: HTTPProtocolHTTP10,
+	sender.HTTPProto11: HTTPProtocolHTTP11,
+	sender.HTTPProto20: HTTPProtocolHTTP20,
 }
 
 var revHTTPProtocolMap = map[HTTPProtocol]string{
-	HTTPProtocolHTTP1: sender.HTTPProto1,
-	HTTPProtocolHTTP2: sender.HTTPProto2,
+	HTTPProtocolHTTP10: sender.HTTPProto10,
+	HTTPProtocolHTTP11: sender.HTTPProto11,
+	HTTPProtocolHTTP20: sender.HTTPProto20,
 }
 
 type Resolver struct {

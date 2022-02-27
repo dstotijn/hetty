@@ -39,13 +39,15 @@ enum HttpMethod {
 }
 
 enum HttpProto {
-  Http1 = "HTTP/1.1",
-  Http2 = "HTTP/2.0",
+  Http10 = "HTTP/1.0",
+  Http11 = "HTTP/1.1",
+  Http20 = "HTTP/2.0",
 }
 
 const httpProtoMap = new Map([
-  [HttpProto.Http1, HttpProtocol.Http1],
-  [HttpProto.Http2, HttpProtocol.Http2],
+  [HttpProto.Http10, HttpProtocol.Http10],
+  [HttpProto.Http11, HttpProtocol.Http11],
+  [HttpProto.Http20, HttpProtocol.Http20],
 ]);
 
 function updateKeyPairItem(key: string, value: string, idx: number, items: KeyValuePair[]): KeyValuePair[] {
@@ -92,7 +94,7 @@ function EditRequest(): JSX.Element {
 
   const [method, setMethod] = useState(HttpMethod.Get);
   const [url, setURL] = useState("");
-  const [proto, setProto] = useState(HttpProto.Http2);
+  const [proto, setProto] = useState(HttpProto.Http20);
   const [queryParams, setQueryParams] = useState<KeyValuePair[]>([{ key: "", value: "" }]);
   const [headers, setHeaders] = useState<KeyValuePair[]>([{ key: "", value: "" }]);
   const [body, setBody] = useState("");

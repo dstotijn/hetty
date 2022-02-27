@@ -126,7 +126,7 @@ func (svc *service) CreateOrUpdateRequest(ctx context.Context, req Request) (Req
 	}
 
 	if req.Proto == "" {
-		req.Proto = HTTPProto2
+		req.Proto = HTTPProto20
 	}
 
 	if !isValidProto(req.Proto) {
@@ -157,7 +157,7 @@ func (svc *service) CloneFromRequestLog(ctx context.Context, reqLogID ulid.ULID)
 		SourceRequestLogID: reqLogID,
 		Method:             reqLog.Method,
 		URL:                reqLog.URL,
-		Proto:              HTTPProto2, // Attempt HTTP/2.
+		Proto:              HTTPProto20, // Attempt HTTP/2.
 		Header:             reqLog.Header,
 		Body:               reqLog.Body,
 	}

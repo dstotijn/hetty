@@ -12,8 +12,9 @@ type HTTPTransport struct{}
 type protoCtxKey struct{}
 
 const (
-	HTTPProto1 = "HTTP/1.1"
-	HTTPProto2 = "HTTP/2.0"
+	HTTPProto10 = "HTTP/1.0"
+	HTTPProto11 = "HTTP/1.1"
+	HTTPProto20 = "HTTP/2.0"
 )
 
 // h1OnlyTransport mimics `http.DefaultTransport`, but with HTTP/2 disabled.
@@ -38,7 +39,7 @@ var h1OnlyTransport = &http.Transport{
 func (t *HTTPTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	proto, ok := req.Context().Value(protoCtxKey{}).(string)
 
-	if ok && proto == HTTPProto1 {
+	if ok && proto == HTTPProto10 || proto == HTTPProto11 {
 		return h1OnlyTransport.RoundTrip(req)
 	}
 
@@ -46,5 +47,5 @@ func (t *HTTPTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 }
 
 func isValidProto(proto string) bool {
-	return proto == HTTPProto1 || proto == HTTPProto2
+	return proto == HTTPProto10 || proto == HTTPProto11 || proto == HTTPProto20
 }
