@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/tls"
 	"embed"
 	"errors"
@@ -11,10 +12,12 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/exec"
 	"strings"
 
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
+	"github.com/chromedp/chromedp"
 	badgerdb "github.com/dgraph-io/badger/v3"
 	"github.com/gorilla/mux"
 	"github.com/mitchellh/go-homedir"
@@ -22,6 +25,7 @@ import (
 	"go.uber.org/zap/zapcore"
 
 	"github.com/dstotijn/hetty/pkg/api"
+	"github.com/dstotijn/hetty/pkg/chrome"
 	"github.com/dstotijn/hetty/pkg/db/badger"
 	"github.com/dstotijn/hetty/pkg/log"
 	"github.com/dstotijn/hetty/pkg/proj"
@@ -39,6 +43,7 @@ var (
 	caKeyFile    string
 	dbPath       string
 	addr         string
+	launchChrome bool
 	debug        bool
 	noPrettyLogs bool
 )
@@ -50,12 +55,15 @@ var (
 var adminContent embed.FS
 
 func main() {
+	ctx := context.Background()
+
 	flag.StringVar(&caCertFile, "cert", "~/.hetty/hetty_cert.pem",
 		"CA certificate filepath. Creates a new CA certificate if file doesn't exist")
 	flag.StringVar(&caKeyFile, "key", "~/.hetty/hetty_key.pem",
 		"CA private key filepath. Creates a new CA private key if file doesn't exist")
 	flag.StringVar(&dbPath, "db", "~/.hetty/db", "Database directory path")
 	flag.StringVar(&addr, "addr", ":8080", "TCP address to listen on, in the form \"host:port\"")
+	flag.BoolVar(&launchChrome, "chrome", false, "Launch Chrome with proxy settings and certificate errors ignored")
 	flag.BoolVar(&debug, "debug", false, "Enable debug mode")
 	flag.BoolVar(&noPrettyLogs, "disable-pretty-logs", false, "Disable human readable console logs and encode with JSON.")
 	flag.Parse()
@@ -187,6 +195,28 @@ func main() {
 
 	mainLogger.Info(fmt.Sprintf("Hetty (v%v) is running on %v ...", version, addr))
 	mainLogger.Info(fmt.Sprintf("\x1b[%dm%s\x1b[0m", uint8(32), "Get started at "+url))
+
+	if launchChrome {
+		ctx, cancel := chrome.NewExecAllocator(ctx, chrome.Config{
+			ProxyServer:      url,
+			ProxyBypassHosts: []string{url},
+		})
+		defer cancel()
+
+		taskCtx, cancel := chromedp.NewContext(ctx)
+		defer cancel()
+
+		err = chromedp.Run(taskCtx, chromedp.Navigate(url))
+
+		switch {
+		case errors.Is(err, exec.ErrNotFound):
+			mainLogger.Info("Chrome executable not found.")
+		case err != nil:
+			mainLogger.Error(fmt.Sprintf("Failed to navigate to %v.", url), zap.Error(err))
+		default:
+			mainLogger.Info("Launched Chrome.")
+		}
+	}
 
 	err = httpServer.ListenAndServe()
 	if err != nil && errors.Is(err, http.ErrServerClosed) {
