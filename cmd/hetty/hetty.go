@@ -288,6 +288,7 @@ func (cmd *HettyCommand) Exec(ctx context.Context, _ []string) error {
 
 	// Note: We expect httpServer.Handler to handle timeouts, thus, we don't
 	// need a context value with deadline here.
+	//nolint:contextcheck
 	err = httpServer.Shutdown(context.Background())
 	if err != nil {
 		return fmt.Errorf("failed to shutdown HTTP server: %w", err)

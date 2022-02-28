@@ -63,7 +63,11 @@ func (db *Database) FindSenderRequestByID(ctx context.Context, senderReqID ulid.
 	return req, nil
 }
 
-func (db *Database) FindSenderRequests(ctx context.Context, filter sender.FindRequestsFilter, scope *scope.Scope) ([]sender.Request, error) {
+func (db *Database) FindSenderRequests(
+	ctx context.Context,
+	filter sender.FindRequestsFilter,
+	scope *scope.Scope,
+) ([]sender.Request, error) {
 	if filter.ProjectID.Compare(ulid.ULID{}) == 0 {
 		return nil, sender.ErrProjectIDMustBeSet
 	}

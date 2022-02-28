@@ -117,7 +117,8 @@ func TestResponseModifier(t *testing.T) {
 		t.Run("called repository with request log id", func(t *testing.T) {
 			got := repoMock.StoreResponseLogCalls()[0].ReqLogID
 			if exp := reqLogID; exp.Compare(got) != 0 {
-				t.Fatalf("incorrect `reqLogID` argument for `Repository.AddResponseLogCalls` (expected: %v, got: %v)", exp.String(), got.String())
+				t.Fatalf("incorrect `reqLogID` argument for `Repository.AddResponseLogCalls` (expected: %v, got: %v)",
+					exp.String(), got.String())
 			}
 		})
 	})

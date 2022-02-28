@@ -14,7 +14,11 @@ import (
 	"github.com/dstotijn/hetty/pkg/scope"
 )
 
-func (db *Database) FindRequestLogs(ctx context.Context, filter reqlog.FindRequestsFilter, scope *scope.Scope) ([]reqlog.RequestLog, error) {
+func (db *Database) FindRequestLogs(
+	ctx context.Context,
+	filter reqlog.FindRequestsFilter,
+	scope *scope.Scope) ([]reqlog.RequestLog, error,
+) {
 	if filter.ProjectID.Compare(ulid.ULID{}) == 0 {
 		return nil, reqlog.ErrProjectIDMustBeSet
 	}

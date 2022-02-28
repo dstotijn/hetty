@@ -270,6 +270,7 @@ func ParseHTTPResponse(res *http.Response) (ResponseLog, error) {
 
 		buf := &bytes.Buffer{}
 
+		//nolint:gosec
 		if _, err := io.Copy(buf, gzipReader); err != nil {
 			return ResponseLog{}, fmt.Errorf("reqlog: could not read gzipped response body: %w", err)
 		}

@@ -88,7 +88,7 @@ func LoadOrCreateCA(caKeyFile, caCertFile string) (*x509.Certificate, *rsa.Priva
 	keyDir, _ := filepath.Split(caKeyFile)
 	if keyDir != "" {
 		if _, err := os.Stat(keyDir); os.IsNotExist(err) {
-			if err := os.MkdirAll(keyDir, 0755); err != nil {
+			if err := os.MkdirAll(keyDir, 0o755); err != nil {
 				return nil, nil, fmt.Errorf("proxy: could not create directory for CA key: %w", err)
 			}
 		}
@@ -97,7 +97,7 @@ func LoadOrCreateCA(caKeyFile, caCertFile string) (*x509.Certificate, *rsa.Priva
 	keyDir, _ = filepath.Split(caCertFile)
 	if keyDir != "" {
 		if _, err := os.Stat("keyDir"); os.IsNotExist(err) {
-			if err := os.MkdirAll(keyDir, 0755); err != nil {
+			if err := os.MkdirAll(keyDir, 0o755); err != nil {
 				return nil, nil, fmt.Errorf("proxy: could not create directory for CA cert: %w", err)
 			}
 		}
@@ -115,7 +115,7 @@ func LoadOrCreateCA(caKeyFile, caCertFile string) (*x509.Certificate, *rsa.Priva
 		return nil, nil, fmt.Errorf("proxy: could not open cert file for writing: %w", err)
 	}
 
-	keyOut, err := os.OpenFile(caKeyFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+	keyOut, err := os.OpenFile(caKeyFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600)
 	if err != nil {
 		return nil, nil, fmt.Errorf("proxy: could not open key file for writing: %w", err)
 	}

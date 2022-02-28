@@ -141,6 +141,7 @@ func (p *Proxy) handleConnect(w http.ResponseWriter) {
 		p.logger.Errorw("Securing client connection failed.",
 			"error", err,
 			"remoteAddr", clientConn.RemoteAddr().String())
+
 		return
 	}
 

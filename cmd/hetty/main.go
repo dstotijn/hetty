@@ -23,6 +23,7 @@ func main() {
 	if err != nil {
 		llog.Fatal(err)
 	}
+	//nolint:errcheck
 	defer logger.Sync()
 
 	cfg.logger = logger

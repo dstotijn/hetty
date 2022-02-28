@@ -408,7 +408,10 @@ func (r *mutationResolver) SetSenderRequestFilter(
 	return findReqFilterToSenderReqFilter(filter), nil
 }
 
-func (r *mutationResolver) CreateOrUpdateSenderRequest(ctx context.Context, input SenderRequestInput) (*SenderRequest, error) {
+func (r *mutationResolver) CreateOrUpdateSenderRequest(
+	ctx context.Context,
+	input SenderRequestInput,
+) (*SenderRequest, error) {
 	req := sender.Request{
 		URL:    input.URL,
 		Header: make(http.Header),
@@ -449,7 +452,10 @@ func (r *mutationResolver) CreateOrUpdateSenderRequest(ctx context.Context, inpu
 	return &senderReq, nil
 }
 
-func (r *mutationResolver) CreateSenderRequestFromHTTPRequestLog(ctx context.Context, id ulid.ULID) (*SenderRequest, error) {
+func (r *mutationResolver) CreateSenderRequestFromHTTPRequestLog(
+	ctx context.Context,
+	id ulid.ULID,
+) (*SenderRequest, error) {
 	req, err := r.SenderService.CloneFromRequestLog(ctx, id)
 	if errors.Is(err, proj.ErrNoProject) {
 		return nil, noActiveProjectErr(ctx)
@@ -473,10 +479,13 @@ func (r *mutationResolver) SendRequest(ctx context.Context, id ulid.ULID) (*Send
 
 	var sendErr *sender.SendError
 
+	//nolint:contextcheck
 	req, err := r.SenderService.SendRequest(ctx2, id)
-	if errors.Is(err, proj.ErrNoProject) {
+
+	switch {
+	case errors.Is(err, proj.ErrNoProject):
 		return nil, noActiveProjectErr(ctx)
-	} else if errors.As(err, &sendErr) {
+	case errors.As(err, &sendErr):
 		return nil, &gqlerror.Error{
 			Path:    graphql.GetPath(ctx),
 			Message: fmt.Sprintf("Sending request failed: %v", sendErr.Unwrap()),
@@ -484,7 +493,7 @@ func (r *mutationResolver) SendRequest(ctx context.Context, id ulid.ULID) (*Send
 				"code": "send_request_failed",
 			},
 		}
-	} else if err != nil {
+	case err != nil:
 		return nil, fmt.Errorf("could not send request: %w", err)
 	}
 

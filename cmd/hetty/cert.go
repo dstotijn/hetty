@@ -162,7 +162,8 @@ func NewCertUninstallCommand(rootConfig *Config) *ffcli.Command {
 	fs.StringVar(&cmd.cert, "cert", "~/.hetty/hetty_cert.pem", "Path to certificate.")
 	fs.BoolVar(&cmd.firefox, "firefox", false, "Uninstall certificate from Firefox trust store. (Default: false)")
 	fs.BoolVar(&cmd.java, "java", false, "Uninstall certificate from Java trust store. (Default: false)")
-	fs.BoolVar(&cmd.skipSystem, "skip-system", false, "Skip uninstalling certificate from system trust store (Default: false)")
+	fs.BoolVar(&cmd.skipSystem, "skip-system", false,
+		"Skip uninstalling certificate from system trust store (Default: false)")
 
 	cmd.config.RegisterFlags(fs)
 

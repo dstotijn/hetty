@@ -24,6 +24,7 @@ type Config struct {
 // with an allocated Chrome browser.
 func NewExecAllocator(ctx context.Context, cfg Config) (context.Context, context.CancelFunc) {
 	proxyBypass := strings.Join(append([]string{"<-loopback"}, cfg.ProxyBypassHosts...), ";")
+	//nolint:gocritic
 	opts := append(defaultOpts,
 		chromedp.ProxyServer(cfg.ProxyServer),
 		chromedp.Flag("proxy-bypass-list", proxyBypass),

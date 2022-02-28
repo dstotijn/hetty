@@ -12,6 +12,7 @@ linters:
     - test
     - unused
   disable:
+    - dupl
     - exhaustive
     - exhaustivestruct
     - gochecknoglobals
@@ -21,9 +22,11 @@ linters:
     - gomnd
     - interfacer
     - maligned
+    - nilnil
     - nlreturn
     - scopelint 
     - testpackage
+    - varnamelen
     - wrapcheck
 
 linters-settings:
@@ -31,6 +34,8 @@ linters-settings:
     local-prefixes: github.com/dstotijn/hetty
   godot:
     capital: true
+  ireturn:
+    allow: "error,empty,anon,stdlib,.*(or|er)$,github.com/99designs/gqlgen/graphql.Marshaler,github.com/dstotijn/hetty/pkg/api.QueryResolver,github.com/dstotijn/hetty/pkg/search.Expression"
     
 issues:
   exclude-rules:
