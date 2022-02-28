@@ -60,7 +60,7 @@ func TestFindRequestByID(t *testing.T) {
 
 				URL:    exampleURL,
 				Method: http.MethodGet,
-				Proto:  sender.HTTPProto2,
+				Proto:  sender.HTTPProto20,
 				Header: http.Header{
 					"X-Foo": []string{"bar"},
 				},
