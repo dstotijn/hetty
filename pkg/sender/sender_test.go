@@ -165,7 +165,7 @@ func TestCloneFromRequestLog(t *testing.T) {
 			ProjectID:          projectID,
 			URL:                exampleURL,
 			Method:             http.MethodPost,
-			Proto:              sender.HTTPProto20,
+			Proto:              sender.HTTPProto2,
 			Header: http.Header{
 				"X-Foo": []string{"bar"},
 			},
