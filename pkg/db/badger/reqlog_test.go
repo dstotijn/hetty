@@ -46,7 +46,7 @@ func TestFindRequestLogs(t *testing.T) {
 
 		projectID := ulid.MustNew(ulid.Timestamp(time.Now()), ulidEntropy)
 
-		exp := []reqlog.RequestLog{
+		fixtures := []reqlog.RequestLog{
 			{
 				ID:        ulid.MustNew(ulid.Timestamp(time.Now()), ulidEntropy),
 				ProjectID: projectID,
@@ -80,7 +80,7 @@ func TestFindRequestLogs(t *testing.T) {
 		}
 
 		// Store fixtures.
-		for _, reqLog := range exp {
+		for _, reqLog := range fixtures {
 			err = database.StoreRequestLog(context.Background(), reqLog)
 			if err != nil {
 				t.Fatalf("unexpected error creating request log fixture: %v", err)
@@ -101,6 +101,12 @@ func TestFindRequestLogs(t *testing.T) {
 		got, err := database.FindRequestLogs(context.Background(), filter, nil)
 		if err != nil {
 			t.Fatalf("unexpected error finding request logs: %v", err)
+		}
+
+		// We expect the found request logs are *reversed*, e.g. newest first.
+		exp := make([]reqlog.RequestLog, len(fixtures))
+		for i, j := 0, len(fixtures)-1; i < j; i, j = i+1, j-1 {
+			exp[i], exp[j] = fixtures[j], fixtures[i]
 		}
 
 		if diff := cmp.Diff(exp, got); diff != "" {

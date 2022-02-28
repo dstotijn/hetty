@@ -231,6 +231,7 @@ func findRequestLogIDsByProjectID(txn *badger.Txn, projectID ulid.ULID) ([]ulid.
 	reqLogIDs := make([]ulid.ULID, 0)
 	opts := badger.DefaultIteratorOptions
 	opts.PrefetchValues = false
+	opts.Reverse = true
 	iterator := txn.NewIterator(opts)
 	defer iterator.Close()
 
@@ -238,7 +239,7 @@ func findRequestLogIDsByProjectID(txn *badger.Txn, projectID ulid.ULID) ([]ulid.
 
 	prefix := entryKey(reqLogPrefix, reqLogProjectIDIndex, projectID[:])
 
-	for iterator.Seek(prefix); iterator.ValidForPrefix(prefix); iterator.Next() {
+	for iterator.Seek(append(prefix, 255)); iterator.ValidForPrefix(prefix); iterator.Next() {
 		projectIndexKey = iterator.Item().KeyCopy(projectIndexKey)
 
 		var id ulid.ULID
