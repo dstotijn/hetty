@@ -15,8 +15,6 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/99designs/gqlgen/graphql/handler"
-	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/chromedp/chromedp"
 	badgerdb "github.com/dgraph-io/badger/v3"
 	"github.com/gorilla/mux"
@@ -75,6 +73,16 @@ func main() {
 	defer logger.Sync()
 
 	mainLogger := logger.Named("main")
+
+	listenHost, listenPort, err := net.SplitHostPort(addr)
+	if err != nil {
+		mainLogger.Fatal("Failed to parse listening address.", zap.Error(err))
+	}
+
+	url := fmt.Sprintf("http://%v:%v", listenHost, listenPort)
+	if listenHost == "" || listenHost == "0.0.0.0" || listenHost == "127.0.0.1" || listenHost == "::1" {
+		url = fmt.Sprintf("http://localhost:%v", listenPort)
+	}
 
 	// Expand `~` in filepaths.
 	caCertFile, err := homedir.Expand(caCertFile)
@@ -136,7 +144,7 @@ func main() {
 		logger.Fatal("Failed to create new projects service.", zap.Error(err))
 	}
 
-	p, err := proxy.NewProxy(proxy.Config{
+	proxy, err := proxy.NewProxy(proxy.Config{
 		CACert: caCert,
 		CAKey:  caKey,
 		Logger: logger.Named("proxy").Sugar(),
@@ -145,8 +153,8 @@ func main() {
 		logger.Fatal("Failed to create new proxy.", zap.Error(err))
 	}
 
-	p.UseRequestModifier(reqLogService.RequestModifier)
-	p.UseResponseModifier(reqLogService.ResponseModifier)
+	proxy.UseRequestModifier(reqLogService.RequestModifier)
+	proxy.UseResponseModifier(reqLogService.ResponseModifier)
 
 	fsSub, err := fs.Sub(adminContent, "admin")
 	if err != nil {
@@ -158,39 +166,39 @@ func main() {
 	adminRouter := router.MatcherFunc(func(req *http.Request, match *mux.RouteMatch) bool {
 		hostname, _ := os.Hostname()
 		host, _, _ := net.SplitHostPort(req.Host)
-		return strings.EqualFold(host, hostname) || (req.Host == "hetty.proxy" || req.Host == "localhost:8080")
+
+		// Serve local admin routes when either:
+		// - The `Host` is well-known, e.g. `hetty.proxy`, `localhost:[port]`
+		//   or the listen addr `[host]:[port]`.
+		// - The request is not for TLS proxying (e.g. no `CONNECT`) and not
+		//   for proxying an external URL. E.g. Request-Line (RFC 7230, Section 3.1.1)
+		//   has no scheme.
+		return strings.EqualFold(host, hostname) ||
+			req.Host == "hetty.proxy" ||
+			req.Host == fmt.Sprintf("%v:%v", "localhost", listenPort) ||
+			req.Host == fmt.Sprintf("%v:%v", listenHost, listenPort) ||
+			req.Method != http.MethodConnect && !strings.HasPrefix(req.RequestURI, "http://")
 	}).Subrouter().StrictSlash(true)
 
 	// GraphQL server.
-	adminRouter.Path("/api/playground/").Handler(playground.Handler("GraphQL Playground", "/api/graphql/"))
-	adminRouter.Path("/api/graphql/").Handler(
-		handler.NewDefaultServer(api.NewExecutableSchema(api.Config{Resolvers: &api.Resolver{
-			ProjectService:    projService,
-			RequestLogService: reqLogService,
-			SenderService:     senderService,
-		}})))
+	gqlEndpoint := "/api/graphql/"
+	adminRouter.Path(gqlEndpoint).Handler(api.HTTPHandler(&api.Resolver{
+		ProjectService:    projService,
+		RequestLogService: reqLogService,
+		SenderService:     senderService,
+	}, gqlEndpoint))
 
 	// Admin interface.
 	adminRouter.PathPrefix("").Handler(adminHandler)
 
 	// Fallback (default) is the Proxy handler.
-	router.PathPrefix("").Handler(p)
+	router.PathPrefix("").Handler(proxy)
 
 	httpServer := &http.Server{
 		Addr:         addr,
 		Handler:      router,
 		TLSNextProto: map[string]func(*http.Server, *tls.Conn, http.Handler){}, // Disable HTTP/2
 		ErrorLog:     zap.NewStdLog(logger.Named("http")),
-	}
-
-	host, port, err := net.SplitHostPort(addr)
-	if err != nil {
-		mainLogger.Fatal("Failed to parse listening address.", zap.Error(err))
-	}
-
-	url := fmt.Sprintf("http://%v:%v", host, port)
-	if host == "" || host == "0.0.0.0" || host == "127.0.0.1" {
-		url = fmt.Sprintf("http://localhost:%v", port)
 	}
 
 	mainLogger.Info(fmt.Sprintf("Hetty (v%v) is running on %v ...", version, addr))
