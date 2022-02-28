@@ -11,6 +11,7 @@ require (
 	github.com/matryer/moq v0.2.5
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/oklog/ulid v1.3.1
+	github.com/peterbourgon/ff/v3 v3.1.2
 	github.com/vektah/gqlparser/v2 v2.2.0
 	go.uber.org/zap v1.21.0
 )

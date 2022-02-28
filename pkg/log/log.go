@@ -14,13 +14,13 @@ type Logger interface {
 	Errorw(msg string, v ...interface{})
 }
 
-func NewZapLogger(debug, pretty bool) (*zap.Logger, error) {
+func NewZapLogger(verbose, jsonLogs bool) (*zap.Logger, error) {
 	var config zap.Config
 
-	if debug {
+	if verbose {
 		config = zap.Config{
 			Level:       zap.NewAtomicLevelAt(zap.DebugLevel),
-			Development: debug,
+			Development: true,
 			Encoding:    "json",
 			EncoderConfig: zapcore.EncoderConfig{
 				TimeKey:        "ts",
@@ -43,7 +43,7 @@ func NewZapLogger(debug, pretty bool) (*zap.Logger, error) {
 		config = zap.NewProductionConfig()
 	}
 
-	if pretty {
+	if !jsonLogs {
 		config.Encoding = "console"
 		config.EncoderConfig = zapcore.EncoderConfig{
 			TimeKey:          "T",
@@ -67,7 +67,7 @@ func NewZapLogger(debug, pretty bool) (*zap.Logger, error) {
 			EncodeCaller:   zapcore.ShortCallerEncoder,
 		}
 
-		if debug {
+		if verbose {
 			config.EncoderConfig.CallerKey = "C"
 			config.EncoderConfig.StacktraceKey = "S"
 		}
