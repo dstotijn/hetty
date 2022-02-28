@@ -12,6 +12,7 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/oklog/ulid v1.3.1
 	github.com/peterbourgon/ff/v3 v3.1.2
+	github.com/smallstep/truststore v0.11.0
 	github.com/vektah/gqlparser/v2 v2.2.0
 	go.uber.org/zap v1.21.0
 )
@@ -54,4 +55,5 @@ require (
 	golang.org/x/tools v0.1.5 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	gopkg.in/yaml.v2 v2.2.8 // indirect
+	howett.net/plist v0.0.0-20181124034731-591f970eefbb // indirect
 )

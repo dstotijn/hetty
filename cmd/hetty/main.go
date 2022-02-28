@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"errors"
+	"flag"
 	llog "log"
 	"os"
 
@@ -25,7 +27,8 @@ func main() {
 
 	cfg.logger = logger
 
-	if err := hettyCmd.Run(context.Background()); err != nil {
-		logger.Fatal("Unexpected error running command.", zap.Error(err))
+	err = hettyCmd.Run(context.Background())
+	if err != nil && !errors.Is(err, flag.ErrHelp) {
+		logger.Fatal("Command failed.", zap.Error(err))
 	}
 }

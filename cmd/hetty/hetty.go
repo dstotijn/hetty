@@ -43,7 +43,9 @@ var adminContent embed.FS
 
 var hettyUsage = `
 Usage:
-    hetty [flags]
+    hetty [flags] [subcommand] [flags]
+
+Runs an HTTP server with (MITM) proxy, GraphQL service, and a web based admin interface.
 
 Options:
     --cert         Path to root CA certificate. Creates file if it doesn't exist. (Default: "~/.hetty/hetty_cert.pem")
@@ -55,6 +57,11 @@ Options:
     --json         Encode logs as JSON, instead of pretty/human readable output.
     --version, -v  Output version.
     --help, -h     Output this usage text.
+
+Subcommands:
+    - cert  Certificate management
+
+Run ` + "`hetty <subcommand> --help`" + ` for subcommand specific usage instructions.
 
 Visit https://hetty.xyz to learn more about Hetty.
 `
@@ -90,10 +97,12 @@ func NewHettyCommand() (*ffcli.Command, *Config) {
 	cmd.config.RegisterFlags(fs)
 
 	return &ffcli.Command{
-		Name:       "hetty",
-		ShortUsage: "hetty [-v] [subcommand] [flags] [<arg>...]",
-		FlagSet:    fs,
-		Exec:       cmd.Exec,
+		Name:    "hetty",
+		FlagSet: fs,
+		Subcommands: []*ffcli.Command{
+			NewCertCommand(cmd.config),
+		},
+		Exec: cmd.Exec,
 		UsageFunc: func(*ffcli.Command) string {
 			return hettyUsage
 		},
