@@ -1,4 +1,16 @@
-import { Alert, Box, Link, MenuItem, Snackbar } from "@mui/material";
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import {
+  Alert,
+  Box,
+  IconButton,
+  Link,
+  MenuItem,
+  Snackbar,
+  styled,
+  TableCell,
+  TableCellProps,
+  Tooltip,
+} from "@mui/material";
 import { useRouter } from "next/router";
 import { useState } from "react";
 
@@ -10,6 +22,11 @@ import SplitPane from "lib/components/SplitPane";
 import useContextMenu from "lib/components/useContextMenu";
 import { useCreateSenderRequestFromHttpRequestLogMutation, useHttpRequestLogsQuery } from "lib/graphql/generated";
 
+const ActionsTableCell = styled(TableCell)<TableCellProps>(() => ({
+  paddingTop: 0,
+  paddingBottom: 0,
+}));
+
 export function RequestLogs(): JSX.Element {
   const router = useRouter();
   const id = router.query.id as string | undefined;
@@ -17,7 +34,13 @@ export function RequestLogs(): JSX.Element {
     pollInterval: 1000,
   });
 
-  const [createSenderReqFromLog] = useCreateSenderRequestFromHttpRequestLogMutation({});
+  const [createSenderReqFromLog] = useCreateSenderRequestFromHttpRequestLogMutation({
+    onCompleted({ createSenderRequestFromHttpRequestLog }) {
+      const { id } = createSenderRequestFromHttpRequestLog;
+      setNewSenderReqId(id);
+      setCopiedReqNotifOpen(true);
+    },
+  });
 
   const [copyToSenderId, setCopyToSenderId] = useState("");
   const [Menu, handleContextMenu, handleContextMenuClose] = useContextMenu();
@@ -26,11 +49,6 @@ export function RequestLogs(): JSX.Element {
     createSenderReqFromLog({
       variables: {
         id: copyToSenderId,
-      },
-      onCompleted({ createSenderRequestFromHttpRequestLog }) {
-        const { id } = createSenderRequestFromHttpRequestLog;
-        setNewSenderReqId(id);
-        setCopiedReqNotifOpen(true);
       },
     });
     handleContextMenuClose();
@@ -53,6 +71,26 @@ export function RequestLogs(): JSX.Element {
     setCopyToSenderId(id);
     handleContextMenu(e);
   };
+
+  const actionsCell = (id: string) => (
+    <ActionsTableCell>
+      <Tooltip title="Copy to Sender">
+        <IconButton
+          size="small"
+          onClick={() => {
+            setCopyToSenderId(id);
+            createSenderReqFromLog({
+              variables: {
+                id,
+              },
+            });
+          }}
+        >
+          <ContentCopyIcon fontSize="small" />
+        </IconButton>
+      </Tooltip>
+    </ActionsTableCell>
+  );
 
   return (
     <Box display="flex" flexDirection="column" height="100%">
@@ -77,6 +115,7 @@ export function RequestLogs(): JSX.Element {
               <RequestsTable
                 requests={data?.httpRequestLogs || []}
                 activeRowId={id}
+                actionsCell={actionsCell}
                 onRowClick={handleRowClick}
                 onContextMenu={handleRowContextClick}
               />

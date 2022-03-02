@@ -62,12 +62,13 @@ interface HttpResponse {
 interface Props {
   requests: HttpRequest[];
   activeRowId?: string;
+  actionsCell?: (id: string) => JSX.Element;
   onRowClick?: (id: string) => void;
   onContextMenu?: (e: React.MouseEvent, id: string) => void;
 }
 
 export default function RequestsTable(props: Props): JSX.Element {
-  const { requests, activeRowId, onRowClick, onContextMenu } = props;
+  const { requests, activeRowId, actionsCell, onRowClick, onContextMenu } = props;
 
   return (
     <TableContainer sx={{ overflowX: "initial" }}>
@@ -78,6 +79,7 @@ export default function RequestsTable(props: Props): JSX.Element {
             <TableCell>Origin</TableCell>
             <TableCell>Path</TableCell>
             <TableCell>Status</TableCell>
+            {actionsCell && <TableCell padding="checkbox"></TableCell>}
           </TableRow>
         </TableHead>
         <TableBody>
@@ -104,6 +106,7 @@ export default function RequestsTable(props: Props): JSX.Element {
                 <StatusTableCell>
                   {response && <Status code={response.statusCode} reason={response.statusReason} />}
                 </StatusTableCell>
+                {actionsCell && actionsCell(id)}
               </RequestTableRow>
             );
           })}
