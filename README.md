@@ -1,6 +1,6 @@
 <h1>
-  <img src="https://hetty.xyz/img/hetty_light.svg#gh-light-mode-only" width="240"/>
-  <img src="https://hetty.xyz/img/hetty_dark.svg#gh-dark-mode-only" width="240"/>
+  <img src="https://user-images.githubusercontent.com/983924/156430531-6193e187-7400-436b-81c6-f86862783ea5.svg#gh-light-mode-only" width="240"/>
+  <img src="https://user-images.githubusercontent.com/983924/156430660-9d5bd555-dcfd-47e2-ba70-54294c20c1b4.svg#gh-dark-mode-only" width="240"/>
 </h1>
 
 [![Latest GitHub release](https://img.shields.io/github/v/release/dstotijn/hetty?color=25ae8f)](https://github.com/dstotijn/hetty/releases/latest)
