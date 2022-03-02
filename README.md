@@ -1,243 +1,148 @@
 <h1>
-  <a href="https://github.com/dstotijn/hetty">
-    <img src="https://hetty.xyz/assets/logo.png" width="293">
-  </a>
+  <img src="https://hetty.xyz/img/hetty_light.svg#gh-light-mode-only" width="240"/>
+  <img src="https://hetty.xyz/img/hetty_dark.svg#gh-dark-mode-only" width="240"/>
 </h1>
 
-[![Latest GitHub release](https://img.shields.io/github/v/release/dstotijn/hetty?color=18BA91&style=flat-square)](https://github.com/dstotijn/hetty/releases/latest)
-[![Build Status](https://img.shields.io/endpoint.svg?url=https://actions-badge.atrox.dev/dstotijn/hetty/badge&style=flat-square&label=build+%26+test&logo=none&color=18BA91)](https://github.com/dstotijn/hetty/actions/workflows/build-test.yml)
-![GitHub download count](https://img.shields.io/github/downloads/dstotijn/hetty/total?color=18BA91&style=flat-square)
-[![GitHub](https://img.shields.io/github/license/dstotijn/hetty?color=18BA91&style=flat-square)](https://github.com/dstotijn/hetty/blob/master/LICENSE)
-[![Documentation](https://img.shields.io/badge/hetty-docs-18BA91?style=flat-square)](https://hetty.xyz/)
+[![Latest GitHub release](https://img.shields.io/github/v/release/dstotijn/hetty?color=25ae8f)](https://github.com/dstotijn/hetty/releases/latest)
+[![Build Status](https://img.shields.io/endpoint.svg?url=https://actions-badge.atrox.dev/dstotijn/hetty/badge&label=build&logo=none&color=25ae8f)](https://github.com/dstotijn/hetty/actions/workflows/build-test.yml)
+![GitHub download count](https://img.shields.io/github/downloads/dstotijn/hetty/total?color=25ae8f)
+[![GitHub](https://img.shields.io/github/license/dstotijn/hetty?color=25ae8f)](https://github.com/dstotijn/hetty/blob/master/LICENSE)
+[![Documentation](https://img.shields.io/badge/hetty-docs-25ae8f)](https://hetty.xyz/)
 
 **Hetty** is an HTTP toolkit for security research. It aims to become an open
 source alternative to commercial software like Burp Suite Pro, with powerful
 features tailored to the needs of the infosec and bug bounty community.
 
-<img src="https://hetty.xyz/assets/hetty_v0.2.0_header.png">
+<img src="https://hetty.xyz/img/hero.png" width="907" alt="Hetty proxy logs (screenshot)" />
 
 ## Features
 
-- Man-in-the-middle (MITM) HTTP/1.1 proxy with logs
-- Project based database storage (BadgerDB)
-- Scope support
-- Headless management API using GraphQL
-- Embedded web interface (Next.js)
+- Machine-in-the-middle (MITM) HTTP proxy, with logs and advanced search
+- HTTP client for manually creating/editing requests, and replay proxied requests
+- Scope support, to help keep work organized
+- Easy-to-use web based admin interface
+- Project based database storage, to help keep work organized
 
-ℹ️ Hetty is in early development. Additional features are planned
-for a `v1.0` release. Please see the <a href="https://github.com/dstotijn/hetty/projects/1">backlog</a>
-for details.
+👷‍♂️ Hetty is under active development. Check the <a
+href="https://github.com/dstotijn/hetty/projects/1">backlog</a> for the current
+status.
 
-## Documentation
+📣 Are you pen testing professionaly in a team? I would love to hear your
+thoughts on tooling via [this 5 minute
+survey](https://forms.gle/36jtgNc3TJ2imi5A8). Thank you!
 
-📖 [Read the docs.](https://hetty.xyz/)
+## Getting started
 
-## Installation
+💡 The [Getting started](https://hetty.xyz/docs/getting-started) doc has more
+detailed install and usage instructions.
 
-Hetty compiles to a self-contained binary, with an embedded BadgerDB database
-and web based admin interface.
+### Installation
 
-### Install pre-built release (recommended)
+The quickest way to install and update Hetty is via a package manager:
 
-👉 Downloads for Linux, macOS and Windows are available on the [releases page](https://github.com/dstotijn/hetty/releases).
+#### macOS
 
-### Build from source
-
-#### Prerequisites
-
-- [Go 1.16](https://golang.org/)
-- [Yarn](https://yarnpkg.com/)
-
-When building from source, the static resources for the admin interface
-(Next.js) need to be generated via [Yarn](https://yarnpkg.com/). The generated
-files will be embedded (using the [embed](https://golang.org/pkg/embed/)
-package) when you use the `build` Makefile target.
-
-Clone the repository and use the `build` make target to create a binary:
-
-```
-$ git clone git@github.com:dstotijn/hetty.git
-$ cd hetty
-$ make build
+```sh
+brew install hettysoft/tap/hetty
 ```
 
-### Docker
+#### Linux
 
-A Docker image is available on Docker Hub: [`dstotijn/hetty`](https://hub.docker.com/r/dstotijn/hetty).
-For persistent storage of CA certificates and projects database, mount a volume:
-
-```
-$ mkdir -p $HOME/.hetty
-$ docker run -v $HOME/.hetty:/root/.hetty -p 8080:8080 dstotijn/hetty
+```sh
+sudo snap install hetty
 ```
 
-## Usage
+#### Windows
 
-When Hetty is run, by default it listens on `:8080` and is accessible via
-http://localhost:8080. Depending on incoming HTTP requests, it either acts as a
-MITM proxy, or it serves the API and web interface.
-
-By default, the projects database files and CA certificates are stored in a `.hetty`
-directory under the user's home directory (`$HOME` on Linux/macOS, `%USERPROFILE%`
-on Windows).
-
-To start, ensure `hetty` (downloaded from a release, or manually built) is in your
-`$PATH` and run:
-
-```
-$ hetty
+```sh
+scoop bucket add hettysoft https://github.com/hettysoft/scoop.git
+scoop install hettysoft/hetty
 ```
 
-An overview of configuration flags:
+#### Other
 
-```
-$ hetty -h
-Usage of ./hetty:
-  -addr string
-        TCP address to listen on, in the form "host:port" (default ":8080")
-  -adminPath string
-        File path to admin build
-  -cert string
-        CA certificate filepath. Creates a new CA certificate if file doesn't exist (default "~/.hetty/hetty_cert.pem")
-  -key string
-        CA private key filepath. Creates a new CA private key if file doesn't exist (default "~/.hetty/hetty_key.pem")
-  -db string
-        Database directory path (default "~/.hetty/db")
-```
+Alternatively, you can [download the latest release from
+GitHub](https://github.com/dstotijn/hetty/releases/latest) for your OS and
+architecture, and move the binary to a directory in your `$PATH`. If your OS is
+not available for one of the package managers or not listed in the GitHub
+releases, you can compile from source _(link coming soon)_ or use a Docker image
+_(link coming soon)_.
 
-You should see:
+### Usage
 
-```
-2022/01/26 10:34:24 [INFO] Hetty (v0.3.2) is running on :8080 ...
-```
-
-Then, visit [http://localhost:8080](http://localhost:8080) to get started.
-
-ℹ️ Detailed documentation is under development and will be available soon.
-
-## Certificate Setup and Installation
-
-In order for Hetty to proxy requests going to HTTPS endpoints, a root CA certificate for
-Hetty will need to be set up. Furthermore, the CA certificate may need to be
-installed to the host for them to be trusted by your browser. The following steps
-will cover how you can generate your certificate, provide them to hetty, and how
-you can install them in your local CA store.
-
-⚠️ _This process was done on a Linux machine but should_
-_provide guidance on Windows and macOS as well._
-
-### Generating CA certificates
-
-You can generate a CA keypair two different ways. The first is bundled directly
-with Hetty, and simplifies the process immensely. The alternative is using OpenSSL
-to generate them, which provides more control over expiration time and cryptography
-used, but requires you install the OpenSSL tooling. The first is suggested for any
-beginners trying to get started.
-
-#### Generating CA certificates with hetty
-
-Hetty will generate the default key and certificate on its own if none are supplied
-or found in `~/.hetty/` when first running the CLI. To generate a default key and
-certificate with hetty, simply run the command with no arguments
+Once installed, start Hetty via:
 
 ```sh
 hetty
 ```
 
-You should now have a key and certificate located at `~/.hetty/hetty_key.pem` and
-`~/.hetty/hetty_cert.pem` respectively.
+💡 Read the [Getting started](https://hetty.xyz/docs/getting-started) doc for
+more details.
 
-#### Generating CA certificates with OpenSSL
-
-You can start off by generating a new key and CA certificate which will both expire
-after a month.
-
-```sh
-mkdir ~/.hetty
-openssl req -newkey rsa:2048 -new -nodes -x509 -days 31 -keyout ~/.hetty/hetty_key.pem -out ~/.hetty/hetty_cert.pem
-```
-
-The default location which `hetty` will check for the key and CA certificate is under
-`~/.hetty/`, at `hetty_key.pem` and `hetty_cert.pem` respectively. You can move them
-here and `hetty` will detect them automatically. Otherwise, you can specify the
-location of these as arguments to `hetty`.
+To list all available options, run: `hetty --help`:
 
 ```
-hetty -key key.pem -cert cert.pem
+$ hetty --help
+
+Usage:
+    hetty [flags] [subcommand] [flags]
+
+Runs an HTTP server with (MITM) proxy, GraphQL service, and a web based admin interface.
+
+Options:
+    --cert         Path to root CA certificate. Creates file if it doesn't exist. (Default: "~/.hetty/hetty_cert.pem")
+    --key          Path to root CA private key. Creates file if it doesn't exist. (Default: "~/.hetty/hetty_key.pem")
+    --db           Database directory path. (Default: "~/.hetty/db")
+    --addr         TCP address for HTTP server to listen on, in the form \"host:port\". (Default: ":8080")
+    --chrome       Launch Chrome with proxy settings applied and certificate errors ignored. (Default: false)
+    --verbose      Enable verbose logging.
+    --json         Encode logs as JSON, instead of pretty/human readable output.
+    --version, -v  Output version.
+    --help, -h     Output this usage text.
+
+Subcommands:
+    - cert  Certificate management
+
+Run `hetty <subcommand> --help` for subcommand specific usage instructions.
+
+Visit https://hetty.xyz to learn more about Hetty.
 ```
 
-### Trusting the CA certificate
+## Documentation
 
-In order for your browser to allow traffic to the local Hetty proxy, you may need
-to install these certificates to your local CA store.
-
-On Ubuntu, you can update your local CA store with the certificate by running the
-following commands:
-
-```sh
-sudo cp ~/.hetty/hetty_cert.pem /usr/local/share/ca-certificates/hetty.crt
-sudo update-ca-certificates
-```
-
-On Windows, you would add your certificate by using the Certificate Manager. You
-can launch that by running the command:
-
-```batch
-certmgr.msc
-```
-
-On macOS, you can add your certificate by using the Keychain Access program. This
-can be found under `Application/Utilities/Keychain Access.app`. After opening this,
-drag the certificate into the app. Next, open the certificate in the app, enter the
-_Trust_ section, and under _When using this certificate_ select _Always Trust_.
-
-_Note: Various Linux distributions may require other steps or commands for updating_
-_their certificate authority. See the documentation relevant to your distribution for_
-_more information on how to update the system to trust your self-signed certificate._
-
-## Vision and roadmap
-
-- Fast core/engine, built with Go, with a minimal memory footprint.
-- Easy to use admin interface, built with Next.js and Material UI.
-- Headless management, via GraphQL API.
-- Extensibility is top of mind. All modules are written as Go packages, to
-  be used by Hetty, but also as libraries by other software.
-- Pluggable architecture for MITM proxy, projects, scope. It should be possible.
-  to build a plugin system in the (near) future.
-- Based on feedback and real-world usage of pentesters and bug bounty hunters.
-- Aim for a relatively small core feature set that the majority of security researchers need.
+📖 [Read the docs](https://hetty.xyz/docs)
 
 ## Support
 
 Use [issues](https://github.com/dstotijn/hetty/issues) for bug reports and
-feature requests, and [discussions](https://github.com/dstotijn/hetty/discussions)
-for questions and troubleshooting.
+feature requests, and
+[discussions](https://github.com/dstotijn/hetty/discussions) for questions and
+troubleshooting.
 
 ## Community
 
-💬 [Join the Hetty Discord server](https://discord.gg/3HVsj5pTFP).
+💬 [Join the Hetty Discord server](https://discord.gg/3HVsj5pTFP)
 
 ## Contributing
 
-Want to contribute? Great! Please check the [Contribution Guidelines](CONTRIBUTING.md)
-for details.
+Want to contribute? Great! Please check the [Contribution
+Guidelines](CONTRIBUTING.md) for details.
 
 ## Acknowledgements
 
 - Thanks to the [Hacker101 community on Discord](https://www.hacker101.com/discord)
-  for all the encouragement and feedback.
-- The font used in the logo and admin interface is [JetBrains Mono](https://www.jetbrains.com/lp/mono/).
+  for the encouragement and early feedback.
+- The font used in the logo and admin interface is [JetBrains
+  Mono](https://www.jetbrains.com/lp/mono/).
 
 ## Sponsors
 
 <a href="https://www.tines.com/?utm_source=oss&utm_medium=sponsorship&utm_campaign=hetty">
-<img src="https://hetty.xyz/assets/tines-sponsorship-badge.png" width="140" alt="Sponsored by Tines">
+<img src="https://hetty.xyz/img/tines-sponsorship-badge.png" width="140" alt="Sponsored by Tines">
 </a>
 
 ## License
 
-[MIT License](LICENSE)
+[MIT](LICENSE)
 
----
-
-© 2021 David Stotijn — [Twitter](https://twitter.com/dstotijn), [Email](mailto:dstotijn@gmail.com)
+© 2022 Hetty Software
