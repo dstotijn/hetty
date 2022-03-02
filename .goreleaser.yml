@@ -28,6 +28,20 @@ archives:
       - goos: windows
         format: zip
 
+brews:
+  - tap:
+      owner: hettysoft
+      name: homebrew-tap
+    folder: Formula
+    homepage:  https://hetty.xyz
+    description: An HTTP toolkit for security research.
+    license: MIT
+    commit_author:
+      name: David Stotijn
+      email: dstotijn@gmail.com
+    test: |
+      system "#{bin}/hetty -v"
+
 checksum:
   name_template: "checksums.txt"
 
