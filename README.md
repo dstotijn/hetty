@@ -1,10 +1,8 @@
-<h1>
-  <img src="https://user-images.githubusercontent.com/983924/156430531-6193e187-7400-436b-81c6-f86862783ea5.svg#gh-light-mode-only" width="240"/>
-  <img src="https://user-images.githubusercontent.com/983924/156430660-9d5bd555-dcfd-47e2-ba70-54294c20c1b4.svg#gh-dark-mode-only" width="240"/>
-</h1>
+<img src="https://user-images.githubusercontent.com/983924/156430531-6193e187-7400-436b-81c6-f86862783ea5.svg#gh-light-mode-only" width="240"/>
+<img src="https://user-images.githubusercontent.com/983924/156430660-9d5bd555-dcfd-47e2-ba70-54294c20c1b4.svg#gh-dark-mode-only" width="240"/>
 
 [![Latest GitHub release](https://img.shields.io/github/v/release/dstotijn/hetty?color=25ae8f)](https://github.com/dstotijn/hetty/releases/latest)
-[![Build Status](https://img.shields.io/endpoint.svg?url=https://actions-badge.atrox.dev/dstotijn/hetty/badge&label=build&logo=none&color=25ae8f)](https://github.com/dstotijn/hetty/actions/workflows/build-test.yml)
+[![Build Status](https://img.shields.io/endpoint.svg?url=https%3A%2F%2Factions-badge.atrox.dev%2Fdstotijn%2Fhetty%2Fbadge%3Fref%3Dmain&label=build&color=24ae8f)](https://github.com/dstotijn/hetty/actions/workflows/build-test.yml)
 ![GitHub download count](https://img.shields.io/github/downloads/dstotijn/hetty/total?color=25ae8f)
 [![GitHub](https://img.shields.io/github/license/dstotijn/hetty?color=25ae8f)](https://github.com/dstotijn/hetty/blob/master/LICENSE)
 [![Documentation](https://img.shields.io/badge/hetty-docs-25ae8f)](https://hetty.xyz/)
