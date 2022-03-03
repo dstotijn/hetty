@@ -42,6 +42,38 @@ brews:
     test: |
       system "#{bin}/hetty -v"
 
+snapcrafts:
+  - publish: true
+    summary: An HTTP toolkit for security research.
+    description: |
+      Hetty is an HTTP toolkit for security research. It aims to become an open
+      source alternative to commercial software like Burp Suite Pro, with
+      powerful features tailored to the needs of the infosec and bug bounty
+      community.
+    grade: stable
+    confinement: strict
+    license: MIT
+    apps:
+      hetty:
+        plugs: ["home", "network", "network-bind", "personal-files"]
+    plugs:
+      personal-files:
+        read:
+        - $HOME/.hetty
+        write:
+        - $HOME/.hetty
+
+scoop:
+  bucket:
+    owner: hettysoft
+    name: scoop-bucket
+  commit_author:
+    name: David Stotijn
+    email: dstotijn@gmail.com
+  homepage:  https://hetty.xyz
+  description: An HTTP toolkit for security research.
+  license: MIT
+
 checksum:
   name_template: "checksums.txt"
 

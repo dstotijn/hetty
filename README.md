@@ -53,7 +53,7 @@ sudo snap install hetty
 #### Windows
 
 ```sh
-scoop bucket add hettysoft https://github.com/hettysoft/scoop.git
+scoop bucket add hettysoft https://github.com/hettysoft/scoop-bucket.git
 scoop install hettysoft/hetty
 ```
 
