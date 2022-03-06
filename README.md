@@ -50,6 +50,11 @@ brew install hettysoft/tap/hetty
 sudo snap install hetty
 ```
 
+⚠️ As of Sun 6 Mar 2022, we're awaiting Canonical to approve the necessary
+Snapcraft privileges to allow Hetty to bind on a port. In the meantime, please
+use one of the Linux [releases](https://github.com/dstotijn/hetty/releases) on
+Github.
+
 #### Windows
 
 ```sh
