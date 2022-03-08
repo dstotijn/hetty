@@ -41,6 +41,8 @@ func TestRequestModifier(t *testing.T) {
 	}
 	reqModFn := svc.RequestModifier(next)
 	req := httptest.NewRequest("GET", "https://example.com/", strings.NewReader("bar"))
+	reqID := ulid.MustNew(ulid.Timestamp(time.Now()), ulidEntropy)
+	req = req.WithContext(proxy.WithRequestID(req.Context(), reqID))
 
 	reqModFn(req)
 
@@ -88,7 +90,7 @@ func TestResponseModifier(t *testing.T) {
 
 	req := httptest.NewRequest("GET", "https://example.com/", strings.NewReader("bar"))
 	reqLogID := ulid.MustNew(ulid.Timestamp(time.Now()), ulidEntropy)
-	req = req.WithContext(context.WithValue(req.Context(), proxy.ReqLogIDKey, reqLogID))
+	req = req.WithContext(context.WithValue(req.Context(), reqlog.ReqLogIDKey, reqLogID))
 
 	res := &http.Response{
 		Request: req,

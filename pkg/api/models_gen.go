@@ -38,6 +38,15 @@ type HTTPHeaderInput struct {
 	Value string `json:"value"`
 }
 
+type HTTPRequest struct {
+	ID      ulid.ULID    `json:"id"`
+	URL     *url.URL     `json:"url"`
+	Method  HTTPMethod   `json:"method"`
+	Proto   HTTPProtocol `json:"proto"`
+	Headers []HTTPHeader `json:"headers"`
+	Body    *string      `json:"body"`
+}
+
 type HTTPRequestLog struct {
 	ID        ulid.ULID        `json:"id"`
 	URL       string           `json:"url"`
@@ -67,6 +76,19 @@ type HTTPResponseLog struct {
 	StatusReason string       `json:"statusReason"`
 	Body         *string      `json:"body"`
 	Headers      []HTTPHeader `json:"headers"`
+}
+
+type ModifyRequestInput struct {
+	ID      ulid.ULID         `json:"id"`
+	URL     *url.URL          `json:"url"`
+	Method  HTTPMethod        `json:"method"`
+	Proto   HTTPProtocol      `json:"proto"`
+	Headers []HTTPHeaderInput `json:"headers"`
+	Body    *string           `json:"body"`
+}
+
+type ModifyRequestResult struct {
+	Success bool `json:"success"`
 }
 
 type Project struct {

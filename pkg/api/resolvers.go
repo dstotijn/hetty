@@ -3,9 +3,11 @@ package api
 //go:generate go run github.com/99designs/gqlgen
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"regexp"
 	"strings"
@@ -15,6 +17,8 @@ import (
 	"github.com/vektah/gqlparser/v2/gqlerror"
 
 	"github.com/dstotijn/hetty/pkg/proj"
+	"github.com/dstotijn/hetty/pkg/proxy"
+	"github.com/dstotijn/hetty/pkg/proxy/intercept"
 	"github.com/dstotijn/hetty/pkg/reqlog"
 	"github.com/dstotijn/hetty/pkg/scope"
 	"github.com/dstotijn/hetty/pkg/search"
@@ -36,6 +40,7 @@ var revHTTPProtocolMap = map[HTTPProtocol]string{
 type Resolver struct {
 	ProjectService    proj.Service
 	RequestLogService reqlog.Service
+	InterceptService  *intercept.Service
 	SenderService     sender.Service
 }
 
@@ -520,6 +525,46 @@ func (r *mutationResolver) DeleteSenderRequests(ctx context.Context) (*DeleteSen
 	return &DeleteSenderRequestsResult{true}, nil
 }
 
+func (r *queryResolver) InterceptedRequests(ctx context.Context) ([]HTTPRequest, error) {
+	reqs := r.InterceptService.Requests()
+	httpReqs := make([]HTTPRequest, len(reqs))
+
+	for i, req := range reqs {
+		req, err := parseHTTPRequest(req)
+		if err != nil {
+			return nil, err
+		}
+
+		httpReqs[i] = req
+	}
+
+	return httpReqs, nil
+}
+
+func (r *mutationResolver) ModifyRequest(ctx context.Context, input ModifyRequestInput) (*ModifyRequestResult, error) {
+	body := ""
+	if input.Body != nil {
+		body = *input.Body
+	}
+
+	//nolint:noctx
+	req, err := http.NewRequest(input.Method.String(), input.URL.String(), strings.NewReader(body))
+	if err != nil {
+		return nil, fmt.Errorf("failed to construct HTTP request: %w", err)
+	}
+
+	for _, header := range input.Headers {
+		req.Header.Add(header.Key, header.Value)
+	}
+
+	err = r.InterceptService.ModifyRequest(input.ID, req)
+	if err != nil {
+		return nil, fmt.Errorf("could not modify http request: %w", err)
+	}
+
+	return &ModifyRequestResult{Success: true}, nil
+}
+
 func parseSenderRequest(req sender.Request) (SenderRequest, error) {
 	method := HTTPMethod(req.Method)
 	if method != "" && !method.IsValid() {
@@ -573,6 +618,56 @@ func parseSenderRequest(req sender.Request) (SenderRequest, error) {
 	}
 
 	return senderReq, nil
+}
+
+func parseHTTPRequest(req *http.Request) (HTTPRequest, error) {
+	method := HTTPMethod(req.Method)
+	if method != "" && !method.IsValid() {
+		return HTTPRequest{}, fmt.Errorf("http request has invalid method: %v", method)
+	}
+
+	reqProto := httpProtocolMap[req.Proto]
+	if !reqProto.IsValid() {
+		return HTTPRequest{}, fmt.Errorf("http request has invalid protocol: %v", req.Proto)
+	}
+
+	id, ok := proxy.RequestIDFromContext(req.Context())
+	if !ok {
+		return HTTPRequest{}, errors.New("http request has missing ID")
+	}
+
+	httpReq := HTTPRequest{
+		ID:     id,
+		URL:    req.URL,
+		Method: method,
+		Proto:  HTTPProtocol(req.Proto),
+	}
+
+	if req.Header != nil {
+		httpReq.Headers = make([]HTTPHeader, 0)
+
+		for key, values := range req.Header {
+			for _, value := range values {
+				httpReq.Headers = append(httpReq.Headers, HTTPHeader{
+					Key:   key,
+					Value: value,
+				})
+			}
+		}
+	}
+
+	if req.Body != nil {
+		body, err := ioutil.ReadAll(req.Body)
+		if err != nil {
+			return HTTPRequest{}, fmt.Errorf("failed to read request body: %w", err)
+		}
+
+		req.Body = ioutil.NopCloser(bytes.NewBuffer(body))
+		bodyStr := string(body)
+		httpReq.Body = &bodyStr
+	}
+
+	return httpReq, nil
 }
 
 func stringPtrToRegexp(s *string) (*regexp.Regexp, error) {

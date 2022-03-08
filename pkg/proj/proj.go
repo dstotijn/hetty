@@ -11,6 +11,7 @@ import (
 
 	"github.com/oklog/ulid"
 
+	"github.com/dstotijn/hetty/pkg/proxy/intercept"
 	"github.com/dstotijn/hetty/pkg/reqlog"
 	"github.com/dstotijn/hetty/pkg/scope"
 	"github.com/dstotijn/hetty/pkg/search"
@@ -37,6 +38,7 @@ type Service interface {
 
 type service struct {
 	repo            Repository
+	interceptSvc    *intercept.Service
 	reqLogSvc       reqlog.Service
 	senderSvc       sender.Service
 	scope           *scope.Scope
@@ -73,19 +75,21 @@ var (
 var nameRegexp = regexp.MustCompile(`^[\w\d\s]+$`)
 
 type Config struct {
-	Repository    Repository
-	ReqLogService reqlog.Service
-	SenderService sender.Service
-	Scope         *scope.Scope
+	Repository       Repository
+	InterceptService *intercept.Service
+	ReqLogService    reqlog.Service
+	SenderService    sender.Service
+	Scope            *scope.Scope
 }
 
 // NewService returns a new Service.
 func NewService(cfg Config) (Service, error) {
 	return &service{
-		repo:      cfg.Repository,
-		reqLogSvc: cfg.ReqLogService,
-		senderSvc: cfg.SenderService,
-		scope:     cfg.Scope,
+		repo:         cfg.Repository,
+		interceptSvc: cfg.InterceptService,
+		reqLogSvc:    cfg.ReqLogService,
+		senderSvc:    cfg.SenderService,
+		scope:        cfg.Scope,
 	}, nil
 }
 
@@ -117,6 +121,7 @@ func (svc *service) CloseProject() error {
 	}
 
 	svc.activeProjectID = ulid.ULID{}
+	svc.interceptSvc.ClearRequests()
 	svc.reqLogSvc.SetActiveProjectID(ulid.ULID{})
 	svc.reqLogSvc.SetBypassOutOfScopeRequests(false)
 	svc.reqLogSvc.SetFindReqsFilter(reqlog.FindRequestsFilter{})

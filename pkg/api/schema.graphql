@@ -116,6 +116,28 @@ type SenderRequestFilter {
   searchExpression: String
 }
 
+type HttpRequest {
+  id: ID!
+  url: URL!
+  method: HttpMethod!
+  proto: HttpProtocol!
+  headers: [HttpHeader!]!
+  body: String
+}
+
+input ModifyRequestInput {
+  id: ID!
+  url: URL!
+  method: HttpMethod!
+  proto: HttpProtocol!
+  headers: [HttpHeaderInput!]
+  body: String
+}
+
+type ModifyRequestResult {
+  success: Boolean!
+}
+
 type Query {
   httpRequestLog(id: ID!): HttpRequestLog
   httpRequestLogs: [HttpRequestLog!]!
@@ -125,6 +147,7 @@ type Query {
   scope: [ScopeRule!]!
   senderRequest(id: ID!): SenderRequest
   senderRequests: [SenderRequest!]!
+  interceptedRequests: [HttpRequest!]!
 }
 
 type Mutation {
@@ -142,6 +165,7 @@ type Mutation {
   createSenderRequestFromHttpRequestLog(id: ID!): SenderRequest!
   sendRequest(id: ID!): SenderRequest!
   deleteSenderRequests: DeleteSenderRequestsResult!
+  modifyRequest(request: ModifyRequestInput!): ModifyRequestResult!
 }
 
 enum HttpMethod {

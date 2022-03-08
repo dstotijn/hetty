@@ -7,16 +7,22 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
+	"math/rand"
 	"net"
 	"net/http"
 	"net/http/httputil"
+	"time"
 
 	"github.com/dstotijn/hetty/pkg/log"
+	"github.com/oklog/ulid"
 )
+
+//nolint:gosec
+var ulidEntropy = rand.New(rand.NewSource(time.Now().UnixNano()))
 
 type contextKey int
 
-const ReqLogIDKey contextKey = 0
+const reqIDKey contextKey = 0
 
 // Proxy implements http.Handler and offers MITM behaviour for modifying
 // HTTP requests and responses.
@@ -69,6 +75,10 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	reqID := ulid.MustNew(ulid.Timestamp(time.Now()), ulidEntropy)
+	ctx := context.WithValue(r.Context(), reqIDKey, reqID)
+	*r = *r.WithContext(ctx)
+
 	p.handler.ServeHTTP(w, r)
 }
 
@@ -108,6 +118,15 @@ func (p *Proxy) modifyResponse(res *http.Response) error {
 	}
 
 	return fn(res)
+}
+
+func WithRequestID(ctx context.Context, id ulid.ULID) context.Context {
+	return context.WithValue(ctx, reqIDKey, id)
+}
+
+func RequestIDFromContext(ctx context.Context) (ulid.ULID, bool) {
+	id, ok := ctx.Value(reqIDKey).(ulid.ULID)
+	return id, ok
 }
 
 // handleConnect hijacks the incoming HTTP request and sets up an HTTP tunnel.
@@ -170,12 +189,10 @@ func (p *Proxy) clientTLSConn(conn net.Conn) (*tls.Conn, error) {
 }
 
 func (p *Proxy) errorHandler(w http.ResponseWriter, r *http.Request, err error) {
-	if errors.Is(err, context.Canceled) {
-		return
+	if !errors.Is(err, context.Canceled) {
+		p.logger.Errorw("Failed to proxy request.",
+			"error", err)
 	}
-
-	p.logger.Errorw("Failed to proxy request.",
-		"error", err)
 
 	w.WriteHeader(http.StatusBadGateway)
 }
