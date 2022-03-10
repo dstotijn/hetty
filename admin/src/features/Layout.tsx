@@ -1,11 +1,12 @@
+import AltRouteIcon from "@mui/icons-material/AltRoute";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import FolderIcon from "@mui/icons-material/Folder";
+import FormatListBulletedIcon from "@mui/icons-material/FormatListBulleted";
 import HomeIcon from "@mui/icons-material/Home";
 import LocationSearchingIcon from "@mui/icons-material/LocationSearching";
 import MenuIcon from "@mui/icons-material/Menu";
 import SendIcon from "@mui/icons-material/Send";
-import SettingsEthernetIcon from "@mui/icons-material/SettingsEthernet";
 import {
   Theme,
   useTheme,
@@ -19,6 +20,7 @@ import {
   CSSObject,
   Box,
   ListItemText,
+  Badge,
 } from "@mui/material";
 import MuiAppBar, { AppBarProps as MuiAppBarProps } from "@mui/material/AppBar";
 import MuiDrawer from "@mui/material/Drawer";
@@ -28,10 +30,12 @@ import Link from "next/link";
 import React, { useState } from "react";
 
 import { useActiveProject } from "lib/ActiveProjectContext";
+import { useInterceptedRequests } from "lib/InterceptedRequestsContext";
 
 export enum Page {
   Home,
   GetStarted,
+  Intercept,
   Projects,
   ProxySetup,
   ProxyLogs,
@@ -135,6 +139,7 @@ interface Props {
 
 export function Layout({ title, page, children }: Props): JSX.Element {
   const activeProject = useActiveProject();
+  const interceptedRequests = useInterceptedRequests();
   const theme = useTheme();
   const [open, setOpen] = useState(false);
 
@@ -204,12 +209,24 @@ export function Layout({ title, page, children }: Props): JSX.Element {
           </Link>
           <Link href="/proxy/logs" passHref>
             <ListItemButton key="proxyLogs" disabled={!activeProject} selected={page === Page.ProxyLogs}>
-              <Tooltip title="Proxy">
+              <Tooltip title="Proxy logs">
                 <ListItemIcon>
-                  <SettingsEthernetIcon />
+                  <FormatListBulletedIcon />
                 </ListItemIcon>
               </Tooltip>
-              <ListItemText primary="Proxy" />
+              <ListItemText primary="Logs" />
+            </ListItemButton>
+          </Link>
+          <Link href="/proxy/intercept" passHref>
+            <ListItemButton key="proxyIntercept" disabled={!activeProject} selected={page === Page.Intercept}>
+              <Tooltip title="Proxy intercept">
+                <ListItemIcon>
+                  <Badge color="error" badgeContent={interceptedRequests?.length || 0}>
+                    <AltRouteIcon />
+                  </Badge>
+                </ListItemIcon>
+              </Tooltip>
+              <ListItemText primary="Intercept" />
             </ListItemButton>
           </Link>
           <Link href="/sender" passHref>

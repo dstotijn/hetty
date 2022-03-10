@@ -1,0 +1,13 @@
+query GetInterceptedRequest($id: ID!) {
+  interceptedRequest(id: $id) {
+    id
+    url
+    method
+    proto
+    headers {
+      key
+      value
+    }
+    body
+  }
+}

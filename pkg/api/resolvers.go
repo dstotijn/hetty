@@ -541,6 +541,22 @@ func (r *queryResolver) InterceptedRequests(ctx context.Context) ([]HTTPRequest,
 	return httpReqs, nil
 }
 
+func (r *queryResolver) InterceptedRequest(ctx context.Context, id ulid.ULID) (*HTTPRequest, error) {
+	req, err := r.InterceptService.RequestByID(id)
+	if errors.Is(err, intercept.ErrRequestNotFound) {
+		return nil, nil
+	} else if err != nil {
+		return nil, fmt.Errorf("could not get request by ID: %w", err)
+	}
+
+	httpReq, err := parseHTTPRequest(req)
+	if err != nil {
+		return nil, err
+	}
+
+	return &httpReq, nil
+}
+
 func (r *mutationResolver) ModifyRequest(ctx context.Context, input ModifyRequestInput) (*ModifyRequestResult, error) {
 	body := ""
 	if input.Body != nil {

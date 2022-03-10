@@ -67,6 +67,16 @@ export enum HttpProtocol {
   Http20 = 'HTTP20'
 }
 
+export type HttpRequest = {
+  __typename?: 'HttpRequest';
+  body?: Maybe<Scalars['String']>;
+  headers: Array<HttpHeader>;
+  id: Scalars['ID'];
+  method: HttpMethod;
+  proto: HttpProtocol;
+  url: Scalars['URL'];
+};
+
 export type HttpRequestLog = {
   __typename?: 'HttpRequestLog';
   body?: Maybe<Scalars['String']>;
@@ -101,6 +111,20 @@ export type HttpResponseLog = {
   statusReason: Scalars['String'];
 };
 
+export type ModifyRequestInput = {
+  body?: InputMaybe<Scalars['String']>;
+  headers?: InputMaybe<Array<HttpHeaderInput>>;
+  id: Scalars['ID'];
+  method: HttpMethod;
+  proto: HttpProtocol;
+  url: Scalars['URL'];
+};
+
+export type ModifyRequestResult = {
+  __typename?: 'ModifyRequestResult';
+  success: Scalars['Boolean'];
+};
+
 export type Mutation = {
   __typename?: 'Mutation';
   clearHTTPRequestLog: ClearHttpRequestLogResult;
@@ -110,6 +134,7 @@ export type Mutation = {
   createSenderRequestFromHttpRequestLog: SenderRequest;
   deleteProject: DeleteProjectResult;
   deleteSenderRequests: DeleteSenderRequestsResult;
+  modifyRequest: ModifyRequestResult;
   openProject?: Maybe<Project>;
   sendRequest: SenderRequest;
   setHttpRequestLogFilter?: Maybe<HttpRequestLogFilter>;
@@ -135,6 +160,11 @@ export type MutationCreateSenderRequestFromHttpRequestLogArgs = {
 
 export type MutationDeleteProjectArgs = {
   id: Scalars['ID'];
+};
+
+
+export type MutationModifyRequestArgs = {
+  request: ModifyRequestInput;
 };
 
 
@@ -175,6 +205,8 @@ export type Query = {
   httpRequestLog?: Maybe<HttpRequestLog>;
   httpRequestLogFilter?: Maybe<HttpRequestLogFilter>;
   httpRequestLogs: Array<HttpRequestLog>;
+  interceptedRequest?: Maybe<HttpRequest>;
+  interceptedRequests: Array<HttpRequest>;
   projects: Array<Project>;
   scope: Array<ScopeRule>;
   senderRequest?: Maybe<SenderRequest>;
@@ -183,6 +215,11 @@ export type Query = {
 
 
 export type QueryHttpRequestLogArgs = {
+  id: Scalars['ID'];
+};
+
+
+export type QueryInterceptedRequestArgs = {
   id: Scalars['ID'];
 };
 
@@ -247,6 +284,20 @@ export type SenderRequestInput = {
   proto?: InputMaybe<HttpProtocol>;
   url: Scalars['URL'];
 };
+
+export type GetInterceptedRequestQueryVariables = Exact<{
+  id: Scalars['ID'];
+}>;
+
+
+export type GetInterceptedRequestQuery = { __typename?: 'Query', interceptedRequest?: { __typename?: 'HttpRequest', id: string, url: any, method: HttpMethod, proto: HttpProtocol, body?: string | null, headers: Array<{ __typename?: 'HttpHeader', key: string, value: string }> } | null };
+
+export type ModifyRequestMutationVariables = Exact<{
+  request: ModifyRequestInput;
+}>;
+
+
+export type ModifyRequestMutation = { __typename?: 'Mutation', modifyRequest: { __typename?: 'ModifyRequestResult', success: boolean } };
 
 export type CloseProjectMutationVariables = Exact<{ [key: string]: never; }>;
 
@@ -353,7 +404,88 @@ export type GetSenderRequestsQueryVariables = Exact<{ [key: string]: never; }>;
 
 export type GetSenderRequestsQuery = { __typename?: 'Query', senderRequests: Array<{ __typename?: 'SenderRequest', id: string, url: any, method: HttpMethod, response?: { __typename?: 'HttpResponseLog', id: string, statusCode: number, statusReason: string } | null }> };
 
+export type GetInterceptedRequestsQueryVariables = Exact<{ [key: string]: never; }>;
 
+
+export type GetInterceptedRequestsQuery = { __typename?: 'Query', interceptedRequests: Array<{ __typename?: 'HttpRequest', id: string, url: any, method: HttpMethod }> };
+
+
+export const GetInterceptedRequestDocument = gql`
+    query GetInterceptedRequest($id: ID!) {
+  interceptedRequest(id: $id) {
+    id
+    url
+    method
+    proto
+    headers {
+      key
+      value
+    }
+    body
+  }
+}
+    `;
+
+/**
+ * __useGetInterceptedRequestQuery__
+ *
+ * To run a query within a React component, call `useGetInterceptedRequestQuery` and pass it any options that fit your needs.
+ * When your component renders, `useGetInterceptedRequestQuery` returns an object from Apollo Client that contains loading, error, and data properties
+ * you can use to render your UI.
+ *
+ * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
+ *
+ * @example
+ * const { data, loading, error } = useGetInterceptedRequestQuery({
+ *   variables: {
+ *      id: // value for 'id'
+ *   },
+ * });
+ */
+export function useGetInterceptedRequestQuery(baseOptions: Apollo.QueryHookOptions<GetInterceptedRequestQuery, GetInterceptedRequestQueryVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useQuery<GetInterceptedRequestQuery, GetInterceptedRequestQueryVariables>(GetInterceptedRequestDocument, options);
+      }
+export function useGetInterceptedRequestLazyQuery(baseOptions?: Apollo.LazyQueryHookOptions<GetInterceptedRequestQuery, GetInterceptedRequestQueryVariables>) {
+          const options = {...defaultOptions, ...baseOptions}
+          return Apollo.useLazyQuery<GetInterceptedRequestQuery, GetInterceptedRequestQueryVariables>(GetInterceptedRequestDocument, options);
+        }
+export type GetInterceptedRequestQueryHookResult = ReturnType<typeof useGetInterceptedRequestQuery>;
+export type GetInterceptedRequestLazyQueryHookResult = ReturnType<typeof useGetInterceptedRequestLazyQuery>;
+export type GetInterceptedRequestQueryResult = Apollo.QueryResult<GetInterceptedRequestQuery, GetInterceptedRequestQueryVariables>;
+export const ModifyRequestDocument = gql`
+    mutation ModifyRequest($request: ModifyRequestInput!) {
+  modifyRequest(request: $request) {
+    success
+  }
+}
+    `;
+export type ModifyRequestMutationFn = Apollo.MutationFunction<ModifyRequestMutation, ModifyRequestMutationVariables>;
+
+/**
+ * __useModifyRequestMutation__
+ *
+ * To run a mutation, you first call `useModifyRequestMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useModifyRequestMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [modifyRequestMutation, { data, loading, error }] = useModifyRequestMutation({
+ *   variables: {
+ *      request: // value for 'request'
+ *   },
+ * });
+ */
+export function useModifyRequestMutation(baseOptions?: Apollo.MutationHookOptions<ModifyRequestMutation, ModifyRequestMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useMutation<ModifyRequestMutation, ModifyRequestMutationVariables>(ModifyRequestDocument, options);
+      }
+export type ModifyRequestMutationHookResult = ReturnType<typeof useModifyRequestMutation>;
+export type ModifyRequestMutationResult = Apollo.MutationResult<ModifyRequestMutation>;
+export type ModifyRequestMutationOptions = Apollo.BaseMutationOptions<ModifyRequestMutation, ModifyRequestMutationVariables>;
 export const CloseProjectDocument = gql`
     mutation CloseProject {
   closeProject {
@@ -983,3 +1115,39 @@ export function useGetSenderRequestsLazyQuery(baseOptions?: Apollo.LazyQueryHook
 export type GetSenderRequestsQueryHookResult = ReturnType<typeof useGetSenderRequestsQuery>;
 export type GetSenderRequestsLazyQueryHookResult = ReturnType<typeof useGetSenderRequestsLazyQuery>;
 export type GetSenderRequestsQueryResult = Apollo.QueryResult<GetSenderRequestsQuery, GetSenderRequestsQueryVariables>;
+export const GetInterceptedRequestsDocument = gql`
+    query GetInterceptedRequests {
+  interceptedRequests {
+    id
+    url
+    method
+  }
+}
+    `;
+
+/**
+ * __useGetInterceptedRequestsQuery__
+ *
+ * To run a query within a React component, call `useGetInterceptedRequestsQuery` and pass it any options that fit your needs.
+ * When your component renders, `useGetInterceptedRequestsQuery` returns an object from Apollo Client that contains loading, error, and data properties
+ * you can use to render your UI.
+ *
+ * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
+ *
+ * @example
+ * const { data, loading, error } = useGetInterceptedRequestsQuery({
+ *   variables: {
+ *   },
+ * });
+ */
+export function useGetInterceptedRequestsQuery(baseOptions?: Apollo.QueryHookOptions<GetInterceptedRequestsQuery, GetInterceptedRequestsQueryVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useQuery<GetInterceptedRequestsQuery, GetInterceptedRequestsQueryVariables>(GetInterceptedRequestsDocument, options);
+      }
+export function useGetInterceptedRequestsLazyQuery(baseOptions?: Apollo.LazyQueryHookOptions<GetInterceptedRequestsQuery, GetInterceptedRequestsQueryVariables>) {
+          const options = {...defaultOptions, ...baseOptions}
+          return Apollo.useLazyQuery<GetInterceptedRequestsQuery, GetInterceptedRequestsQueryVariables>(GetInterceptedRequestsDocument, options);
+        }
+export type GetInterceptedRequestsQueryHookResult = ReturnType<typeof useGetInterceptedRequestsQuery>;
+export type GetInterceptedRequestsLazyQueryHookResult = ReturnType<typeof useGetInterceptedRequestsLazyQuery>;
+export type GetInterceptedRequestsQueryResult = Apollo.QueryResult<GetInterceptedRequestsQuery, GetInterceptedRequestsQueryVariables>;

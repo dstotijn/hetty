@@ -1,0 +1,7 @@
+query GetInterceptedRequests {
+  interceptedRequests {
+    id
+    url
+    method
+  }
+}

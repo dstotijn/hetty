@@ -7,6 +7,7 @@ import Head from "next/head";
 import React from "react";
 
 import { ActiveProjectProvider } from "lib/ActiveProjectContext";
+import { InterceptedRequestsProvider } from "lib/InterceptedRequestsContext";
 import { useApollo } from "lib/graphql/useApollo";
 import createEmotionCache from "lib/mui/createEmotionCache";
 import theme from "lib/mui/theme";
@@ -32,10 +33,12 @@ export default function MyApp(props: MyAppProps) {
       </Head>
       <ApolloProvider client={apolloClient}>
         <ActiveProjectProvider>
-          <ThemeProvider theme={theme}>
-            <CssBaseline />
-            <Component {...pageProps} />
-          </ThemeProvider>
+          <InterceptedRequestsProvider>
+            <ThemeProvider theme={theme}>
+              <CssBaseline />
+              <Component {...pageProps} />
+            </ThemeProvider>
+          </InterceptedRequestsProvider>
         </ActiveProjectProvider>
       </ApolloProvider>
     </CacheProvider>

@@ -14,6 +14,7 @@ import {
 import { useRouter } from "next/router";
 import { useState } from "react";
 
+import Actions from "./Actions";
 import LogDetail from "./LogDetail";
 import Search from "./Search";
 
@@ -94,7 +95,14 @@ export function RequestLogs(): JSX.Element {
 
   return (
     <Box display="flex" flexDirection="column" height="100%">
-      <Search />
+      <Box display="flex">
+        <Box flex="1 auto">
+          <Search />
+        </Box>
+        <Box pt={0.5}>
+          <Actions />
+        </Box>
+      </Box>
       <Box sx={{ display: "flex", flex: "1 auto", position: "relative" }}>
         <SplitPane split="horizontal" size={"40%"}>
           <Box sx={{ width: "100%", height: "100%", pb: 2 }}>

@@ -176,6 +176,19 @@ func (svc *Service) Requests() []*http.Request {
 	return reqs
 }
 
+// Request returns an intercepted request by ID. It's safe for concurrent use.
+func (svc *Service) RequestByID(id ulid.ULID) (*http.Request, error) {
+	svc.mu.RLock()
+	defer svc.mu.RUnlock()
+
+	req, ok := svc.requests[id]
+	if !ok {
+		return nil, ErrRequestNotFound
+	}
+
+	return req.req, nil
+}
+
 func (ids RequestIDs) Len() int {
 	return len(ids)
 }

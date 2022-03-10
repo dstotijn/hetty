@@ -1,17 +1,19 @@
-import { Alert, Box, Button, Typography } from "@mui/material";
+import SendIcon from "@mui/icons-material/Send";
+import { Alert, Box, Button, CircularProgress, Typography } from "@mui/material";
 import { useRouter } from "next/router";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 
+import { useInterceptedRequests } from "lib/InterceptedRequestsContext";
 import { KeyValuePair, sortKeyValuePairs } from "lib/components/KeyValuePair";
 import RequestTabs from "lib/components/RequestTabs";
 import Response from "lib/components/Response";
 import SplitPane from "lib/components/SplitPane";
 import UrlBar, { HttpMethod, HttpProto, httpProtoMap } from "lib/components/UrlBar";
 import {
-  GetSenderRequestQuery,
-  useCreateOrUpdateSenderRequestMutation,
-  useGetSenderRequestQuery,
-  useSendRequestMutation,
+  HttpProtocol,
+  HttpRequest,
+  useGetInterceptedRequestQuery,
+  useModifyRequestMutation,
 } from "lib/graphql/generated";
 import { queryParamsFromURL } from "lib/queryParamsFromURL";
 import updateKeyPairItem from "lib/updateKeyPairItem";
@@ -19,6 +21,19 @@ import updateURLQueryParams from "lib/updateURLQueryParams";
 
 function EditRequest(): JSX.Element {
   const router = useRouter();
+  const interceptedRequests = useInterceptedRequests();
+
+  useEffect(() => {
+    // If there's no request selected and there are pending reqs, navigate to
+    // the first one in the list. This helps you quickly review/handle reqs
+    // without having to manually select the next one in the requests table.
+    console.log(router.isReady, router.query.id, interceptedRequests?.length);
+    if (router.isReady && !router.query.id && interceptedRequests?.length) {
+      const req = interceptedRequests[0];
+      router.replace(`/proxy/intercept?id=${req.id}`);
+    }
+  }, [router, interceptedRequests]);
+
   const reqId = router.query.id as string | undefined;
 
   const [method, setMethod] = useState(HttpMethod.Get);
@@ -65,70 +80,68 @@ function EditRequest(): JSX.Element {
     setQueryParams(newQueryParams);
   };
 
-  const [response, setResponse] = useState<NonNullable<GetSenderRequestQuery["senderRequest"]>["response"]>(null);
-  const getReqResult = useGetSenderRequestQuery({
+  const getReqResult = useGetInterceptedRequestQuery({
     variables: { id: reqId as string },
     skip: reqId === undefined,
-    onCompleted: ({ senderRequest }) => {
-      if (!senderRequest) {
+    onCompleted: ({ interceptedRequest }) => {
+      if (!interceptedRequest) {
         return;
       }
 
-      setURL(senderRequest.url);
-      setMethod(senderRequest.method);
-      setBody(senderRequest.body || "");
+      setURL(interceptedRequest.url);
+      setMethod(interceptedRequest.method);
+      setBody(interceptedRequest.body || "");
 
-      const newQueryParams = queryParamsFromURL(senderRequest.url);
+      const newQueryParams = queryParamsFromURL(interceptedRequest.url);
       // Push empty row.
       newQueryParams.push({ key: "", value: "" });
       setQueryParams(newQueryParams);
 
-      const newHeaders = sortKeyValuePairs(senderRequest.headers || []);
+      const newHeaders = sortKeyValuePairs(interceptedRequest.headers || []);
       setHeaders([...newHeaders.map(({ key, value }) => ({ key, value })), { key: "", value: "" }]);
-      setResponse(senderRequest.response);
     },
   });
+  const interceptedReq = reqId ? getReqResult?.data?.interceptedRequest : undefined;
 
-  const [createOrUpdateRequest, createResult] = useCreateOrUpdateSenderRequestMutation();
-  const [sendRequest, sendResult] = useSendRequestMutation();
+  const [modifyRequest, modifyResult] = useModifyRequestMutation();
 
-  const createOrUpdateRequestAndSend = () => {
-    const senderReq = getReqResult?.data?.senderRequest;
-    createOrUpdateRequest({
+  const handleFormSubmit: React.FormEventHandler = (e) => {
+    e.preventDefault();
+
+    if (!interceptedReq) {
+      return;
+    }
+
+    modifyRequest({
       variables: {
         request: {
-          // Update existing sender request if it was cloned from a request log
-          // and it doesn't have a response body yet (e.g. not sent yet).
-          ...(senderReq && senderReq.sourceRequestLogID && !senderReq.response && { id: senderReq.id }),
+          id: interceptedReq.id,
           url,
           method,
-          proto: httpProtoMap.get(proto),
+          proto: httpProtoMap.get(proto) || HttpProtocol.Http20,
           headers: headers.filter((kv) => kv.key !== ""),
           body: body || undefined,
         },
       },
-      onCompleted: ({ createOrUpdateSenderRequest }) => {
-        const { id } = createOrUpdateSenderRequest;
-        sendRequestAndPushRoute(id);
+      update(cache) {
+        cache.modify({
+          fields: {
+            interceptedRequests(existing: HttpRequest[], { readField }) {
+              return existing.filter((ref) => interceptedReq.id !== readField("id", ref));
+            },
+          },
+        });
       },
-    });
-  };
-
-  const sendRequestAndPushRoute = (id: string) => {
-    sendRequest({
-      errorPolicy: "all",
       onCompleted: () => {
-        router.push(`/sender?id=${id}`);
-      },
-      variables: {
-        id,
+        setURL("");
+        setMethod(HttpMethod.Get);
+        setBody("");
+        setQueryParams([]);
+        setHeaders([]);
+        console.log("done!");
+        router.replace(`/proxy/intercept`);
       },
     });
-  };
-
-  const handleFormSubmit: React.FormEventHandler = (e) => {
-    e.preventDefault();
-    createOrUpdateRequestAndSend();
   };
 
   return (
@@ -137,31 +150,26 @@ function EditRequest(): JSX.Element {
         <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
           <UrlBar
             method={method}
-            onMethodChange={setMethod}
+            onMethodChange={interceptedReq ? setMethod : undefined}
             url={url.toString()}
-            onUrlChange={handleURLChange}
+            onUrlChange={interceptedReq ? handleURLChange : undefined}
             proto={proto}
-            onProtoChange={setProto}
+            onProtoChange={interceptedReq ? setProto : undefined}
             sx={{ flex: "1 auto" }}
           />
           <Button
             variant="contained"
             disableElevation
-            sx={{ width: "8rem" }}
             type="submit"
-            disabled={createResult.loading || sendResult.loading}
+            disabled={!interceptedReq || modifyResult.loading}
+            startIcon={modifyResult.loading ? <CircularProgress size={22} /> : <SendIcon />}
           >
             Send
           </Button>
         </Box>
-        {createResult.error && (
+        {modifyResult.error && (
           <Alert severity="error" sx={{ mt: 1 }}>
-            {createResult.error.message}
-          </Alert>
-        )}
-        {sendResult.error && (
-          <Alert severity="error" sx={{ mt: 1 }}>
-            {sendResult.error.message}
+            {modifyResult.error.message}
           </Alert>
         )}
       </Box>
@@ -173,18 +181,18 @@ function EditRequest(): JSX.Element {
               Request
             </Typography>
             <RequestTabs
-              queryParams={queryParams}
-              headers={headers}
+              queryParams={interceptedReq ? queryParams : []}
+              headers={interceptedReq ? headers : []}
               body={body}
-              onQueryParamChange={handleQueryParamChange}
-              onQueryParamDelete={handleQueryParamDelete}
-              onHeaderChange={handleHeaderChange}
-              onHeaderDelete={handleHeaderDelete}
-              onBodyChange={setBody}
+              onQueryParamChange={interceptedReq ? handleQueryParamChange : undefined}
+              onQueryParamDelete={interceptedReq ? handleQueryParamDelete : undefined}
+              onHeaderChange={interceptedReq ? handleHeaderChange : undefined}
+              onHeaderDelete={interceptedReq ? handleHeaderDelete : undefined}
+              onBodyChange={interceptedReq ? setBody : undefined}
             />
           </Box>
           <Box sx={{ height: "100%", position: "relative", ml: 2, pb: 2 }}>
-            <Response response={response} />
+            <Response response={null} />
           </Box>
         </SplitPane>
       </Box>

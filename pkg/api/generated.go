@@ -131,6 +131,7 @@ type ComplexityRoot struct {
 		HTTPRequestLog       func(childComplexity int, id ulid.ULID) int
 		HTTPRequestLogFilter func(childComplexity int) int
 		HTTPRequestLogs      func(childComplexity int) int
+		InterceptedRequest   func(childComplexity int, id ulid.ULID) int
 		InterceptedRequests  func(childComplexity int) int
 		Projects             func(childComplexity int) int
 		Scope                func(childComplexity int) int
@@ -192,6 +193,7 @@ type QueryResolver interface {
 	SenderRequest(ctx context.Context, id ulid.ULID) (*SenderRequest, error)
 	SenderRequests(ctx context.Context) ([]SenderRequest, error)
 	InterceptedRequests(ctx context.Context) ([]HTTPRequest, error)
+	InterceptedRequest(ctx context.Context, id ulid.ULID) (*HTTPRequest, error)
 }
 
 type executableSchema struct {
@@ -607,6 +609,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.HTTPRequestLogs(childComplexity), true
 
+	case "Query.interceptedRequest":
+		if e.complexity.Query.InterceptedRequest == nil {
+			break
+		}
+
+		args, err := ec.field_Query_interceptedRequest_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.InterceptedRequest(childComplexity, args["id"].(ulid.ULID)), true
+
 	case "Query.interceptedRequests":
 		if e.complexity.Query.InterceptedRequests == nil {
 			break
@@ -973,6 +987,7 @@ type Query {
   senderRequest(id: ID!): SenderRequest
   senderRequests: [SenderRequest!]!
   interceptedRequests: [HttpRequest!]!
+  interceptedRequest(id: ID!): HttpRequest
 }
 
 type Mutation {
@@ -1188,6 +1203,21 @@ func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs
 }
 
 func (ec *executionContext) field_Query_httpRequestLog_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 ulid.ULID
+	if tmp, ok := rawArgs["id"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+		arg0, err = ec.unmarshalNID2githubᚗcomᚋoklogᚋulidᚐULID(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["id"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_interceptedRequest_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
 	var arg0 ulid.ULID
@@ -3188,6 +3218,45 @@ func (ec *executionContext) _Query_interceptedRequests(ctx context.Context, fiel
 	res := resTmp.([]HTTPRequest)
 	fc.Result = res
 	return ec.marshalNHttpRequest2ᚕgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐHTTPRequestᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Query_interceptedRequest(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Query_interceptedRequest_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().InterceptedRequest(rctx, args["id"].(ulid.ULID))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*HTTPRequest)
+	fc.Result = res
+	return ec.marshalOHttpRequest2ᚖgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐHTTPRequest(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query___type(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -5805,6 +5874,17 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 				}
 				return res
 			})
+		case "interceptedRequest":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_interceptedRequest(ctx, field)
+				return res
+			})
 		case "__type":
 			out.Values[i] = ec._Query___type(ctx, field)
 		case "__schema":
@@ -7115,6 +7195,13 @@ func (ec *executionContext) marshalOHttpProtocol2ᚖgithubᚗcomᚋdstotijnᚋhe
 		return graphql.Null
 	}
 	return v
+}
+
+func (ec *executionContext) marshalOHttpRequest2ᚖgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐHTTPRequest(ctx context.Context, sel ast.SelectionSet, v *HTTPRequest) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._HttpRequest(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalOHttpRequestLog2ᚖgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐHTTPRequestLog(ctx context.Context, sel ast.SelectionSet, v *HTTPRequestLog) graphql.Marshaler {

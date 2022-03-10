@@ -148,6 +148,7 @@ type Query {
   senderRequest(id: ID!): SenderRequest
   senderRequests: [SenderRequest!]!
   interceptedRequests: [HttpRequest!]!
+  interceptedRequest(id: ID!): HttpRequest
 }
 
 type Mutation {
