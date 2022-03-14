@@ -138,6 +138,10 @@ type ModifyRequestResult {
   success: Boolean!
 }
 
+type CancelRequestResult {
+  success: Boolean!
+}
+
 type Query {
   httpRequestLog(id: ID!): HttpRequestLog
   httpRequestLogs: [HttpRequestLog!]!
@@ -167,6 +171,7 @@ type Mutation {
   sendRequest(id: ID!): SenderRequest!
   deleteSenderRequests: DeleteSenderRequestsResult!
   modifyRequest(request: ModifyRequestInput!): ModifyRequestResult!
+  cancelRequest(id: ID!): CancelRequestResult!
 }
 
 enum HttpMethod {

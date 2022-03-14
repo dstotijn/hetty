@@ -144,6 +144,11 @@ func (svc *Service) ModifyRequest(reqID ulid.ULID, modReq *http.Request) error {
 	}
 }
 
+// CancelRequest ensures an intercepted request is dropped.
+func (svc *Service) CancelRequest(reqID ulid.ULID) error {
+	return svc.ModifyRequest(reqID, nil)
+}
+
 func (svc *Service) ClearRequests() {
 	svc.mu.Lock()
 	defer svc.mu.Unlock()

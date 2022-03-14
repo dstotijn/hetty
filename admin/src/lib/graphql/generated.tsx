@@ -18,6 +18,11 @@ export type Scalars = {
   URL: any;
 };
 
+export type CancelRequestResult = {
+  __typename?: 'CancelRequestResult';
+  success: Scalars['Boolean'];
+};
+
 export type ClearHttpRequestLogResult = {
   __typename?: 'ClearHTTPRequestLogResult';
   success: Scalars['Boolean'];
@@ -127,6 +132,7 @@ export type ModifyRequestResult = {
 
 export type Mutation = {
   __typename?: 'Mutation';
+  cancelRequest: CancelRequestResult;
   clearHTTPRequestLog: ClearHttpRequestLogResult;
   closeProject: CloseProjectResult;
   createOrUpdateSenderRequest: SenderRequest;
@@ -140,6 +146,11 @@ export type Mutation = {
   setHttpRequestLogFilter?: Maybe<HttpRequestLogFilter>;
   setScope: Array<ScopeRule>;
   setSenderRequestFilter?: Maybe<SenderRequestFilter>;
+};
+
+
+export type MutationCancelRequestArgs = {
+  id: Scalars['ID'];
 };
 
 
@@ -285,6 +296,13 @@ export type SenderRequestInput = {
   url: Scalars['URL'];
 };
 
+export type CancelRequestMutationVariables = Exact<{
+  id: Scalars['ID'];
+}>;
+
+
+export type CancelRequestMutation = { __typename?: 'Mutation', cancelRequest: { __typename?: 'CancelRequestResult', success: boolean } };
+
 export type GetInterceptedRequestQueryVariables = Exact<{
   id: Scalars['ID'];
 }>;
@@ -410,6 +428,39 @@ export type GetInterceptedRequestsQueryVariables = Exact<{ [key: string]: never;
 export type GetInterceptedRequestsQuery = { __typename?: 'Query', interceptedRequests: Array<{ __typename?: 'HttpRequest', id: string, url: any, method: HttpMethod }> };
 
 
+export const CancelRequestDocument = gql`
+    mutation CancelRequest($id: ID!) {
+  cancelRequest(id: $id) {
+    success
+  }
+}
+    `;
+export type CancelRequestMutationFn = Apollo.MutationFunction<CancelRequestMutation, CancelRequestMutationVariables>;
+
+/**
+ * __useCancelRequestMutation__
+ *
+ * To run a mutation, you first call `useCancelRequestMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useCancelRequestMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [cancelRequestMutation, { data, loading, error }] = useCancelRequestMutation({
+ *   variables: {
+ *      id: // value for 'id'
+ *   },
+ * });
+ */
+export function useCancelRequestMutation(baseOptions?: Apollo.MutationHookOptions<CancelRequestMutation, CancelRequestMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useMutation<CancelRequestMutation, CancelRequestMutationVariables>(CancelRequestDocument, options);
+      }
+export type CancelRequestMutationHookResult = ReturnType<typeof useCancelRequestMutation>;
+export type CancelRequestMutationResult = Apollo.MutationResult<CancelRequestMutation>;
+export type CancelRequestMutationOptions = Apollo.BaseMutationOptions<CancelRequestMutation, CancelRequestMutationVariables>;
 export const GetInterceptedRequestDocument = gql`
     query GetInterceptedRequest($id: ID!) {
   interceptedRequest(id: $id) {

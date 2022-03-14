@@ -12,6 +12,10 @@ import (
 	"github.com/oklog/ulid"
 )
 
+type CancelRequestResult struct {
+	Success bool `json:"success"`
+}
+
 type ClearHTTPRequestLogResult struct {
 	Success bool `json:"success"`
 }

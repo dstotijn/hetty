@@ -45,6 +45,10 @@ type DirectiveRoot struct {
 }
 
 type ComplexityRoot struct {
+	CancelRequestResult struct {
+		Success func(childComplexity int) int
+	}
+
 	ClearHTTPRequestLogResult struct {
 		Success func(childComplexity int) int
 	}
@@ -105,6 +109,7 @@ type ComplexityRoot struct {
 	}
 
 	Mutation struct {
+		CancelRequest                         func(childComplexity int, id ulid.ULID) int
 		ClearHTTPRequestLog                   func(childComplexity int) int
 		CloseProject                          func(childComplexity int) int
 		CreateOrUpdateSenderRequest           func(childComplexity int, request SenderRequestInput) int
@@ -182,6 +187,7 @@ type MutationResolver interface {
 	SendRequest(ctx context.Context, id ulid.ULID) (*SenderRequest, error)
 	DeleteSenderRequests(ctx context.Context) (*DeleteSenderRequestsResult, error)
 	ModifyRequest(ctx context.Context, request ModifyRequestInput) (*ModifyRequestResult, error)
+	CancelRequest(ctx context.Context, id ulid.ULID) (*CancelRequestResult, error)
 }
 type QueryResolver interface {
 	HTTPRequestLog(ctx context.Context, id ulid.ULID) (*HTTPRequestLog, error)
@@ -210,6 +216,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 	ec := executionContext{nil, e}
 	_ = ec
 	switch typeName + "." + field {
+
+	case "CancelRequestResult.success":
+		if e.complexity.CancelRequestResult.Success == nil {
+			break
+		}
+
+		return e.complexity.CancelRequestResult.Success(childComplexity), true
 
 	case "ClearHTTPRequestLogResult.success":
 		if e.complexity.ClearHTTPRequestLogResult.Success == nil {
@@ -413,6 +426,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.ModifyRequestResult.Success(childComplexity), true
+
+	case "Mutation.cancelRequest":
+		if e.complexity.Mutation.CancelRequest == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_cancelRequest_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.CancelRequest(childComplexity, args["id"].(ulid.ULID)), true
 
 	case "Mutation.clearHTTPRequestLog":
 		if e.complexity.Mutation.ClearHTTPRequestLog == nil {
@@ -977,6 +1002,10 @@ type ModifyRequestResult {
   success: Boolean!
 }
 
+type CancelRequestResult {
+  success: Boolean!
+}
+
 type Query {
   httpRequestLog(id: ID!): HttpRequestLog
   httpRequestLogs: [HttpRequestLog!]!
@@ -1006,6 +1035,7 @@ type Mutation {
   sendRequest(id: ID!): SenderRequest!
   deleteSenderRequests: DeleteSenderRequestsResult!
   modifyRequest(request: ModifyRequestInput!): ModifyRequestResult!
+  cancelRequest(id: ID!): CancelRequestResult!
 }
 
 enum HttpMethod {
@@ -1036,6 +1066,21 @@ var parsedSchema = gqlparser.MustLoadSchema(sources...)
 // endregion ************************** generated!.gotpl **************************
 
 // region    ***************************** args.gotpl *****************************
+
+func (ec *executionContext) field_Mutation_cancelRequest_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 ulid.ULID
+	if tmp, ok := rawArgs["id"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+		arg0, err = ec.unmarshalNID2githubᚗcomᚋoklogᚋulidᚐULID(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["id"] = arg0
+	return args, nil
+}
 
 func (ec *executionContext) field_Mutation_createOrUpdateSenderRequest_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
@@ -1284,6 +1329,41 @@ func (ec *executionContext) field___Type_fields_args(ctx context.Context, rawArg
 // endregion ************************** directives.gotpl **************************
 
 // region    **************************** field.gotpl *****************************
+
+func (ec *executionContext) _CancelRequestResult_success(ctx context.Context, field graphql.CollectedField, obj *CancelRequestResult) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "CancelRequestResult",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Success, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
 
 func (ec *executionContext) _ClearHTTPRequestLogResult_success(ctx context.Context, field graphql.CollectedField, obj *ClearHTTPRequestLogResult) (ret graphql.Marshaler) {
 	defer func() {
@@ -2796,6 +2876,48 @@ func (ec *executionContext) _Mutation_modifyRequest(ctx context.Context, field g
 	res := resTmp.(*ModifyRequestResult)
 	fc.Result = res
 	return ec.marshalNModifyRequestResult2ᚖgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐModifyRequestResult(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Mutation_cancelRequest(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_cancelRequest_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().CancelRequest(rctx, args["id"].(ulid.ULID))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*CancelRequestResult)
+	fc.Result = res
+	return ec.marshalNCancelRequestResult2ᚖgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐCancelRequestResult(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Project_id(ctx context.Context, field graphql.CollectedField, obj *Project) (ret graphql.Marshaler) {
@@ -5279,6 +5401,33 @@ func (ec *executionContext) unmarshalInputSenderRequestInput(ctx context.Context
 
 // region    **************************** object.gotpl ****************************
 
+var cancelRequestResultImplementors = []string{"CancelRequestResult"}
+
+func (ec *executionContext) _CancelRequestResult(ctx context.Context, sel ast.SelectionSet, obj *CancelRequestResult) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, cancelRequestResultImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("CancelRequestResult")
+		case "success":
+			out.Values[i] = ec._CancelRequestResult_success(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var clearHTTPRequestLogResultImplementors = []string{"ClearHTTPRequestLogResult"}
 
 func (ec *executionContext) _ClearHTTPRequestLogResult(ctx context.Context, sel ast.SelectionSet, obj *ClearHTTPRequestLogResult) graphql.Marshaler {
@@ -5694,6 +5843,11 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			}
 		case "modifyRequest":
 			out.Values[i] = ec._Mutation_modifyRequest(ctx, field)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "cancelRequest":
+			out.Values[i] = ec._Mutation_cancelRequest(ctx, field)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
@@ -6301,6 +6455,20 @@ func (ec *executionContext) marshalNBoolean2bool(ctx context.Context, sel ast.Se
 		}
 	}
 	return res
+}
+
+func (ec *executionContext) marshalNCancelRequestResult2githubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐCancelRequestResult(ctx context.Context, sel ast.SelectionSet, v CancelRequestResult) graphql.Marshaler {
+	return ec._CancelRequestResult(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNCancelRequestResult2ᚖgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐCancelRequestResult(ctx context.Context, sel ast.SelectionSet, v *CancelRequestResult) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._CancelRequestResult(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNClearHTTPRequestLogResult2githubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐClearHTTPRequestLogResult(ctx context.Context, sel ast.SelectionSet, v ClearHTTPRequestLogResult) graphql.Marshaler {

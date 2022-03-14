@@ -581,6 +581,15 @@ func (r *mutationResolver) ModifyRequest(ctx context.Context, input ModifyReques
 	return &ModifyRequestResult{Success: true}, nil
 }
 
+func (r *mutationResolver) CancelRequest(ctx context.Context, id ulid.ULID) (*CancelRequestResult, error) {
+	err := r.InterceptService.CancelRequest(id)
+	if err != nil {
+		return nil, fmt.Errorf("could not cancel http request: %w", err)
+	}
+
+	return &CancelRequestResult{Success: true}, nil
+}
+
 func parseSenderRequest(req sender.Request) (SenderRequest, error) {
 	method := HTTPMethod(req.Method)
 	if method != "" && !method.IsValid() {

@@ -1,3 +1,4 @@
+import CancelIcon from "@mui/icons-material/Cancel";
 import SendIcon from "@mui/icons-material/Send";
 import { Alert, Box, Button, CircularProgress, Typography } from "@mui/material";
 import { useRouter } from "next/router";
@@ -12,6 +13,7 @@ import UrlBar, { HttpMethod, HttpProto, httpProtoMap } from "lib/components/UrlB
 import {
   HttpProtocol,
   HttpRequest,
+  useCancelRequestMutation,
   useGetInterceptedRequestQuery,
   useModifyRequestMutation,
 } from "lib/graphql/generated";
@@ -27,7 +29,6 @@ function EditRequest(): JSX.Element {
     // If there's no request selected and there are pending reqs, navigate to
     // the first one in the list. This helps you quickly review/handle reqs
     // without having to manually select the next one in the requests table.
-    console.log(router.isReady, router.query.id, interceptedRequests?.length);
     if (router.isReady && !router.query.id && interceptedRequests?.length) {
       const req = interceptedRequests[0];
       router.replace(`/proxy/intercept?id=${req.id}`);
@@ -104,6 +105,16 @@ function EditRequest(): JSX.Element {
   const interceptedReq = reqId ? getReqResult?.data?.interceptedRequest : undefined;
 
   const [modifyRequest, modifyResult] = useModifyRequestMutation();
+  const [cancelRequest, cancelResult] = useCancelRequestMutation();
+
+  const onActionCompleted = () => {
+    setURL("");
+    setMethod(HttpMethod.Get);
+    setBody("");
+    setQueryParams([]);
+    setHeaders([]);
+    router.replace(`/proxy/intercept`);
+  };
 
   const handleFormSubmit: React.FormEventHandler = (e) => {
     e.preventDefault();
@@ -132,15 +143,29 @@ function EditRequest(): JSX.Element {
           },
         });
       },
-      onCompleted: () => {
-        setURL("");
-        setMethod(HttpMethod.Get);
-        setBody("");
-        setQueryParams([]);
-        setHeaders([]);
-        console.log("done!");
-        router.replace(`/proxy/intercept`);
+      onCompleted: onActionCompleted,
+    });
+  };
+
+  const handleCancelClick = () => {
+    if (!interceptedReq) {
+      return;
+    }
+
+    cancelRequest({
+      variables: {
+        id: interceptedReq.id,
       },
+      update(cache) {
+        cache.modify({
+          fields: {
+            interceptedRequests(existing: HttpRequest[], { readField }) {
+              return existing.filter((ref) => interceptedReq.id !== readField("id", ref));
+            },
+          },
+        });
+      },
+      onCompleted: onActionCompleted,
     });
   };
 
@@ -161,15 +186,30 @@ function EditRequest(): JSX.Element {
             variant="contained"
             disableElevation
             type="submit"
-            disabled={!interceptedReq || modifyResult.loading}
+            disabled={!interceptedReq || modifyResult.loading || cancelResult.loading}
             startIcon={modifyResult.loading ? <CircularProgress size={22} /> : <SendIcon />}
           >
             Send
+          </Button>
+          <Button
+            variant="contained"
+            color="error"
+            disableElevation
+            onClick={handleCancelClick}
+            disabled={!interceptedReq || modifyResult.loading || cancelResult.loading}
+            startIcon={cancelResult.loading ? <CircularProgress size={22} /> : <CancelIcon />}
+          >
+            Cancel
           </Button>
         </Box>
         {modifyResult.error && (
           <Alert severity="error" sx={{ mt: 1 }}>
             {modifyResult.error.message}
+          </Alert>
+        )}
+        {cancelResult.error && (
+          <Alert severity="error" sx={{ mt: 1 }}>
+            {cancelResult.error.message}
           </Alert>
         )}
       </Box>
