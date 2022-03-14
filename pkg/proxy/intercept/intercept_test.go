@@ -28,7 +28,8 @@ func TestRequestModifier(t *testing.T) {
 
 		logger, _ := zap.NewDevelopment()
 		svc := intercept.NewService(intercept.Config{
-			Logger: logger.Sugar(),
+			Logger:  logger.Sugar(),
+			Enabled: true,
 		})
 
 		reqID := ulid.MustNew(ulid.Timestamp(time.Now()), ulidEntropy)
@@ -44,7 +45,8 @@ func TestRequestModifier(t *testing.T) {
 
 		logger, _ := zap.NewDevelopment()
 		svc := intercept.NewService(intercept.Config{
-			Logger: logger.Sugar(),
+			Logger:  logger.Sugar(),
+			Enabled: true,
 		})
 
 		ctx, cancel := context.WithCancel(context.Background())
@@ -65,7 +67,7 @@ func TestRequestModifier(t *testing.T) {
 
 		err := svc.ModifyRequest(reqID, nil)
 		if !errors.Is(err, intercept.ErrRequestDone) {
-			t.Fatalf("expected `interept.ErrRequestDone`, got: %v", err)
+			t.Fatalf("expected `intercept.ErrRequestDone`, got: %v", err)
 		}
 	})
 
@@ -83,7 +85,8 @@ func TestRequestModifier(t *testing.T) {
 
 		logger, _ := zap.NewDevelopment()
 		svc := intercept.NewService(intercept.Config{
-			Logger: logger.Sugar(),
+			Logger:  logger.Sugar(),
+			Enabled: true,
 		})
 
 		var got *http.Request

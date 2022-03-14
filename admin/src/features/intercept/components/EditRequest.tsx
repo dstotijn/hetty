@@ -1,11 +1,13 @@
 import CancelIcon from "@mui/icons-material/Cancel";
 import SendIcon from "@mui/icons-material/Send";
-import { Alert, Box, Button, CircularProgress, Typography } from "@mui/material";
+import SettingsIcon from "@mui/icons-material/Settings";
+import { Alert, Box, Button, CircularProgress, IconButton, Tooltip, Typography } from "@mui/material";
 import { useRouter } from "next/router";
 import React, { useEffect, useState } from "react";
 
 import { useInterceptedRequests } from "lib/InterceptedRequestsContext";
 import { KeyValuePair, sortKeyValuePairs } from "lib/components/KeyValuePair";
+import Link from "lib/components/Link";
 import RequestTabs from "lib/components/RequestTabs";
 import Response from "lib/components/Response";
 import SplitPane from "lib/components/SplitPane";
@@ -201,6 +203,11 @@ function EditRequest(): JSX.Element {
           >
             Cancel
           </Button>
+          <Tooltip title="Intercept settings">
+            <IconButton LinkComponent={Link} href="/settings#intercept">
+              <SettingsIcon />
+            </IconButton>
+          </Tooltip>
         </Box>
         {modifyResult.error && (
           <Alert severity="error" sx={{ mt: 1 }}>

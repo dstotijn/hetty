@@ -34,6 +34,7 @@ type Service interface {
 	SetScopeRules(ctx context.Context, rules []scope.Rule) error
 	SetRequestLogFindFilter(ctx context.Context, filter reqlog.FindRequestsFilter) error
 	SetSenderRequestFindFilter(ctx context.Context, filter sender.FindRequestsFilter) error
+	UpdateInterceptSettings(ctx context.Context, settings intercept.Settings) error
 }
 
 type service struct {
@@ -55,13 +56,19 @@ type Project struct {
 }
 
 type Settings struct {
+	// Request log settings
 	ReqLogBypassOutOfScope bool
 	ReqLogOnlyFindInScope  bool
 	ReqLogSearchExpr       search.Expression
 
+	// Intercept settings
+	InterceptEnabled bool
+
+	// Sender settings
 	SenderOnlyFindInScope bool
 	SenderSearchExpr      search.Expression
 
+	// Scope settings
 	ScopeRules []scope.Rule
 }
 
@@ -121,10 +128,12 @@ func (svc *service) CloseProject() error {
 	}
 
 	svc.activeProjectID = ulid.ULID{}
-	svc.interceptSvc.ClearRequests()
 	svc.reqLogSvc.SetActiveProjectID(ulid.ULID{})
 	svc.reqLogSvc.SetBypassOutOfScopeRequests(false)
 	svc.reqLogSvc.SetFindReqsFilter(reqlog.FindRequestsFilter{})
+	svc.interceptSvc.UpdateSettings(intercept.Settings{
+		Enabled: false,
+	})
 	svc.senderSvc.SetActiveProjectID(ulid.ULID{})
 	svc.senderSvc.SetFindReqsFilter(sender.FindRequestsFilter{})
 	svc.scope.SetRules(nil)
@@ -157,6 +166,7 @@ func (svc *service) OpenProject(ctx context.Context, projectID ulid.ULID) (Proje
 
 	svc.activeProjectID = project.ID
 
+	// Request log settings.
 	svc.reqLogSvc.SetFindReqsFilter(reqlog.FindRequestsFilter{
 		ProjectID:   project.ID,
 		OnlyInScope: project.Settings.ReqLogOnlyFindInScope,
@@ -165,6 +175,12 @@ func (svc *service) OpenProject(ctx context.Context, projectID ulid.ULID) (Proje
 	svc.reqLogSvc.SetBypassOutOfScopeRequests(project.Settings.ReqLogBypassOutOfScope)
 	svc.reqLogSvc.SetActiveProjectID(project.ID)
 
+	// Intercept settings.
+	svc.interceptSvc.UpdateSettings(intercept.Settings{
+		Enabled: project.Settings.InterceptEnabled,
+	})
+
+	// Sender settings.
 	svc.senderSvc.SetActiveProjectID(project.ID)
 	svc.senderSvc.SetFindReqsFilter(sender.FindRequestsFilter{
 		ProjectID:   project.ID,
@@ -172,6 +188,7 @@ func (svc *service) OpenProject(ctx context.Context, projectID ulid.ULID) (Proje
 		SearchExpr:  project.Settings.SenderSearchExpr,
 	})
 
+	// Scope settings.
 	svc.scope.SetRules(project.Settings.ScopeRules)
 
 	return project, nil
@@ -268,4 +285,22 @@ func (svc *service) SetSenderRequestFindFilter(ctx context.Context, filter sende
 
 func (svc *service) IsProjectActive(projectID ulid.ULID) bool {
 	return projectID.Compare(svc.activeProjectID) == 0
+}
+
+func (svc *service) UpdateInterceptSettings(ctx context.Context, settings intercept.Settings) error {
+	project, err := svc.ActiveProject(ctx)
+	if err != nil {
+		return err
+	}
+
+	project.Settings.InterceptEnabled = settings.Enabled
+
+	err = svc.repo.UpsertProject(ctx, project)
+	if err != nil {
+		return fmt.Errorf("proj: failed to update project: %w", err)
+	}
+
+	svc.interceptSvc.UpdateSettings(settings)
+
+	return nil
 }

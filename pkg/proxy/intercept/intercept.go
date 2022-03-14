@@ -31,10 +31,12 @@ type Service struct {
 	mu       *sync.RWMutex
 	requests map[ulid.ULID]Request
 	logger   log.Logger
+	enabled  bool
 }
 
 type Config struct {
-	Logger log.Logger
+	Logger  log.Logger
+	Enabled bool
 }
 
 // RequestIDs implements sort.Interface.
@@ -45,6 +47,7 @@ func NewService(cfg Config) *Service {
 		mu:       &sync.RWMutex{},
 		requests: make(map[ulid.ULID]Request),
 		logger:   cfg.Logger,
+		enabled:  cfg.Enabled,
 	}
 
 	if s.logger == nil {
@@ -90,6 +93,12 @@ func (svc *Service) Intercept(ctx context.Context, req *http.Request) (*http.Req
 	reqID, ok := proxy.RequestIDFromContext(ctx)
 	if !ok {
 		svc.logger.Errorw("Failed to intercept: request doesn't have an ID.")
+		return req, nil
+	}
+
+	if !svc.enabled {
+		// If intercept is disabled, return the incoming request as-is.
+		svc.logger.Debugw("Bypassed interception: module disabled.")
 		return req, nil
 	}
 
@@ -179,6 +188,15 @@ func (svc *Service) Requests() []*http.Request {
 	}
 
 	return reqs
+}
+
+func (svc *Service) UpdateSettings(settings Settings) {
+	// When updating from `enabled` -> `disabled`, clear any pending reqs.
+	if svc.enabled && !settings.Enabled {
+		svc.ClearRequests()
+	}
+
+	svc.enabled = settings.Enabled
 }
 
 // Request returns an intercepted request by ID. It's safe for concurrent use.

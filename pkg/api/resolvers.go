@@ -218,6 +218,11 @@ func (r *queryResolver) ActiveProject(ctx context.Context) (*Project, error) {
 		ID:       p.ID,
 		Name:     p.Name,
 		IsActive: r.ProjectService.IsProjectActive(p.ID),
+		Settings: &ProjectSettings{
+			Intercept: &InterceptSettings{
+				Enabled: p.Settings.InterceptEnabled,
+			},
+		},
 	}, nil
 }
 
@@ -588,6 +593,26 @@ func (r *mutationResolver) CancelRequest(ctx context.Context, id ulid.ULID) (*Ca
 	}
 
 	return &CancelRequestResult{Success: true}, nil
+}
+
+func (r *mutationResolver) UpdateInterceptSettings(
+	ctx context.Context,
+	input UpdateInterceptSettingsInput,
+) (*InterceptSettings, error) {
+	settings := intercept.Settings{
+		Enabled: input.Enabled,
+	}
+
+	err := r.ProjectService.UpdateInterceptSettings(ctx, settings)
+	if errors.Is(err, proj.ErrNoProject) {
+		return nil, noActiveProjectErr(ctx)
+	} else if err != nil {
+		return nil, fmt.Errorf("could not update intercept settings: %w", err)
+	}
+
+	return &InterceptSettings{
+		Enabled: settings.Enabled,
+	}, nil
 }
 
 func parseSenderRequest(req sender.Request) (SenderRequest, error) {

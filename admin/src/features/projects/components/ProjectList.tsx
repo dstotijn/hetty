@@ -2,6 +2,7 @@ import CloseIcon from "@mui/icons-material/Close";
 import DeleteIcon from "@mui/icons-material/Delete";
 import DescriptionIcon from "@mui/icons-material/Description";
 import LaunchIcon from "@mui/icons-material/Launch";
+import SettingsIcon from "@mui/icons-material/Settings";
 import { Alert } from "@mui/lab";
 import {
   Avatar,
@@ -29,6 +30,7 @@ import React, { useState } from "react";
 
 import useOpenProjectMutation from "../hooks/useOpenProjectMutation";
 
+import Link, { NextLinkComposed } from "lib/components/Link";
 import {
   ProjectsQuery,
   useCloseProjectMutation,
@@ -179,6 +181,11 @@ function ProjectList(): JSX.Element {
                   {project.name} {project.isActive && <em>(Active)</em>}
                 </ListItemText>
                 <ListItemSecondaryAction>
+                  <Tooltip title="Project settings">
+                    <IconButton LinkComponent={Link} href="/settings" disabled={!project.isActive}>
+                      <SettingsIcon />
+                    </IconButton>
+                  </Tooltip>
                   {project.isActive && (
                     <Tooltip title="Close project">
                       <IconButton onClick={() => closeProject()}>

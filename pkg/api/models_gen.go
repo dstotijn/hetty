@@ -82,6 +82,10 @@ type HTTPResponseLog struct {
 	Headers      []HTTPHeader `json:"headers"`
 }
 
+type InterceptSettings struct {
+	Enabled bool `json:"enabled"`
+}
+
 type ModifyRequestInput struct {
 	ID      ulid.ULID         `json:"id"`
 	URL     *url.URL          `json:"url"`
@@ -96,9 +100,14 @@ type ModifyRequestResult struct {
 }
 
 type Project struct {
-	ID       ulid.ULID `json:"id"`
-	Name     string    `json:"name"`
-	IsActive bool      `json:"isActive"`
+	ID       ulid.ULID        `json:"id"`
+	Name     string           `json:"name"`
+	IsActive bool             `json:"isActive"`
+	Settings *ProjectSettings `json:"settings"`
+}
+
+type ProjectSettings struct {
+	Intercept *InterceptSettings `json:"intercept"`
 }
 
 type ScopeHeader struct {
@@ -152,6 +161,10 @@ type SenderRequestInput struct {
 	Proto   *HTTPProtocol     `json:"proto"`
 	Headers []HTTPHeaderInput `json:"headers"`
 	Body    *string           `json:"body"`
+}
+
+type UpdateInterceptSettingsInput struct {
+	Enabled bool `json:"enabled"`
 }
 
 type HTTPMethod string

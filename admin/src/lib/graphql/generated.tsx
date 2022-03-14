@@ -116,6 +116,11 @@ export type HttpResponseLog = {
   statusReason: Scalars['String'];
 };
 
+export type InterceptSettings = {
+  __typename?: 'InterceptSettings';
+  enabled: Scalars['Boolean'];
+};
+
 export type ModifyRequestInput = {
   body?: InputMaybe<Scalars['String']>;
   headers?: InputMaybe<Array<HttpHeaderInput>>;
@@ -146,6 +151,7 @@ export type Mutation = {
   setHttpRequestLogFilter?: Maybe<HttpRequestLogFilter>;
   setScope: Array<ScopeRule>;
   setSenderRequestFilter?: Maybe<SenderRequestFilter>;
+  updateInterceptSettings: InterceptSettings;
 };
 
 
@@ -203,11 +209,22 @@ export type MutationSetSenderRequestFilterArgs = {
   filter?: InputMaybe<SenderRequestFilterInput>;
 };
 
+
+export type MutationUpdateInterceptSettingsArgs = {
+  input: UpdateInterceptSettingsInput;
+};
+
 export type Project = {
   __typename?: 'Project';
   id: Scalars['ID'];
   isActive: Scalars['Boolean'];
   name: Scalars['String'];
+  settings: ProjectSettings;
+};
+
+export type ProjectSettings = {
+  __typename?: 'ProjectSettings';
+  intercept: InterceptSettings;
 };
 
 export type Query = {
@@ -296,6 +313,10 @@ export type SenderRequestInput = {
   url: Scalars['URL'];
 };
 
+export type UpdateInterceptSettingsInput = {
+  enabled: Scalars['Boolean'];
+};
+
 export type CancelRequestMutationVariables = Exact<{
   id: Scalars['ID'];
 }>;
@@ -316,6 +337,11 @@ export type ModifyRequestMutationVariables = Exact<{
 
 
 export type ModifyRequestMutation = { __typename?: 'Mutation', modifyRequest: { __typename?: 'ModifyRequestResult', success: boolean } };
+
+export type ActiveProjectQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type ActiveProjectQuery = { __typename?: 'Query', activeProject?: { __typename?: 'Project', id: string, name: string, isActive: boolean, settings: { __typename?: 'ProjectSettings', intercept: { __typename?: 'InterceptSettings', enabled: boolean } } } | null };
 
 export type CloseProjectMutationVariables = Exact<{ [key: string]: never; }>;
 
@@ -421,6 +447,13 @@ export type GetSenderRequestsQueryVariables = Exact<{ [key: string]: never; }>;
 
 
 export type GetSenderRequestsQuery = { __typename?: 'Query', senderRequests: Array<{ __typename?: 'SenderRequest', id: string, url: any, method: HttpMethod, response?: { __typename?: 'HttpResponseLog', id: string, statusCode: number, statusReason: string } | null }> };
+
+export type UpdateInterceptSettingsMutationVariables = Exact<{
+  input: UpdateInterceptSettingsInput;
+}>;
+
+
+export type UpdateInterceptSettingsMutation = { __typename?: 'Mutation', updateInterceptSettings: { __typename?: 'InterceptSettings', enabled: boolean } };
 
 export type GetInterceptedRequestsQueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -537,6 +570,47 @@ export function useModifyRequestMutation(baseOptions?: Apollo.MutationHookOption
 export type ModifyRequestMutationHookResult = ReturnType<typeof useModifyRequestMutation>;
 export type ModifyRequestMutationResult = Apollo.MutationResult<ModifyRequestMutation>;
 export type ModifyRequestMutationOptions = Apollo.BaseMutationOptions<ModifyRequestMutation, ModifyRequestMutationVariables>;
+export const ActiveProjectDocument = gql`
+    query ActiveProject {
+  activeProject {
+    id
+    name
+    isActive
+    settings {
+      intercept {
+        enabled
+      }
+    }
+  }
+}
+    `;
+
+/**
+ * __useActiveProjectQuery__
+ *
+ * To run a query within a React component, call `useActiveProjectQuery` and pass it any options that fit your needs.
+ * When your component renders, `useActiveProjectQuery` returns an object from Apollo Client that contains loading, error, and data properties
+ * you can use to render your UI.
+ *
+ * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
+ *
+ * @example
+ * const { data, loading, error } = useActiveProjectQuery({
+ *   variables: {
+ *   },
+ * });
+ */
+export function useActiveProjectQuery(baseOptions?: Apollo.QueryHookOptions<ActiveProjectQuery, ActiveProjectQueryVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useQuery<ActiveProjectQuery, ActiveProjectQueryVariables>(ActiveProjectDocument, options);
+      }
+export function useActiveProjectLazyQuery(baseOptions?: Apollo.LazyQueryHookOptions<ActiveProjectQuery, ActiveProjectQueryVariables>) {
+          const options = {...defaultOptions, ...baseOptions}
+          return Apollo.useLazyQuery<ActiveProjectQuery, ActiveProjectQueryVariables>(ActiveProjectDocument, options);
+        }
+export type ActiveProjectQueryHookResult = ReturnType<typeof useActiveProjectQuery>;
+export type ActiveProjectLazyQueryHookResult = ReturnType<typeof useActiveProjectLazyQuery>;
+export type ActiveProjectQueryResult = Apollo.QueryResult<ActiveProjectQuery, ActiveProjectQueryVariables>;
 export const CloseProjectDocument = gql`
     mutation CloseProject {
   closeProject {
@@ -1166,6 +1240,39 @@ export function useGetSenderRequestsLazyQuery(baseOptions?: Apollo.LazyQueryHook
 export type GetSenderRequestsQueryHookResult = ReturnType<typeof useGetSenderRequestsQuery>;
 export type GetSenderRequestsLazyQueryHookResult = ReturnType<typeof useGetSenderRequestsLazyQuery>;
 export type GetSenderRequestsQueryResult = Apollo.QueryResult<GetSenderRequestsQuery, GetSenderRequestsQueryVariables>;
+export const UpdateInterceptSettingsDocument = gql`
+    mutation UpdateInterceptSettings($input: UpdateInterceptSettingsInput!) {
+  updateInterceptSettings(input: $input) {
+    enabled
+  }
+}
+    `;
+export type UpdateInterceptSettingsMutationFn = Apollo.MutationFunction<UpdateInterceptSettingsMutation, UpdateInterceptSettingsMutationVariables>;
+
+/**
+ * __useUpdateInterceptSettingsMutation__
+ *
+ * To run a mutation, you first call `useUpdateInterceptSettingsMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useUpdateInterceptSettingsMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [updateInterceptSettingsMutation, { data, loading, error }] = useUpdateInterceptSettingsMutation({
+ *   variables: {
+ *      input: // value for 'input'
+ *   },
+ * });
+ */
+export function useUpdateInterceptSettingsMutation(baseOptions?: Apollo.MutationHookOptions<UpdateInterceptSettingsMutation, UpdateInterceptSettingsMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useMutation<UpdateInterceptSettingsMutation, UpdateInterceptSettingsMutationVariables>(UpdateInterceptSettingsDocument, options);
+      }
+export type UpdateInterceptSettingsMutationHookResult = ReturnType<typeof useUpdateInterceptSettingsMutation>;
+export type UpdateInterceptSettingsMutationResult = Apollo.MutationResult<UpdateInterceptSettingsMutation>;
+export type UpdateInterceptSettingsMutationOptions = Apollo.BaseMutationOptions<UpdateInterceptSettingsMutation, UpdateInterceptSettingsMutationVariables>;
 export const GetInterceptedRequestsDocument = gql`
     query GetInterceptedRequests {
   interceptedRequests {

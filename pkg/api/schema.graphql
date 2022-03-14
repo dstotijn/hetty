@@ -30,6 +30,11 @@ type Project {
   id: ID!
   name: String!
   isActive: Boolean!
+  settings: ProjectSettings!
+}
+
+type ProjectSettings {
+  intercept: InterceptSettings!
 }
 
 type ScopeRule {
@@ -142,6 +147,14 @@ type CancelRequestResult {
   success: Boolean!
 }
 
+input UpdateInterceptSettingsInput {
+  enabled: Boolean!
+}
+
+type InterceptSettings {
+  enabled: Boolean!
+}
+
 type Query {
   httpRequestLog(id: ID!): HttpRequestLog
   httpRequestLogs: [HttpRequestLog!]!
@@ -172,6 +185,9 @@ type Mutation {
   deleteSenderRequests: DeleteSenderRequestsResult!
   modifyRequest(request: ModifyRequestInput!): ModifyRequestResult!
   cancelRequest(id: ID!): CancelRequestResult!
+  updateInterceptSettings(
+    input: UpdateInterceptSettingsInput!
+  ): InterceptSettings!
 }
 
 enum HttpMethod {

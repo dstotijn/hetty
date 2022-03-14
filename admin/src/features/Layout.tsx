@@ -41,6 +41,7 @@ export enum Page {
   ProxyLogs,
   Sender,
   Scope,
+  Settings,
 }
 
 const drawerWidth = 240;

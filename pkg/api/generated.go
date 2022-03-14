@@ -104,6 +104,10 @@ type ComplexityRoot struct {
 		StatusReason func(childComplexity int) int
 	}
 
+	InterceptSettings struct {
+		Enabled func(childComplexity int) int
+	}
+
 	ModifyRequestResult struct {
 		Success func(childComplexity int) int
 	}
@@ -123,12 +127,18 @@ type ComplexityRoot struct {
 		SetHTTPRequestLogFilter               func(childComplexity int, filter *HTTPRequestLogFilterInput) int
 		SetScope                              func(childComplexity int, scope []ScopeRuleInput) int
 		SetSenderRequestFilter                func(childComplexity int, filter *SenderRequestFilterInput) int
+		UpdateInterceptSettings               func(childComplexity int, input UpdateInterceptSettingsInput) int
 	}
 
 	Project struct {
 		ID       func(childComplexity int) int
 		IsActive func(childComplexity int) int
 		Name     func(childComplexity int) int
+		Settings func(childComplexity int) int
+	}
+
+	ProjectSettings struct {
+		Intercept func(childComplexity int) int
 	}
 
 	Query struct {
@@ -188,6 +198,7 @@ type MutationResolver interface {
 	DeleteSenderRequests(ctx context.Context) (*DeleteSenderRequestsResult, error)
 	ModifyRequest(ctx context.Context, request ModifyRequestInput) (*ModifyRequestResult, error)
 	CancelRequest(ctx context.Context, id ulid.ULID) (*CancelRequestResult, error)
+	UpdateInterceptSettings(ctx context.Context, input UpdateInterceptSettingsInput) (*InterceptSettings, error)
 }
 type QueryResolver interface {
 	HTTPRequestLog(ctx context.Context, id ulid.ULID) (*HTTPRequestLog, error)
@@ -420,6 +431,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.HTTPResponseLog.StatusReason(childComplexity), true
 
+	case "InterceptSettings.enabled":
+		if e.complexity.InterceptSettings.Enabled == nil {
+			break
+		}
+
+		return e.complexity.InterceptSettings.Enabled(childComplexity), true
+
 	case "ModifyRequestResult.success":
 		if e.complexity.ModifyRequestResult.Success == nil {
 			break
@@ -580,6 +598,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.SetSenderRequestFilter(childComplexity, args["filter"].(*SenderRequestFilterInput)), true
 
+	case "Mutation.updateInterceptSettings":
+		if e.complexity.Mutation.UpdateInterceptSettings == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateInterceptSettings_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.UpdateInterceptSettings(childComplexity, args["input"].(UpdateInterceptSettingsInput)), true
+
 	case "Project.id":
 		if e.complexity.Project.ID == nil {
 			break
@@ -600,6 +630,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Project.Name(childComplexity), true
+
+	case "Project.settings":
+		if e.complexity.Project.Settings == nil {
+			break
+		}
+
+		return e.complexity.Project.Settings(childComplexity), true
+
+	case "ProjectSettings.intercept":
+		if e.complexity.ProjectSettings.Intercept == nil {
+			break
+		}
+
+		return e.complexity.ProjectSettings.Intercept(childComplexity), true
 
 	case "Query.activeProject":
 		if e.complexity.Query.ActiveProject == nil {
@@ -894,6 +938,11 @@ type Project {
   id: ID!
   name: String!
   isActive: Boolean!
+  settings: ProjectSettings!
+}
+
+type ProjectSettings {
+  intercept: InterceptSettings!
 }
 
 type ScopeRule {
@@ -1006,6 +1055,14 @@ type CancelRequestResult {
   success: Boolean!
 }
 
+input UpdateInterceptSettingsInput {
+  enabled: Boolean!
+}
+
+type InterceptSettings {
+  enabled: Boolean!
+}
+
 type Query {
   httpRequestLog(id: ID!): HttpRequestLog
   httpRequestLogs: [HttpRequestLog!]!
@@ -1036,6 +1093,9 @@ type Mutation {
   deleteSenderRequests: DeleteSenderRequestsResult!
   modifyRequest(request: ModifyRequestInput!): ModifyRequestResult!
   cancelRequest(id: ID!): CancelRequestResult!
+  updateInterceptSettings(
+    input: UpdateInterceptSettingsInput!
+  ): InterceptSettings!
 }
 
 enum HttpMethod {
@@ -1229,6 +1289,21 @@ func (ec *executionContext) field_Mutation_setSenderRequestFilter_args(ctx conte
 		}
 	}
 	args["filter"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_updateInterceptSettings_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 UpdateInterceptSettingsInput
+	if tmp, ok := rawArgs["input"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
+		arg0, err = ec.unmarshalNUpdateInterceptSettingsInput2githubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐUpdateInterceptSettingsInput(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["input"] = arg0
 	return args, nil
 }
 
@@ -2330,6 +2405,41 @@ func (ec *executionContext) _HttpResponseLog_headers(ctx context.Context, field 
 	return ec.marshalNHttpHeader2ᚕgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐHTTPHeaderᚄ(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _InterceptSettings_enabled(ctx context.Context, field graphql.CollectedField, obj *InterceptSettings) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "InterceptSettings",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Enabled, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _ModifyRequestResult_success(ctx context.Context, field graphql.CollectedField, obj *ModifyRequestResult) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -2920,6 +3030,48 @@ func (ec *executionContext) _Mutation_cancelRequest(ctx context.Context, field g
 	return ec.marshalNCancelRequestResult2ᚖgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐCancelRequestResult(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Mutation_updateInterceptSettings(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_updateInterceptSettings_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().UpdateInterceptSettings(rctx, args["input"].(UpdateInterceptSettingsInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*InterceptSettings)
+	fc.Result = res
+	return ec.marshalNInterceptSettings2ᚖgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐInterceptSettings(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Project_id(ctx context.Context, field graphql.CollectedField, obj *Project) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -3023,6 +3175,76 @@ func (ec *executionContext) _Project_isActive(ctx context.Context, field graphql
 	res := resTmp.(bool)
 	fc.Result = res
 	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Project_settings(ctx context.Context, field graphql.CollectedField, obj *Project) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Project",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Settings, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*ProjectSettings)
+	fc.Result = res
+	return ec.marshalNProjectSettings2ᚖgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐProjectSettings(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _ProjectSettings_intercept(ctx context.Context, field graphql.CollectedField, obj *ProjectSettings) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "ProjectSettings",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Intercept, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*InterceptSettings)
+	fc.Result = res
+	return ec.marshalNInterceptSettings2ᚖgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐInterceptSettings(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query_httpRequestLog(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -5393,6 +5615,29 @@ func (ec *executionContext) unmarshalInputSenderRequestInput(ctx context.Context
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputUpdateInterceptSettingsInput(ctx context.Context, obj interface{}) (UpdateInterceptSettingsInput, error) {
+	var it UpdateInterceptSettingsInput
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	for k, v := range asMap {
+		switch k {
+		case "enabled":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("enabled"))
+			it.Enabled, err = ec.unmarshalNBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
 // endregion **************************** input.gotpl *****************************
 
 // region    ************************** interface.gotpl ***************************
@@ -5751,6 +5996,33 @@ func (ec *executionContext) _HttpResponseLog(ctx context.Context, sel ast.Select
 	return out
 }
 
+var interceptSettingsImplementors = []string{"InterceptSettings"}
+
+func (ec *executionContext) _InterceptSettings(ctx context.Context, sel ast.SelectionSet, obj *InterceptSettings) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, interceptSettingsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("InterceptSettings")
+		case "enabled":
+			out.Values[i] = ec._InterceptSettings_enabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var modifyRequestResultImplementors = []string{"ModifyRequestResult"}
 
 func (ec *executionContext) _ModifyRequestResult(ctx context.Context, sel ast.SelectionSet, obj *ModifyRequestResult) graphql.Marshaler {
@@ -5851,6 +6123,11 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		case "updateInterceptSettings":
+			out.Values[i] = ec._Mutation_updateInterceptSettings(ctx, field)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -5885,6 +6162,38 @@ func (ec *executionContext) _Project(ctx context.Context, sel ast.SelectionSet, 
 			}
 		case "isActive":
 			out.Values[i] = ec._Project_isActive(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "settings":
+			out.Values[i] = ec._Project_settings(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var projectSettingsImplementors = []string{"ProjectSettings"}
+
+func (ec *executionContext) _ProjectSettings(ctx context.Context, sel ast.SelectionSet, obj *ProjectSettings) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, projectSettingsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ProjectSettings")
+		case "intercept":
+			out.Values[i] = ec._ProjectSettings_intercept(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
@@ -6726,6 +7035,20 @@ func (ec *executionContext) marshalNInt2int(ctx context.Context, sel ast.Selecti
 	return res
 }
 
+func (ec *executionContext) marshalNInterceptSettings2githubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐInterceptSettings(ctx context.Context, sel ast.SelectionSet, v InterceptSettings) graphql.Marshaler {
+	return ec._InterceptSettings(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNInterceptSettings2ᚖgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐInterceptSettings(ctx context.Context, sel ast.SelectionSet, v *InterceptSettings) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._InterceptSettings(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNModifyRequestInput2githubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐModifyRequestInput(ctx context.Context, v interface{}) (ModifyRequestInput, error) {
 	res, err := ec.unmarshalInputModifyRequestInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -6791,6 +7114,16 @@ func (ec *executionContext) marshalNProject2ᚕgithubᚗcomᚋdstotijnᚋhetty�
 	}
 
 	return ret
+}
+
+func (ec *executionContext) marshalNProjectSettings2ᚖgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐProjectSettings(ctx context.Context, sel ast.SelectionSet, v *ProjectSettings) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._ProjectSettings(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNScopeRule2githubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐScopeRule(ctx context.Context, sel ast.SelectionSet, v ScopeRule) graphql.Marshaler {
@@ -6979,6 +7312,11 @@ func (ec *executionContext) marshalNURL2ᚖnetᚋurlᚐURL(ctx context.Context, 
 		}
 	}
 	return res
+}
+
+func (ec *executionContext) unmarshalNUpdateInterceptSettingsInput2githubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐUpdateInterceptSettingsInput(ctx context.Context, v interface{}) (UpdateInterceptSettingsInput, error) {
+	res, err := ec.unmarshalInputUpdateInterceptSettingsInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalN__Directive2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐDirective(ctx context.Context, sel ast.SelectionSet, v introspection.Directive) graphql.Marshaler {
