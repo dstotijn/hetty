@@ -1,51 +1,60 @@
-package sender
+package intercept
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
+	"io"
+	"io/ioutil"
+	"net/http"
 	"strings"
 
-	"github.com/oklog/ulid"
-
-	"github.com/dstotijn/hetty/pkg/reqlog"
 	"github.com/dstotijn/hetty/pkg/scope"
 	"github.com/dstotijn/hetty/pkg/search"
 )
 
-var senderReqSearchKeyFns = map[string]func(req Request) string{
-	"req.id":    func(req Request) string { return req.ID.String() },
-	"req.proto": func(req Request) string { return req.Proto },
-	"req.url": func(req Request) string {
+var reqFilterKeyFns = map[string]func(req *http.Request) (string, error){
+	"proto": func(req *http.Request) (string, error) { return req.Proto, nil },
+	"url": func(req *http.Request) (string, error) {
 		if req.URL == nil {
-			return ""
+			return "", nil
 		}
-		return req.URL.String()
+		return req.URL.String(), nil
 	},
-	"req.method":    func(req Request) string { return req.Method },
-	"req.body":      func(req Request) string { return string(req.Body) },
-	"req.timestamp": func(req Request) string { return ulid.Time(req.ID.Time()).String() },
+	"method": func(req *http.Request) (string, error) { return req.Method, nil },
+	"body": func(req *http.Request) (string, error) {
+		if req.Body == nil {
+			return "", nil
+		}
+
+		body, err := io.ReadAll(req.Body)
+		if err != nil {
+			return "", err
+		}
+
+		req.Body = ioutil.NopCloser(bytes.NewBuffer(body))
+		return string(body), nil
+	},
 }
 
-// TODO: Request and response headers search key functions.
-
-// Matches returns true if the supplied search expression evaluates to true.
-func (req Request) Matches(expr search.Expression) (bool, error) {
+// MatchRequestFilter returns true if an HTTP request matches the request filter expression.
+func MatchRequestFilter(req *http.Request, expr search.Expression) (bool, error) {
 	switch e := expr.(type) {
 	case search.PrefixExpression:
-		return req.matchPrefixExpr(e)
+		return matchReqPrefixExpr(req, e)
 	case search.InfixExpression:
-		return req.matchInfixExpr(e)
+		return matchReqInfixExpr(req, e)
 	case search.StringLiteral:
-		return req.matchStringLiteral(e)
+		return matchReqStringLiteral(req, e)
 	default:
 		return false, fmt.Errorf("expression type (%T) not supported", expr)
 	}
 }
 
-func (req Request) matchPrefixExpr(expr search.PrefixExpression) (bool, error) {
+func matchReqPrefixExpr(req *http.Request, expr search.PrefixExpression) (bool, error) {
 	switch expr.Operator {
 	case search.TokOpNot:
-		match, err := req.Matches(expr.Right)
+		match, err := MatchRequestFilter(req, expr.Right)
 		if err != nil {
 			return false, err
 		}
@@ -56,27 +65,27 @@ func (req Request) matchPrefixExpr(expr search.PrefixExpression) (bool, error) {
 	}
 }
 
-func (req Request) matchInfixExpr(expr search.InfixExpression) (bool, error) {
+func matchReqInfixExpr(req *http.Request, expr search.InfixExpression) (bool, error) {
 	switch expr.Operator {
 	case search.TokOpAnd:
-		left, err := req.Matches(expr.Left)
+		left, err := MatchRequestFilter(req, expr.Left)
 		if err != nil {
 			return false, err
 		}
 
-		right, err := req.Matches(expr.Right)
+		right, err := MatchRequestFilter(req, expr.Right)
 		if err != nil {
 			return false, err
 		}
 
 		return left && right, nil
 	case search.TokOpOr:
-		left, err := req.Matches(expr.Left)
+		left, err := MatchRequestFilter(req, expr.Left)
 		if err != nil {
 			return false, err
 		}
 
-		right, err := req.Matches(expr.Right)
+		right, err := MatchRequestFilter(req, expr.Right)
 		if err != nil {
 			return false, err
 		}
@@ -89,7 +98,10 @@ func (req Request) matchInfixExpr(expr search.InfixExpression) (bool, error) {
 		return false, errors.New("left operand must be a string literal")
 	}
 
-	leftVal := req.getMappedStringLiteral(left.Value)
+	leftVal, err := getMappedStringLiteralFromReq(req, left.Value)
+	if err != nil {
+		return false, fmt.Errorf("failed to get string literal from request for left operand: %w", err)
+	}
 
 	if expr.Operator == search.TokOpRe || expr.Operator == search.TokOpNotRe {
 		right, ok := expr.Right.(search.RegexpLiteral)
@@ -110,7 +122,10 @@ func (req Request) matchInfixExpr(expr search.InfixExpression) (bool, error) {
 		return false, errors.New("right operand must be a string literal")
 	}
 
-	rightVal := req.getMappedStringLiteral(right.Value)
+	rightVal, err := getMappedStringLiteralFromReq(req, right.Value)
+	if err != nil {
+		return false, fmt.Errorf("failed to get string literal from request for right operand: %w", err)
+	}
 
 	switch expr.Operator {
 	case search.TokOpEq:
@@ -134,56 +149,35 @@ func (req Request) matchInfixExpr(expr search.InfixExpression) (bool, error) {
 	}
 }
 
-func (req Request) getMappedStringLiteral(s string) string {
-	switch {
-	case strings.HasPrefix(s, "req."):
-		fn, ok := senderReqSearchKeyFns[s]
-		if ok {
-			return fn(req)
-		}
-	case strings.HasPrefix(s, "res."):
-		if req.Response == nil {
-			return ""
-		}
-
-		fn, ok := reqlog.ResLogSearchKeyFns[s]
-		if ok {
-			return fn(*req.Response)
-		}
+func getMappedStringLiteralFromReq(req *http.Request, s string) (string, error) {
+	fn, ok := reqFilterKeyFns[s]
+	if ok {
+		return fn(req)
 	}
 
-	return s
+	return s, nil
 }
 
-func (req Request) matchStringLiteral(strLiteral search.StringLiteral) (bool, error) {
-	for _, fn := range senderReqSearchKeyFns {
-		if strings.Contains(
-			strings.ToLower(fn(req)),
-			strings.ToLower(strLiteral.Value),
-		) {
-			return true, nil
+func matchReqStringLiteral(req *http.Request, strLiteral search.StringLiteral) (bool, error) {
+	for _, fn := range reqFilterKeyFns {
+		value, err := fn(req)
+		if err != nil {
+			return false, err
 		}
-	}
 
-	if req.Response != nil {
-		for _, fn := range reqlog.ResLogSearchKeyFns {
-			if strings.Contains(
-				strings.ToLower(fn(*req.Response)),
-				strings.ToLower(strLiteral.Value),
-			) {
-				return true, nil
-			}
+		if strings.Contains(strings.ToLower(value), strings.ToLower(strLiteral.Value)) {
+			return true, nil
 		}
 	}
 
 	return false, nil
 }
 
-func (req Request) MatchScope(s *scope.Scope) bool {
+func MatchRequestScope(req *http.Request, s *scope.Scope) (bool, error) {
 	for _, rule := range s.Rules() {
 		if rule.URL != nil && req.URL != nil {
 			if matches := rule.URL.MatchString(req.URL.String()); matches {
-				return true
+				return true, nil
 			}
 		}
 
@@ -204,24 +198,32 @@ func (req Request) MatchScope(s *scope.Scope) bool {
 					}
 				}
 			}
+
 			// When only key or value is set, match on whatever is set.
 			// When both are set, both must match.
 			switch {
 			case rule.Header.Key != nil && rule.Header.Value == nil && keyMatches:
-				return true
+				return true, nil
 			case rule.Header.Key == nil && rule.Header.Value != nil && valueMatches:
-				return true
+				return true, nil
 			case rule.Header.Key != nil && rule.Header.Value != nil && keyMatches && valueMatches:
-				return true
+				return true, nil
 			}
 		}
 
 		if rule.Body != nil {
-			if matches := rule.Body.Match(req.Body); matches {
-				return true
+			body, err := io.ReadAll(req.Body)
+			if err != nil {
+				return false, fmt.Errorf("failed to read request body: %w", err)
+			}
+
+			req.Body = ioutil.NopCloser(bytes.NewBuffer(body))
+
+			if matches := rule.Body.Match(body); matches {
+				return true, nil
 			}
 		}
 	}
 
-	return false
+	return false, nil
 }

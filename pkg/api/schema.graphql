@@ -149,10 +149,12 @@ type CancelRequestResult {
 
 input UpdateInterceptSettingsInput {
   enabled: Boolean!
+  requestFilter: String
 }
 
 type InterceptSettings {
   enabled: Boolean!
+  requestFilter: String
 }
 
 type Query {

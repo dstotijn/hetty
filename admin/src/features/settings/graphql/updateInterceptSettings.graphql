@@ -1,5 +1,6 @@
 mutation UpdateInterceptSettings($input: UpdateInterceptSettingsInput!) {
   updateInterceptSettings(input: $input) {
     enabled
+    requestFilter
   }
 }

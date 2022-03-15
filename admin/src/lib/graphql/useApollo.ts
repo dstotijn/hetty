@@ -19,6 +19,9 @@ function createApolloClient() {
             },
           },
         },
+        ProjectSettings: {
+          merge: true,
+        },
       },
     }),
   });

@@ -3,6 +3,7 @@ package intercept
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"sort"
 	"sync"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/dstotijn/hetty/pkg/log"
 	"github.com/dstotijn/hetty/pkg/proxy"
+	"github.com/dstotijn/hetty/pkg/search"
 )
 
 var (
@@ -28,15 +30,17 @@ type Request struct {
 }
 
 type Service struct {
-	mu       *sync.RWMutex
-	requests map[ulid.ULID]Request
-	logger   log.Logger
-	enabled  bool
+	mu        *sync.RWMutex
+	requests  map[ulid.ULID]Request
+	logger    log.Logger
+	enabled   bool
+	reqFilter search.Expression
 }
 
 type Config struct {
-	Logger  log.Logger
-	Enabled bool
+	Logger        log.Logger
+	Enabled       bool
+	RequestFilter search.Expression
 }
 
 // RequestIDs implements sort.Interface.
@@ -44,10 +48,11 @@ type RequestIDs []ulid.ULID
 
 func NewService(cfg Config) *Service {
 	s := &Service{
-		mu:       &sync.RWMutex{},
-		requests: make(map[ulid.ULID]Request),
-		logger:   cfg.Logger,
-		enabled:  cfg.Enabled,
+		mu:        &sync.RWMutex{},
+		requests:  make(map[ulid.ULID]Request),
+		logger:    cfg.Logger,
+		enabled:   cfg.Enabled,
+		reqFilter: cfg.RequestFilter,
 	}
 
 	if s.logger == nil {
@@ -100,6 +105,20 @@ func (svc *Service) Intercept(ctx context.Context, req *http.Request) (*http.Req
 		// If intercept is disabled, return the incoming request as-is.
 		svc.logger.Debugw("Bypassed interception: module disabled.")
 		return req, nil
+	}
+
+	if svc.reqFilter != nil {
+		match, err := MatchRequestFilter(req, svc.reqFilter)
+		if err != nil {
+			return nil, fmt.Errorf("intercept: failed to match request rules for request (id: %v): %w",
+				reqID.String(), err,
+			)
+		}
+
+		if !match {
+			svc.logger.Debugw("Bypassed interception: request rules don't match.")
+			return req, nil
+		}
 	}
 
 	ch := make(chan *http.Request)
@@ -197,6 +216,7 @@ func (svc *Service) UpdateSettings(settings Settings) {
 	}
 
 	svc.enabled = settings.Enabled
+	svc.reqFilter = settings.RequestFilter
 }
 
 // Request returns an intercepted request by ID. It's safe for concurrent use.

@@ -119,6 +119,7 @@ export type HttpResponseLog = {
 export type InterceptSettings = {
   __typename?: 'InterceptSettings';
   enabled: Scalars['Boolean'];
+  requestFilter?: Maybe<Scalars['String']>;
 };
 
 export type ModifyRequestInput = {
@@ -315,6 +316,7 @@ export type SenderRequestInput = {
 
 export type UpdateInterceptSettingsInput = {
   enabled: Scalars['Boolean'];
+  requestFilter?: InputMaybe<Scalars['String']>;
 };
 
 export type CancelRequestMutationVariables = Exact<{
@@ -341,7 +343,7 @@ export type ModifyRequestMutation = { __typename?: 'Mutation', modifyRequest: { 
 export type ActiveProjectQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type ActiveProjectQuery = { __typename?: 'Query', activeProject?: { __typename?: 'Project', id: string, name: string, isActive: boolean, settings: { __typename?: 'ProjectSettings', intercept: { __typename?: 'InterceptSettings', enabled: boolean } } } | null };
+export type ActiveProjectQuery = { __typename?: 'Query', activeProject?: { __typename?: 'Project', id: string, name: string, isActive: boolean, settings: { __typename?: 'ProjectSettings', intercept: { __typename?: 'InterceptSettings', enabled: boolean, requestFilter?: string | null } } } | null };
 
 export type CloseProjectMutationVariables = Exact<{ [key: string]: never; }>;
 
@@ -453,7 +455,7 @@ export type UpdateInterceptSettingsMutationVariables = Exact<{
 }>;
 
 
-export type UpdateInterceptSettingsMutation = { __typename?: 'Mutation', updateInterceptSettings: { __typename?: 'InterceptSettings', enabled: boolean } };
+export type UpdateInterceptSettingsMutation = { __typename?: 'Mutation', updateInterceptSettings: { __typename?: 'InterceptSettings', enabled: boolean, requestFilter?: string | null } };
 
 export type GetInterceptedRequestsQueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -579,6 +581,7 @@ export const ActiveProjectDocument = gql`
     settings {
       intercept {
         enabled
+        requestFilter
       }
     }
   }
@@ -1244,6 +1247,7 @@ export const UpdateInterceptSettingsDocument = gql`
     mutation UpdateInterceptSettings($input: UpdateInterceptSettingsInput!) {
   updateInterceptSettings(input: $input) {
     enabled
+    requestFilter
   }
 }
     `;

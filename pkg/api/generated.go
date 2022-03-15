@@ -105,7 +105,8 @@ type ComplexityRoot struct {
 	}
 
 	InterceptSettings struct {
-		Enabled func(childComplexity int) int
+		Enabled       func(childComplexity int) int
+		RequestFilter func(childComplexity int) int
 	}
 
 	ModifyRequestResult struct {
@@ -437,6 +438,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.InterceptSettings.Enabled(childComplexity), true
+
+	case "InterceptSettings.requestFilter":
+		if e.complexity.InterceptSettings.RequestFilter == nil {
+			break
+		}
+
+		return e.complexity.InterceptSettings.RequestFilter(childComplexity), true
 
 	case "ModifyRequestResult.success":
 		if e.complexity.ModifyRequestResult.Success == nil {
@@ -1057,10 +1065,12 @@ type CancelRequestResult {
 
 input UpdateInterceptSettingsInput {
   enabled: Boolean!
+  requestFilter: String
 }
 
 type InterceptSettings {
   enabled: Boolean!
+  requestFilter: String
 }
 
 type Query {
@@ -2438,6 +2448,38 @@ func (ec *executionContext) _InterceptSettings_enabled(ctx context.Context, fiel
 	res := resTmp.(bool)
 	fc.Result = res
 	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _InterceptSettings_requestFilter(ctx context.Context, field graphql.CollectedField, obj *InterceptSettings) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "InterceptSettings",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.RequestFilter, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _ModifyRequestResult_success(ctx context.Context, field graphql.CollectedField, obj *ModifyRequestResult) (ret graphql.Marshaler) {
@@ -5632,6 +5674,14 @@ func (ec *executionContext) unmarshalInputUpdateInterceptSettingsInput(ctx conte
 			if err != nil {
 				return it, err
 			}
+		case "requestFilter":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("requestFilter"))
+			it.RequestFilter, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
 		}
 	}
 
@@ -6012,6 +6062,8 @@ func (ec *executionContext) _InterceptSettings(ctx context.Context, sel ast.Sele
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		case "requestFilter":
+			out.Values[i] = ec._InterceptSettings_requestFilter(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

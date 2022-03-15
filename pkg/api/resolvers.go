@@ -184,11 +184,9 @@ func (r *mutationResolver) CreateProject(ctx context.Context, name string) (*Pro
 		return nil, fmt.Errorf("could not open project: %w", err)
 	}
 
-	return &Project{
-		ID:       p.ID,
-		Name:     p.Name,
-		IsActive: r.ProjectService.IsProjectActive(p.ID),
-	}, nil
+	project := parseProject(r.ProjectService, p)
+
+	return &project, nil
 }
 
 func (r *mutationResolver) OpenProject(ctx context.Context, id ulid.ULID) (*Project, error) {
@@ -199,11 +197,9 @@ func (r *mutationResolver) OpenProject(ctx context.Context, id ulid.ULID) (*Proj
 		return nil, fmt.Errorf("could not open project: %w", err)
 	}
 
-	return &Project{
-		ID:       p.ID,
-		Name:     p.Name,
-		IsActive: r.ProjectService.IsProjectActive(p.ID),
-	}, nil
+	project := parseProject(r.ProjectService, p)
+
+	return &project, nil
 }
 
 func (r *queryResolver) ActiveProject(ctx context.Context) (*Project, error) {
@@ -214,16 +210,9 @@ func (r *queryResolver) ActiveProject(ctx context.Context) (*Project, error) {
 		return nil, fmt.Errorf("could not open project: %w", err)
 	}
 
-	return &Project{
-		ID:       p.ID,
-		Name:     p.Name,
-		IsActive: r.ProjectService.IsProjectActive(p.ID),
-		Settings: &ProjectSettings{
-			Intercept: &InterceptSettings{
-				Enabled: p.Settings.InterceptEnabled,
-			},
-		},
-	}, nil
+	project := parseProject(r.ProjectService, p)
+
+	return &project, nil
 }
 
 func (r *queryResolver) Projects(ctx context.Context) ([]Project, error) {
@@ -234,11 +223,7 @@ func (r *queryResolver) Projects(ctx context.Context) ([]Project, error) {
 
 	projects := make([]Project, len(p))
 	for i, proj := range p {
-		projects[i] = Project{
-			ID:       proj.ID,
-			Name:     proj.Name,
-			IsActive: r.ProjectService.IsProjectActive(proj.ID),
-		}
+		projects[i] = parseProject(r.ProjectService, proj)
 	}
 
 	return projects, nil
@@ -603,6 +588,15 @@ func (r *mutationResolver) UpdateInterceptSettings(
 		Enabled: input.Enabled,
 	}
 
+	if input.RequestFilter != nil && *input.RequestFilter != "" {
+		expr, err := search.ParseQuery(*input.RequestFilter)
+		if err != nil {
+			return nil, fmt.Errorf("could not parse search query: %w", err)
+		}
+
+		settings.RequestFilter = expr
+	}
+
 	err := r.ProjectService.UpdateInterceptSettings(ctx, settings)
 	if errors.Is(err, proj.ErrNoProject) {
 		return nil, noActiveProjectErr(ctx)
@@ -610,9 +604,16 @@ func (r *mutationResolver) UpdateInterceptSettings(
 		return nil, fmt.Errorf("could not update intercept settings: %w", err)
 	}
 
-	return &InterceptSettings{
+	updated := &InterceptSettings{
 		Enabled: settings.Enabled,
-	}, nil
+	}
+
+	if settings.RequestFilter != nil {
+		reqFilter := settings.RequestFilter.String()
+		updated.RequestFilter = &reqFilter
+	}
+
+	return updated, nil
 }
 
 func parseSenderRequest(req sender.Request) (SenderRequest, error) {
@@ -718,6 +719,26 @@ func parseHTTPRequest(req *http.Request) (HTTPRequest, error) {
 	}
 
 	return httpReq, nil
+}
+
+func parseProject(projSvc proj.Service, p proj.Project) Project {
+	project := Project{
+		ID:       p.ID,
+		Name:     p.Name,
+		IsActive: projSvc.IsProjectActive(p.ID),
+		Settings: &ProjectSettings{
+			Intercept: &InterceptSettings{
+				Enabled: p.Settings.InterceptEnabled,
+			},
+		},
+	}
+
+	if p.Settings.InterceptRequestFilter != nil {
+		interceptReqFilter := p.Settings.InterceptRequestFilter.String()
+		project.Settings.Intercept.RequestFilter = &interceptReqFilter
+	}
+
+	return project
 }
 
 func stringPtrToRegexp(s *string) (*regexp.Regexp, error) {

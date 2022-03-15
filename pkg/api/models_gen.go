@@ -83,7 +83,8 @@ type HTTPResponseLog struct {
 }
 
 type InterceptSettings struct {
-	Enabled bool `json:"enabled"`
+	Enabled       bool    `json:"enabled"`
+	RequestFilter *string `json:"requestFilter"`
 }
 
 type ModifyRequestInput struct {
@@ -164,7 +165,8 @@ type SenderRequestInput struct {
 }
 
 type UpdateInterceptSettingsInput struct {
-	Enabled bool `json:"enabled"`
+	Enabled       bool    `json:"enabled"`
+	RequestFilter *string `json:"requestFilter"`
 }
 
 type HTTPMethod string
