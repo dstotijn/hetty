@@ -55,13 +55,8 @@ snapcrafts:
     license: MIT
     apps:
       hetty:
-        plugs: ["home", "network", "network-bind", "personal-files"]
-    plugs:
-      personal-files:
-        read:
-        - $HOME/.hetty
-        write:
-        - $HOME/.hetty
+        command: hetty
+        plugs: ["network", "network-bind"]
 
 scoop:
   bucket:
