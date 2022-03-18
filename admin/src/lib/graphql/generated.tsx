@@ -23,6 +23,11 @@ export type CancelRequestResult = {
   success: Scalars['Boolean'];
 };
 
+export type CancelResponseResult = {
+  __typename?: 'CancelResponseResult';
+  success: Scalars['Boolean'];
+};
+
 export type ClearHttpRequestLogResult = {
   __typename?: 'ClearHTTPRequestLogResult';
   success: Scalars['Boolean'];
@@ -79,6 +84,7 @@ export type HttpRequest = {
   id: Scalars['ID'];
   method: HttpMethod;
   proto: HttpProtocol;
+  response?: Maybe<HttpResponse>;
   url: Scalars['URL'];
 };
 
@@ -105,6 +111,17 @@ export type HttpRequestLogFilterInput = {
   searchExpression?: InputMaybe<Scalars['String']>;
 };
 
+export type HttpResponse = {
+  __typename?: 'HttpResponse';
+  body?: Maybe<Scalars['String']>;
+  headers: Array<HttpHeader>;
+  /** Will be the same ID as its related request ID. */
+  id: Scalars['ID'];
+  proto: HttpProtocol;
+  statusCode: Scalars['Int'];
+  statusReason: Scalars['String'];
+};
+
 export type HttpResponseLog = {
   __typename?: 'HttpResponseLog';
   body?: Maybe<Scalars['String']>;
@@ -127,6 +144,7 @@ export type ModifyRequestInput = {
   headers?: InputMaybe<Array<HttpHeaderInput>>;
   id: Scalars['ID'];
   method: HttpMethod;
+  modifyResponse?: InputMaybe<Scalars['Boolean']>;
   proto: HttpProtocol;
   url: Scalars['URL'];
 };
@@ -136,9 +154,24 @@ export type ModifyRequestResult = {
   success: Scalars['Boolean'];
 };
 
+export type ModifyResponseInput = {
+  body?: InputMaybe<Scalars['String']>;
+  headers?: InputMaybe<Array<HttpHeaderInput>>;
+  proto: HttpProtocol;
+  requestID: Scalars['ID'];
+  statusCode: Scalars['Int'];
+  statusReason: Scalars['String'];
+};
+
+export type ModifyResponseResult = {
+  __typename?: 'ModifyResponseResult';
+  success: Scalars['Boolean'];
+};
+
 export type Mutation = {
   __typename?: 'Mutation';
   cancelRequest: CancelRequestResult;
+  cancelResponse: CancelResponseResult;
   clearHTTPRequestLog: ClearHttpRequestLogResult;
   closeProject: CloseProjectResult;
   createOrUpdateSenderRequest: SenderRequest;
@@ -147,6 +180,7 @@ export type Mutation = {
   deleteProject: DeleteProjectResult;
   deleteSenderRequests: DeleteSenderRequestsResult;
   modifyRequest: ModifyRequestResult;
+  modifyResponse: ModifyResponseResult;
   openProject?: Maybe<Project>;
   sendRequest: SenderRequest;
   setHttpRequestLogFilter?: Maybe<HttpRequestLogFilter>;
@@ -158,6 +192,11 @@ export type Mutation = {
 
 export type MutationCancelRequestArgs = {
   id: Scalars['ID'];
+};
+
+
+export type MutationCancelResponseArgs = {
+  requestID: Scalars['ID'];
 };
 
 
@@ -183,6 +222,11 @@ export type MutationDeleteProjectArgs = {
 
 export type MutationModifyRequestArgs = {
   request: ModifyRequestInput;
+};
+
+
+export type MutationModifyResponseArgs = {
+  response: ModifyResponseInput;
 };
 
 
@@ -326,12 +370,19 @@ export type CancelRequestMutationVariables = Exact<{
 
 export type CancelRequestMutation = { __typename?: 'Mutation', cancelRequest: { __typename?: 'CancelRequestResult', success: boolean } };
 
+export type CancelResponseMutationVariables = Exact<{
+  requestID: Scalars['ID'];
+}>;
+
+
+export type CancelResponseMutation = { __typename?: 'Mutation', cancelResponse: { __typename?: 'CancelResponseResult', success: boolean } };
+
 export type GetInterceptedRequestQueryVariables = Exact<{
   id: Scalars['ID'];
 }>;
 
 
-export type GetInterceptedRequestQuery = { __typename?: 'Query', interceptedRequest?: { __typename?: 'HttpRequest', id: string, url: any, method: HttpMethod, proto: HttpProtocol, body?: string | null, headers: Array<{ __typename?: 'HttpHeader', key: string, value: string }> } | null };
+export type GetInterceptedRequestQuery = { __typename?: 'Query', interceptedRequest?: { __typename?: 'HttpRequest', id: string, url: any, method: HttpMethod, proto: HttpProtocol, body?: string | null, headers: Array<{ __typename?: 'HttpHeader', key: string, value: string }>, response?: { __typename?: 'HttpResponse', id: string, proto: HttpProtocol, statusCode: number, statusReason: string, body?: string | null, headers: Array<{ __typename?: 'HttpHeader', key: string, value: string }> } | null } | null };
 
 export type ModifyRequestMutationVariables = Exact<{
   request: ModifyRequestInput;
@@ -339,6 +390,13 @@ export type ModifyRequestMutationVariables = Exact<{
 
 
 export type ModifyRequestMutation = { __typename?: 'Mutation', modifyRequest: { __typename?: 'ModifyRequestResult', success: boolean } };
+
+export type ModifyResponseMutationVariables = Exact<{
+  response: ModifyResponseInput;
+}>;
+
+
+export type ModifyResponseMutation = { __typename?: 'Mutation', modifyResponse: { __typename?: 'ModifyResponseResult', success: boolean } };
 
 export type ActiveProjectQueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -460,7 +518,7 @@ export type UpdateInterceptSettingsMutation = { __typename?: 'Mutation', updateI
 export type GetInterceptedRequestsQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type GetInterceptedRequestsQuery = { __typename?: 'Query', interceptedRequests: Array<{ __typename?: 'HttpRequest', id: string, url: any, method: HttpMethod }> };
+export type GetInterceptedRequestsQuery = { __typename?: 'Query', interceptedRequests: Array<{ __typename?: 'HttpRequest', id: string, url: any, method: HttpMethod, response?: { __typename?: 'HttpResponse', statusCode: number, statusReason: string } | null }> };
 
 
 export const CancelRequestDocument = gql`
@@ -496,6 +554,39 @@ export function useCancelRequestMutation(baseOptions?: Apollo.MutationHookOption
 export type CancelRequestMutationHookResult = ReturnType<typeof useCancelRequestMutation>;
 export type CancelRequestMutationResult = Apollo.MutationResult<CancelRequestMutation>;
 export type CancelRequestMutationOptions = Apollo.BaseMutationOptions<CancelRequestMutation, CancelRequestMutationVariables>;
+export const CancelResponseDocument = gql`
+    mutation CancelResponse($requestID: ID!) {
+  cancelResponse(requestID: $requestID) {
+    success
+  }
+}
+    `;
+export type CancelResponseMutationFn = Apollo.MutationFunction<CancelResponseMutation, CancelResponseMutationVariables>;
+
+/**
+ * __useCancelResponseMutation__
+ *
+ * To run a mutation, you first call `useCancelResponseMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useCancelResponseMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [cancelResponseMutation, { data, loading, error }] = useCancelResponseMutation({
+ *   variables: {
+ *      requestID: // value for 'requestID'
+ *   },
+ * });
+ */
+export function useCancelResponseMutation(baseOptions?: Apollo.MutationHookOptions<CancelResponseMutation, CancelResponseMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useMutation<CancelResponseMutation, CancelResponseMutationVariables>(CancelResponseDocument, options);
+      }
+export type CancelResponseMutationHookResult = ReturnType<typeof useCancelResponseMutation>;
+export type CancelResponseMutationResult = Apollo.MutationResult<CancelResponseMutation>;
+export type CancelResponseMutationOptions = Apollo.BaseMutationOptions<CancelResponseMutation, CancelResponseMutationVariables>;
 export const GetInterceptedRequestDocument = gql`
     query GetInterceptedRequest($id: ID!) {
   interceptedRequest(id: $id) {
@@ -508,6 +599,17 @@ export const GetInterceptedRequestDocument = gql`
       value
     }
     body
+    response {
+      id
+      proto
+      statusCode
+      statusReason
+      headers {
+        key
+        value
+      }
+      body
+    }
   }
 }
     `;
@@ -572,6 +674,39 @@ export function useModifyRequestMutation(baseOptions?: Apollo.MutationHookOption
 export type ModifyRequestMutationHookResult = ReturnType<typeof useModifyRequestMutation>;
 export type ModifyRequestMutationResult = Apollo.MutationResult<ModifyRequestMutation>;
 export type ModifyRequestMutationOptions = Apollo.BaseMutationOptions<ModifyRequestMutation, ModifyRequestMutationVariables>;
+export const ModifyResponseDocument = gql`
+    mutation ModifyResponse($response: ModifyResponseInput!) {
+  modifyResponse(response: $response) {
+    success
+  }
+}
+    `;
+export type ModifyResponseMutationFn = Apollo.MutationFunction<ModifyResponseMutation, ModifyResponseMutationVariables>;
+
+/**
+ * __useModifyResponseMutation__
+ *
+ * To run a mutation, you first call `useModifyResponseMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useModifyResponseMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [modifyResponseMutation, { data, loading, error }] = useModifyResponseMutation({
+ *   variables: {
+ *      response: // value for 'response'
+ *   },
+ * });
+ */
+export function useModifyResponseMutation(baseOptions?: Apollo.MutationHookOptions<ModifyResponseMutation, ModifyResponseMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useMutation<ModifyResponseMutation, ModifyResponseMutationVariables>(ModifyResponseDocument, options);
+      }
+export type ModifyResponseMutationHookResult = ReturnType<typeof useModifyResponseMutation>;
+export type ModifyResponseMutationResult = Apollo.MutationResult<ModifyResponseMutation>;
+export type ModifyResponseMutationOptions = Apollo.BaseMutationOptions<ModifyResponseMutation, ModifyResponseMutationVariables>;
 export const ActiveProjectDocument = gql`
     query ActiveProject {
   activeProject {
@@ -1283,6 +1418,10 @@ export const GetInterceptedRequestsDocument = gql`
     id
     url
     method
+    response {
+      statusCode
+      statusReason
+    }
   }
 }
     `;

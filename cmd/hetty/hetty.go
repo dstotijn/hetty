@@ -208,6 +208,7 @@ func (cmd *HettyCommand) Exec(ctx context.Context, _ []string) error {
 	proxy.UseRequestModifier(reqLogService.RequestModifier)
 	proxy.UseResponseModifier(reqLogService.ResponseModifier)
 	proxy.UseRequestModifier(interceptService.RequestModifier)
+	proxy.UseResponseModifier(interceptService.ResponseModifier)
 
 	fsSub, err := fs.Sub(adminContent, "admin")
 	if err != nil {

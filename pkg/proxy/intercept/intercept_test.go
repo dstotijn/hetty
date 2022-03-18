@@ -34,7 +34,7 @@ func TestRequestModifier(t *testing.T) {
 
 		reqID := ulid.MustNew(ulid.Timestamp(time.Now()), ulidEntropy)
 
-		err := svc.ModifyRequest(reqID, nil)
+		err := svc.ModifyRequest(reqID, nil, nil)
 		if !errors.Is(err, intercept.ErrRequestNotFound) {
 			t.Fatalf("expected `intercept.ErrRequestNotFound`, got: %v", err)
 		}
@@ -65,7 +65,10 @@ func TestRequestModifier(t *testing.T) {
 		time.Sleep(10 * time.Millisecond)
 		cancel()
 
-		err := svc.ModifyRequest(reqID, nil)
+		modReq := req.Clone(req.Context())
+		modReq.Header.Set("X-Foo", "bar")
+
+		err := svc.ModifyRequest(reqID, modReq, nil)
 		if !errors.Is(err, intercept.ErrRequestDone) {
 			t.Fatalf("expected `intercept.ErrRequestDone`, got: %v", err)
 		}
@@ -107,7 +110,7 @@ func TestRequestModifier(t *testing.T) {
 		// array of intercepted reqs.
 		time.Sleep(10 * time.Millisecond)
 
-		err := svc.ModifyRequest(reqID, modReq)
+		err := svc.ModifyRequest(reqID, modReq, nil)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}

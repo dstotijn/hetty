@@ -128,6 +128,19 @@ type HttpRequest {
   proto: HttpProtocol!
   headers: [HttpHeader!]!
   body: String
+  response: HttpResponse
+}
+
+type HttpResponse {
+  """
+  Will be the same ID as its related request ID.
+  """
+  id: ID!
+  proto: HttpProtocol!
+  statusCode: Int!
+  statusReason: String!
+  body: String
+  headers: [HttpHeader!]!
 }
 
 input ModifyRequestInput {
@@ -137,6 +150,7 @@ input ModifyRequestInput {
   proto: HttpProtocol!
   headers: [HttpHeaderInput!]
   body: String
+  modifyResponse: Boolean
 }
 
 type ModifyRequestResult {
@@ -144,6 +158,23 @@ type ModifyRequestResult {
 }
 
 type CancelRequestResult {
+  success: Boolean!
+}
+
+input ModifyResponseInput {
+  requestID: ID!
+  proto: HttpProtocol!
+  headers: [HttpHeaderInput!]
+  body: String
+  statusCode: Int!
+  statusReason: String!
+}
+
+type ModifyResponseResult {
+  success: Boolean!
+}
+
+type CancelResponseResult {
   success: Boolean!
 }
 
@@ -187,6 +218,8 @@ type Mutation {
   deleteSenderRequests: DeleteSenderRequestsResult!
   modifyRequest(request: ModifyRequestInput!): ModifyRequestResult!
   cancelRequest(id: ID!): CancelRequestResult!
+  modifyResponse(response: ModifyResponseInput!): ModifyResponseResult!
+  cancelResponse(requestID: ID!): CancelResponseResult!
   updateInterceptSettings(
     input: UpdateInterceptSettingsInput!
   ): InterceptSettings!

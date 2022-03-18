@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"regexp"
@@ -515,36 +516,35 @@ func (r *mutationResolver) DeleteSenderRequests(ctx context.Context) (*DeleteSen
 	return &DeleteSenderRequestsResult{true}, nil
 }
 
-func (r *queryResolver) InterceptedRequests(ctx context.Context) ([]HTTPRequest, error) {
-	reqs := r.InterceptService.Requests()
-	httpReqs := make([]HTTPRequest, len(reqs))
+func (r *queryResolver) InterceptedRequests(ctx context.Context) (httpReqs []HTTPRequest, err error) {
+	items := r.InterceptService.Items()
 
-	for i, req := range reqs {
-		req, err := parseHTTPRequest(req)
+	for _, item := range items {
+		req, err := parseInterceptItem(item)
 		if err != nil {
 			return nil, err
 		}
 
-		httpReqs[i] = req
+		httpReqs = append(httpReqs, req)
 	}
 
 	return httpReqs, nil
 }
 
 func (r *queryResolver) InterceptedRequest(ctx context.Context, id ulid.ULID) (*HTTPRequest, error) {
-	req, err := r.InterceptService.RequestByID(id)
+	item, err := r.InterceptService.ItemByID(id)
 	if errors.Is(err, intercept.ErrRequestNotFound) {
 		return nil, nil
 	} else if err != nil {
 		return nil, fmt.Errorf("could not get request by ID: %w", err)
 	}
 
-	httpReq, err := parseHTTPRequest(req)
+	req, err := parseInterceptItem(item)
 	if err != nil {
 		return nil, err
 	}
 
-	return &httpReq, nil
+	return &req, nil
 }
 
 func (r *mutationResolver) ModifyRequest(ctx context.Context, input ModifyRequestInput) (*ModifyRequestResult, error) {
@@ -563,7 +563,7 @@ func (r *mutationResolver) ModifyRequest(ctx context.Context, input ModifyReques
 		req.Header.Add(header.Key, header.Value)
 	}
 
-	err = r.InterceptService.ModifyRequest(input.ID, req)
+	err = r.InterceptService.ModifyRequest(input.ID, req, input.ModifyResponse)
 	if err != nil {
 		return nil, fmt.Errorf("could not modify http request: %w", err)
 	}
@@ -578,6 +578,47 @@ func (r *mutationResolver) CancelRequest(ctx context.Context, id ulid.ULID) (*Ca
 	}
 
 	return &CancelRequestResult{Success: true}, nil
+}
+
+func (r *mutationResolver) ModifyResponse(
+	ctx context.Context,
+	input ModifyResponseInput,
+) (*ModifyResponseResult, error) {
+	res := &http.Response{
+		Header:     make(http.Header),
+		Status:     fmt.Sprintf("%v %v", input.StatusCode, input.StatusReason),
+		StatusCode: input.StatusCode,
+		Proto:      revHTTPProtocolMap[input.Proto],
+	}
+
+	var ok bool
+	if res.ProtoMajor, res.ProtoMinor, ok = http.ParseHTTPVersion(res.Proto); !ok {
+		return nil, fmt.Errorf("malformed HTTP version: %q", res.Proto)
+	}
+
+	if input.Body != nil {
+		res.Body = io.NopCloser(strings.NewReader(*input.Body))
+	}
+
+	for _, header := range input.Headers {
+		res.Header.Add(header.Key, header.Value)
+	}
+
+	err := r.InterceptService.ModifyResponse(input.RequestID, res)
+	if err != nil {
+		return nil, fmt.Errorf("could not modify http request: %w", err)
+	}
+
+	return &ModifyResponseResult{Success: true}, nil
+}
+
+func (r *mutationResolver) CancelResponse(ctx context.Context, requestID ulid.ULID) (*CancelResponseResult, error) {
+	err := r.InterceptService.CancelResponse(requestID)
+	if err != nil {
+		return nil, fmt.Errorf("could not cancel http response: %w", err)
+	}
+
+	return &CancelResponseResult{Success: true}, nil
 }
 
 func (r *mutationResolver) UpdateInterceptSettings(
@@ -719,6 +760,79 @@ func parseHTTPRequest(req *http.Request) (HTTPRequest, error) {
 	}
 
 	return httpReq, nil
+}
+
+func parseHTTPResponse(res *http.Response) (HTTPResponse, error) {
+	resProto := httpProtocolMap[res.Proto]
+	if !resProto.IsValid() {
+		return HTTPResponse{}, fmt.Errorf("http response has invalid protocol: %v", res.Proto)
+	}
+
+	id, ok := proxy.RequestIDFromContext(res.Request.Context())
+	if !ok {
+		return HTTPResponse{}, errors.New("http response has missing ID")
+	}
+
+	httpRes := HTTPResponse{
+		ID:         id,
+		Proto:      resProto,
+		StatusCode: res.StatusCode,
+	}
+
+	statusReasonSubs := strings.SplitN(res.Status, " ", 2)
+
+	if len(statusReasonSubs) == 2 {
+		httpRes.StatusReason = statusReasonSubs[1]
+	}
+
+	if res.Header != nil {
+		httpRes.Headers = make([]HTTPHeader, 0)
+
+		for key, values := range res.Header {
+			for _, value := range values {
+				httpRes.Headers = append(httpRes.Headers, HTTPHeader{
+					Key:   key,
+					Value: value,
+				})
+			}
+		}
+	}
+
+	if res.Body != nil {
+		body, err := ioutil.ReadAll(res.Body)
+		if err != nil {
+			return HTTPResponse{}, fmt.Errorf("failed to read response body: %w", err)
+		}
+
+		res.Body = ioutil.NopCloser(bytes.NewBuffer(body))
+		bodyStr := string(body)
+		httpRes.Body = &bodyStr
+	}
+
+	return httpRes, nil
+}
+
+func parseInterceptItem(item intercept.Item) (req HTTPRequest, err error) {
+	if item.Response != nil {
+		req, err = parseHTTPRequest(item.Response.Request)
+		if err != nil {
+			return HTTPRequest{}, err
+		}
+
+		res, err := parseHTTPResponse(item.Response)
+		if err != nil {
+			return HTTPRequest{}, err
+		}
+
+		req.Response = &res
+	} else if item.Request != nil {
+		req, err = parseHTTPRequest(item.Request)
+		if err != nil {
+			return HTTPRequest{}, err
+		}
+	}
+
+	return req, nil
 }
 
 func parseProject(projSvc proj.Service, p proj.Project) Project {

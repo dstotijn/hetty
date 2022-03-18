@@ -3,5 +3,9 @@ query GetInterceptedRequests {
     id
     url
     method
+    response {
+      statusCode
+      statusReason
+    }
   }
 }

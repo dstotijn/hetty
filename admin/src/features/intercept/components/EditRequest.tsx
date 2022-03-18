@@ -1,4 +1,5 @@
 import CancelIcon from "@mui/icons-material/Cancel";
+import DownloadIcon from "@mui/icons-material/Download";
 import SendIcon from "@mui/icons-material/Send";
 import SettingsIcon from "@mui/icons-material/Settings";
 import { Alert, Box, Button, CircularProgress, IconButton, Tooltip, Typography } from "@mui/material";
@@ -9,15 +10,17 @@ import { useInterceptedRequests } from "lib/InterceptedRequestsContext";
 import { KeyValuePair, sortKeyValuePairs } from "lib/components/KeyValuePair";
 import Link from "lib/components/Link";
 import RequestTabs from "lib/components/RequestTabs";
-import Response from "lib/components/Response";
-import SplitPane from "lib/components/SplitPane";
+import ResponseStatus from "lib/components/ResponseStatus";
+import ResponseTabs from "lib/components/ResponseTabs";
 import UrlBar, { HttpMethod, HttpProto, httpProtoMap } from "lib/components/UrlBar";
 import {
   HttpProtocol,
   HttpRequest,
   useCancelRequestMutation,
+  useCancelResponseMutation,
   useGetInterceptedRequestQuery,
   useModifyRequestMutation,
+  useModifyResponseMutation,
 } from "lib/graphql/generated";
 import { queryParamsFromURL } from "lib/queryParamsFromURL";
 import updateKeyPairItem from "lib/updateKeyPairItem";
@@ -43,8 +46,10 @@ function EditRequest(): JSX.Element {
   const [url, setURL] = useState("");
   const [proto, setProto] = useState(HttpProto.Http20);
   const [queryParams, setQueryParams] = useState<KeyValuePair[]>([{ key: "", value: "" }]);
-  const [headers, setHeaders] = useState<KeyValuePair[]>([{ key: "", value: "" }]);
-  const [body, setBody] = useState("");
+  const [reqHeaders, setReqHeaders] = useState<KeyValuePair[]>([{ key: "", value: "" }]);
+  const [resHeaders, setResHeaders] = useState<KeyValuePair[]>([{ key: "", value: "" }]);
+  const [reqBody, setReqBody] = useState("");
+  const [resBody, setResBody] = useState("");
 
   const handleQueryParamChange = (key: string, value: string, idx: number) => {
     setQueryParams((prev) => {
@@ -61,11 +66,18 @@ function EditRequest(): JSX.Element {
     });
   };
 
-  const handleHeaderChange = (key: string, value: string, idx: number) => {
-    setHeaders((prev) => updateKeyPairItem(key, value, idx, prev));
+  const handleReqHeaderChange = (key: string, value: string, idx: number) => {
+    setReqHeaders((prev) => updateKeyPairItem(key, value, idx, prev));
   };
-  const handleHeaderDelete = (idx: number) => {
-    setHeaders((prev) => prev.slice(0, idx).concat(prev.slice(idx + 1, prev.length)));
+  const handleReqHeaderDelete = (idx: number) => {
+    setReqHeaders((prev) => prev.slice(0, idx).concat(prev.slice(idx + 1, prev.length)));
+  };
+
+  const handleResHeaderChange = (key: string, value: string, idx: number) => {
+    setResHeaders((prev) => updateKeyPairItem(key, value, idx, prev));
+  };
+  const handleResHeaderDelete = (idx: number) => {
+    setResHeaders((prev) => prev.slice(0, idx).concat(prev.slice(idx + 1, prev.length)));
   };
 
   const handleURLChange = (url: string) => {
@@ -93,63 +105,95 @@ function EditRequest(): JSX.Element {
 
       setURL(interceptedRequest.url);
       setMethod(interceptedRequest.method);
-      setBody(interceptedRequest.body || "");
+      setReqBody(interceptedRequest.body || "");
 
       const newQueryParams = queryParamsFromURL(interceptedRequest.url);
       // Push empty row.
       newQueryParams.push({ key: "", value: "" });
       setQueryParams(newQueryParams);
 
-      const newHeaders = sortKeyValuePairs(interceptedRequest.headers || []);
-      setHeaders([...newHeaders.map(({ key, value }) => ({ key, value })), { key: "", value: "" }]);
+      const newReqHeaders = sortKeyValuePairs(interceptedRequest.headers || []);
+      setReqHeaders([...newReqHeaders.map(({ key, value }) => ({ key, value })), { key: "", value: "" }]);
+
+      setResBody(interceptedRequest.response?.body || "");
+      const newResHeaders = sortKeyValuePairs(interceptedRequest.response?.headers || []);
+      setResHeaders([...newResHeaders.map(({ key, value }) => ({ key, value })), { key: "", value: "" }]);
     },
   });
-  const interceptedReq = reqId ? getReqResult?.data?.interceptedRequest : undefined;
+  const interceptedReq =
+    reqId && !getReqResult?.data?.interceptedRequest?.response ? getReqResult?.data?.interceptedRequest : undefined;
+  const interceptedRes = reqId ? getReqResult?.data?.interceptedRequest?.response : undefined;
 
-  const [modifyRequest, modifyResult] = useModifyRequestMutation();
-  const [cancelRequest, cancelResult] = useCancelRequestMutation();
+  const [modifyRequest, modifyReqResult] = useModifyRequestMutation();
+  const [cancelRequest, cancelReqResult] = useCancelRequestMutation();
+
+  const [modifyResponse, modifyResResult] = useModifyResponseMutation();
+  const [cancelResponse, cancelResResult] = useCancelResponseMutation();
 
   const onActionCompleted = () => {
     setURL("");
     setMethod(HttpMethod.Get);
-    setBody("");
+    setReqBody("");
     setQueryParams([]);
-    setHeaders([]);
+    setReqHeaders([]);
     router.replace(`/proxy/intercept`);
   };
 
   const handleFormSubmit: React.FormEventHandler = (e) => {
     e.preventDefault();
 
-    if (!interceptedReq) {
-      return;
+    if (interceptedReq) {
+      modifyRequest({
+        variables: {
+          request: {
+            id: interceptedReq.id,
+            url,
+            method,
+            proto: httpProtoMap.get(proto) || HttpProtocol.Http20,
+            headers: reqHeaders.filter((kv) => kv.key !== ""),
+            body: reqBody || undefined,
+          },
+        },
+        update(cache) {
+          cache.modify({
+            fields: {
+              interceptedRequests(existing: HttpRequest[], { readField }) {
+                return existing.filter((ref) => interceptedReq.id !== readField("id", ref));
+              },
+            },
+          });
+        },
+        onCompleted: onActionCompleted,
+      });
     }
 
-    modifyRequest({
-      variables: {
-        request: {
-          id: interceptedReq.id,
-          url,
-          method,
-          proto: httpProtoMap.get(proto) || HttpProtocol.Http20,
-          headers: headers.filter((kv) => kv.key !== ""),
-          body: body || undefined,
-        },
-      },
-      update(cache) {
-        cache.modify({
-          fields: {
-            interceptedRequests(existing: HttpRequest[], { readField }) {
-              return existing.filter((ref) => interceptedReq.id !== readField("id", ref));
-            },
+    if (interceptedRes) {
+      modifyResponse({
+        variables: {
+          response: {
+            requestID: interceptedRes.id,
+            proto: interceptedRes.proto, // TODO: Allow modifying
+            statusCode: interceptedRes.statusCode, // TODO: Allow modifying
+            statusReason: interceptedRes.statusReason, // TODO: Allow modifying
+            headers: resHeaders.filter((kv) => kv.key !== ""),
+            body: resBody || undefined,
           },
-        });
-      },
-      onCompleted: onActionCompleted,
-    });
+        },
+        update(cache) {
+          cache.modify({
+            fields: {
+              interceptedRequests(existing: HttpRequest[], { readField }) {
+                return existing.filter((ref) => interceptedRes.id !== readField("id", ref));
+              },
+            },
+          });
+        },
+        onCompleted: onActionCompleted,
+      });
+    }
   };
 
-  const handleCancelClick = () => {
+  const handleReqCancelClick = () => {
     if (!interceptedReq) {
       return;
     }
@@ -171,6 +215,28 @@ function EditRequest(): JSX.Element {
     });
   };
 
+  const handleResCancelClick = () => {
+    if (!interceptedRes) {
+      return;
+    }
+
+    cancelResponse({
+      variables: {
+        requestID: interceptedRes.id,
+      },
+      update(cache) {
+        cache.modify({
+          fields: {
+            interceptedRequests(existing: HttpRequest[], { readField }) {
+              return existing.filter((ref) => interceptedRes.id !== readField("id", ref));
+            },
+          },
+        });
+      },
+      onCompleted: onActionCompleted,
+    });
+  };
+
   return (
     <Box display="flex" flexDirection="column" height="100%" gap={2}>
       <Box component="form" autoComplete="off" onSubmit={handleFormSubmit}>
@@ -184,64 +250,114 @@ function EditRequest(): JSX.Element {
             onProtoChange={interceptedReq ? setProto : undefined}
             sx={{ flex: "1 auto" }}
           />
-          <Button
-            variant="contained"
-            disableElevation
-            type="submit"
-            disabled={!interceptedReq || modifyResult.loading || cancelResult.loading}
-            startIcon={modifyResult.loading ? <CircularProgress size={22} /> : <SendIcon />}
-          >
-            Send
-          </Button>
-          <Button
-            variant="contained"
-            color="error"
-            disableElevation
-            onClick={handleCancelClick}
-            disabled={!interceptedReq || modifyResult.loading || cancelResult.loading}
-            startIcon={cancelResult.loading ? <CircularProgress size={22} /> : <CancelIcon />}
-          >
-            Cancel
-          </Button>
+          {!interceptedRes && (
+            <>
+              <Button
+                variant="contained"
+                disableElevation
+                type="submit"
+                disabled={!interceptedReq || modifyReqResult.loading || cancelReqResult.loading}
+                startIcon={modifyReqResult.loading ? <CircularProgress size={22} /> : <SendIcon />}
+              >
+                Send
+              </Button>
+              <Button
+                variant="contained"
+                color="error"
+                disableElevation
+                onClick={handleReqCancelClick}
+                disabled={!interceptedReq || modifyReqResult.loading || cancelReqResult.loading}
+                startIcon={cancelReqResult.loading ? <CircularProgress size={22} /> : <CancelIcon />}
+              >
+                Cancel
+              </Button>
+            </>
+          )}
+          {interceptedRes && (
+            <>
+              <Button
+                variant="contained"
+                disableElevation
+                type="submit"
+                disabled={modifyResResult.loading || cancelResResult.loading}
+                endIcon={modifyResResult.loading ? <CircularProgress size={22} /> : <DownloadIcon />}
+              >
+                Receive
+              </Button>
+              <Button
+                variant="contained"
+                color="error"
+                disableElevation
+                onClick={handleResCancelClick}
+                disabled={modifyResResult.loading || cancelResResult.loading}
+                endIcon={cancelResResult.loading ? <CircularProgress size={22} /> : <CancelIcon />}
+              >
+                Cancel
+              </Button>
+            </>
+          )}
           <Tooltip title="Intercept settings">
             <IconButton LinkComponent={Link} href="/settings#intercept">
               <SettingsIcon />
             </IconButton>
           </Tooltip>
         </Box>
-        {modifyResult.error && (
+        {modifyReqResult.error && (
           <Alert severity="error" sx={{ mt: 1 }}>
-            {modifyResult.error.message}
+            {modifyReqResult.error.message}
           </Alert>
         )}
-        {cancelResult.error && (
+        {cancelReqResult.error && (
           <Alert severity="error" sx={{ mt: 1 }}>
-            {cancelResult.error.message}
+            {cancelReqResult.error.message}
           </Alert>
         )}
       </Box>
 
-      <Box flex="1 auto" position="relative">
-        <SplitPane split="vertical" size={"50%"}>
-          <Box sx={{ height: "100%", mr: 2, pb: 2, position: "relative" }}>
+      <Box flex="1 auto" overflow="scroll">
+        {interceptedReq && (
+          <Box sx={{ height: "100%", pb: 2 }}>
             <Typography variant="overline" color="textSecondary" sx={{ position: "absolute", right: 0, mt: 1.2 }}>
               Request
             </Typography>
             <RequestTabs
               queryParams={interceptedReq ? queryParams : []}
-              headers={interceptedReq ? headers : []}
-              body={body}
+              headers={interceptedReq ? reqHeaders : []}
+              body={reqBody}
               onQueryParamChange={interceptedReq ? handleQueryParamChange : undefined}
               onQueryParamDelete={interceptedReq ? handleQueryParamDelete : undefined}
-              onHeaderChange={interceptedReq ? handleHeaderChange : undefined}
-              onHeaderDelete={interceptedReq ? handleHeaderDelete : undefined}
-              onBodyChange={interceptedReq ? setBody : undefined}
+              onHeaderChange={interceptedReq ? handleReqHeaderChange : undefined}
+              onHeaderDelete={interceptedReq ? handleReqHeaderDelete : undefined}
+              onBodyChange={interceptedReq ? setReqBody : undefined}
             />
           </Box>
-          <Box sx={{ height: "100%", position: "relative", ml: 2, pb: 2 }}>
-            <Response response={null} />
+        )}
+        {interceptedRes && (
+          <Box sx={{ height: "100%", pb: 2 }}>
+            <Box sx={{ position: "absolute", right: 0, mt: 1.4 }}>
+              <Typography variant="overline" color="textSecondary" sx={{ float: "right", ml: 3 }}>
+                Response
+              </Typography>
+              {interceptedRes && (
+                <Box sx={{ float: "right", mt: 0.2 }}>
+                  <ResponseStatus
+                    proto={interceptedRes.proto}
+                    statusCode={interceptedRes.statusCode}
+                    statusReason={interceptedRes.statusReason}
+                  />
+                </Box>
+              )}
+            </Box>
+            <ResponseTabs
+              headers={interceptedRes ? resHeaders : []}
+              body={resBody}
+              onHeaderChange={interceptedRes ? handleResHeaderChange : undefined}
+              onHeaderDelete={interceptedRes ? handleResHeaderDelete : undefined}
+              onBodyChange={interceptedRes ? setResBody : undefined}
+              hasResponse={interceptedRes !== undefined && interceptedRes !== null}
+            />
           </Box>
-        </SplitPane>
+        )}
       </Box>
     </Box>
   );

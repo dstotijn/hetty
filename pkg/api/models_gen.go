@@ -16,6 +16,10 @@ type CancelRequestResult struct {
 	Success bool `json:"success"`
 }
 
+type CancelResponseResult struct {
+	Success bool `json:"success"`
+}
+
 type ClearHTTPRequestLogResult struct {
 	Success bool `json:"success"`
 }
@@ -43,12 +47,13 @@ type HTTPHeaderInput struct {
 }
 
 type HTTPRequest struct {
-	ID      ulid.ULID    `json:"id"`
-	URL     *url.URL     `json:"url"`
-	Method  HTTPMethod   `json:"method"`
-	Proto   HTTPProtocol `json:"proto"`
-	Headers []HTTPHeader `json:"headers"`
-	Body    *string      `json:"body"`
+	ID       ulid.ULID     `json:"id"`
+	URL      *url.URL      `json:"url"`
+	Method   HTTPMethod    `json:"method"`
+	Proto    HTTPProtocol  `json:"proto"`
+	Headers  []HTTPHeader  `json:"headers"`
+	Body     *string       `json:"body"`
+	Response *HTTPResponse `json:"response"`
 }
 
 type HTTPRequestLog struct {
@@ -72,6 +77,16 @@ type HTTPRequestLogFilterInput struct {
 	SearchExpression *string `json:"searchExpression"`
 }
 
+type HTTPResponse struct {
+	// Will be the same ID as its related request ID.
+	ID           ulid.ULID    `json:"id"`
+	Proto        HTTPProtocol `json:"proto"`
+	StatusCode   int          `json:"statusCode"`
+	StatusReason string       `json:"statusReason"`
+	Body         *string      `json:"body"`
+	Headers      []HTTPHeader `json:"headers"`
+}
+
 type HTTPResponseLog struct {
 	// Will be the same ID as its related request ID.
 	ID           ulid.ULID    `json:"id"`
@@ -88,15 +103,29 @@ type InterceptSettings struct {
 }
 
 type ModifyRequestInput struct {
-	ID      ulid.ULID         `json:"id"`
-	URL     *url.URL          `json:"url"`
-	Method  HTTPMethod        `json:"method"`
-	Proto   HTTPProtocol      `json:"proto"`
-	Headers []HTTPHeaderInput `json:"headers"`
-	Body    *string           `json:"body"`
+	ID             ulid.ULID         `json:"id"`
+	URL            *url.URL          `json:"url"`
+	Method         HTTPMethod        `json:"method"`
+	Proto          HTTPProtocol      `json:"proto"`
+	Headers        []HTTPHeaderInput `json:"headers"`
+	Body           *string           `json:"body"`
+	ModifyResponse *bool             `json:"modifyResponse"`
 }
 
 type ModifyRequestResult struct {
+	Success bool `json:"success"`
+}
+
+type ModifyResponseInput struct {
+	RequestID    ulid.ULID         `json:"requestID"`
+	Proto        HTTPProtocol      `json:"proto"`
+	Headers      []HTTPHeaderInput `json:"headers"`
+	Body         *string           `json:"body"`
+	StatusCode   int               `json:"statusCode"`
+	StatusReason string            `json:"statusReason"`
+}
+
+type ModifyResponseResult struct {
 	Success bool `json:"success"`
 }
 

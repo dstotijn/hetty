@@ -9,5 +9,16 @@ query GetInterceptedRequest($id: ID!) {
       value
     }
     body
+    response {
+      id
+      proto
+      statusCode
+      statusReason
+      headers {
+        key
+        value
+      }
+      body
+    }
   }
 }

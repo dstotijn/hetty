@@ -13,8 +13,9 @@ import (
 	"net/http/httputil"
 	"time"
 
-	"github.com/dstotijn/hetty/pkg/log"
 	"github.com/oklog/ulid"
+
+	"github.com/dstotijn/hetty/pkg/log"
 )
 
 //nolint:gosec
@@ -189,9 +190,12 @@ func (p *Proxy) clientTLSConn(conn net.Conn) (*tls.Conn, error) {
 }
 
 func (p *Proxy) errorHandler(w http.ResponseWriter, r *http.Request, err error) {
-	if !errors.Is(err, context.Canceled) {
+	switch {
+	case !errors.Is(err, context.Canceled):
 		p.logger.Errorw("Failed to proxy request.",
 			"error", err)
+	case errors.Is(err, context.Canceled):
+		p.logger.Debugw("Proxy request was cancelled.")
 	}
 
 	w.WriteHeader(http.StatusBadGateway)

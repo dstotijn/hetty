@@ -13,6 +13,7 @@ import (
 	"github.com/dstotijn/hetty/pkg/search"
 )
 
+//nolint:unparam
 var reqFilterKeyFns = map[string]func(req *http.Request) (string, error){
 	"proto": func(req *http.Request) (string, error) { return req.Proto, nil },
 	"url": func(req *http.Request) (string, error) {
