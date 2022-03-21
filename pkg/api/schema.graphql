@@ -179,13 +179,17 @@ type CancelResponseResult {
 }
 
 input UpdateInterceptSettingsInput {
-  enabled: Boolean!
+  requestsEnabled: Boolean!
+  responsesEnabled: Boolean!
   requestFilter: String
+  responseFilter: String
 }
 
 type InterceptSettings {
-  enabled: Boolean!
+  requestsEnabled: Boolean!
+  responsesEnabled: Boolean!
   requestFilter: String
+  responseFilter: String
 }
 
 type Query {

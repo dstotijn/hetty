@@ -11,6 +11,7 @@ import {
   Switch,
   Tab,
   TextField,
+  TextFieldProps,
   Typography,
 } from "@mui/material";
 import { SwitchBaseProps } from "@mui/material/internal/SwitchBase";
@@ -23,6 +24,26 @@ import { withoutTypename } from "lib/graphql/omitTypename";
 
 enum TabValue {
   Intercept = "intercept",
+}
+
+function FilterTextField(props: TextFieldProps): JSX.Element {
+  return (
+    <TextField
+      color="primary"
+      variant="outlined"
+      InputProps={{
+        sx: { fontFamily: "'JetBrains Mono', monospace" },
+        autoCorrect: "false",
+        spellCheck: "false",
+      }}
+      InputLabelProps={{
+        shrink: true,
+      }}
+      margin="normal"
+      sx={{ mr: 1 }}
+      {...props}
+    />
+  );
 }
 
 export default function Settings(): JSX.Element {
@@ -41,16 +62,22 @@ export default function Settings(): JSX.Element {
       }));
 
       setInterceptReqFilter(data.updateInterceptSettings.requestFilter || "");
+      setInterceptResFilter(data.updateInterceptSettings.responseFilter || "");
     },
   });
 
   const [interceptReqFilter, setInterceptReqFilter] = useState("");
+  const [interceptResFilter, setInterceptResFilter] = useState("");
 
   useEffect(() => {
     setInterceptReqFilter(activeProject?.settings.intercept.requestFilter || "");
   }, [activeProject?.settings.intercept.requestFilter]);
 
-  const handleInterceptEnabled: SwitchBaseProps["onChange"] = (e, checked) => {
+  useEffect(() => {
+    setInterceptResFilter(activeProject?.settings.intercept.responseFilter || "");
+  }, [activeProject?.settings.intercept.responseFilter]);
+
+  const handleReqInterceptEnabled: SwitchBaseProps["onChange"] = (e, checked) => {
     if (!activeProject) {
       e.preventDefault();
       return;
@@ -60,7 +87,23 @@ export default function Settings(): JSX.Element {
       variables: {
         input: {
           ...withoutTypename(activeProject.settings.intercept),
-          enabled: checked,
+          requestsEnabled: checked,
+        },
+      },
+    });
+  };
+
+  const handleResInterceptEnabled: SwitchBaseProps["onChange"] = (e, checked) => {
+    if (!activeProject) {
+      e.preventDefault();
+      return;
+    }
+
+    updateInterceptSettings({
+      variables: {
+        input: {
+          ...withoutTypename(activeProject.settings.intercept),
+          responsesEnabled: checked,
         },
       },
     });
@@ -76,6 +119,21 @@ export default function Settings(): JSX.Element {
         input: {
           ...withoutTypename(activeProject.settings.intercept),
           requestFilter: interceptReqFilter,
+        },
+      },
+    });
+  };
+
+  const handleInterceptResFilter = () => {
+    if (!activeProject) {
+      return;
+    }
+
+    updateInterceptSettings({
+      variables: {
+        input: {
+          ...withoutTypename(activeProject.settings.intercept),
+          responseFilter: interceptResFilter,
         },
       },
     });
@@ -111,16 +169,19 @@ export default function Settings(): JSX.Element {
             </TabList>
 
             <TabPanel value={TabValue.Intercept} sx={{ px: 0 }}>
-              <FormControl>
+              <Typography variant="h6" sx={{ mt: 3, mb: 1 }}>
+                Requests
+              </Typography>
+              <FormControl sx={{ mb: 2 }}>
                 <FormControlLabel
                   control={
                     <Switch
                       disabled={updateIntercepSettingsResult.loading}
-                      onChange={handleInterceptEnabled}
-                      checked={activeProject.settings.intercept.enabled}
+                      onChange={handleReqInterceptEnabled}
+                      checked={activeProject.settings.intercept.requestsEnabled}
                     />
                   }
-                  label="Enable proxy interception"
+                  label="Enable request interception"
                   labelPlacement="start"
                   sx={{ display: "inline-block", m: 0 }}
                 />
@@ -129,28 +190,13 @@ export default function Settings(): JSX.Element {
                   <Link href="/proxy/intercept">manual review</Link>.
                 </FormHelperText>
               </FormControl>
-              <Typography variant="h6" sx={{ mt: 3 }}>
-                Rules
-              </Typography>
               <form>
                 <FormControl sx={{ width: "50%" }}>
-                  <TextField
+                  <FilterTextField
                     label="Request filter"
-                    placeholder={`method = "GET" OR url =~ "/foobar"`}
-                    color="primary"
-                    variant="outlined"
+                    placeholder={`Example: method = "GET" OR url =~ "/foobar"`}
                     value={interceptReqFilter}
                     onChange={(e) => setInterceptReqFilter(e.target.value)}
-                    InputProps={{
-                      sx: { fontFamily: "'JetBrains Mono', monospace" },
-                      autoCorrect: "false",
-                      spellCheck: "false",
-                    }}
-                    InputLabelProps={{
-                      shrink: true,
-                    }}
-                    margin="normal"
-                    sx={{ mr: 1 }}
                   />
                   <FormHelperText>
                     Filter expression to match incoming requests on. When set, only matching requests are intercepted.
@@ -166,6 +212,55 @@ export default function Settings(): JSX.Element {
                     py: 1.8,
                   }}
                   onClick={handleInterceptReqFilter}
+                  disabled={updateIntercepSettingsResult.loading}
+                  startIcon={updateIntercepSettingsResult.loading ? <CircularProgress size={22} /> : undefined}
+                >
+                  Update
+                </Button>
+              </form>
+              <Typography variant="h6" sx={{ mt: 3 }}>
+                Responses
+              </Typography>
+              <FormControl sx={{ mb: 2 }}>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      disabled={updateIntercepSettingsResult.loading}
+                      onChange={handleResInterceptEnabled}
+                      checked={activeProject.settings.intercept.responsesEnabled}
+                    />
+                  }
+                  label="Enable response interception"
+                  labelPlacement="start"
+                  sx={{ display: "inline-block", m: 0 }}
+                />
+                <FormHelperText>
+                  When enabled, HTTP responses received by the proxy are stalled for{" "}
+                  <Link href="/proxy/intercept">manual review</Link>.
+                </FormHelperText>
+              </FormControl>
+              <form>
+                <FormControl sx={{ width: "50%" }}>
+                  <FilterTextField
+                    label="Response filter"
+                    placeholder={`Example: statusCode =~ "^2" OR body =~ "foobar"`}
+                    value={interceptResFilter}
+                    onChange={(e) => setInterceptResFilter(e.target.value)}
+                  />
+                  <FormHelperText>
+                    Filter expression to match received responses on. When set, only matching responses are intercepted.
+                  </FormHelperText>
+                </FormControl>
+                <Button
+                  type="submit"
+                  variant="text"
+                  color="primary"
+                  size="large"
+                  sx={{
+                    mt: 2,
+                    py: 1.8,
+                  }}
+                  onClick={handleInterceptResFilter}
                   disabled={updateIntercepSettingsResult.loading}
                   startIcon={updateIntercepSettingsResult.loading ? <CircularProgress size={22} /> : undefined}
                 >

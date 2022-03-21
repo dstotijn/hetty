@@ -53,14 +53,19 @@ type Service struct {
 	requests  map[ulid.ULID]Request
 	responses map[ulid.ULID]Response
 	logger    log.Logger
-	enabled   bool
-	reqFilter search.Expression
+
+	requestsEnabled  bool
+	responsesEnabled bool
+	reqFilter        search.Expression
+	resFilter        search.Expression
 }
 
 type Config struct {
-	Logger        log.Logger
-	Enabled       bool
-	RequestFilter search.Expression
+	Logger           log.Logger
+	RequestsEnabled  bool
+	ResponsesEnabled bool
+	RequestFilter    search.Expression
+	ResponseFilter   search.Expression
 }
 
 // RequestIDs implements sort.Interface.
@@ -68,13 +73,15 @@ type RequestIDs []ulid.ULID
 
 func NewService(cfg Config) *Service {
 	s := &Service{
-		reqMu:     &sync.RWMutex{},
-		resMu:     &sync.RWMutex{},
-		requests:  make(map[ulid.ULID]Request),
-		responses: make(map[ulid.ULID]Response),
-		logger:    cfg.Logger,
-		enabled:   cfg.Enabled,
-		reqFilter: cfg.RequestFilter,
+		reqMu:            &sync.RWMutex{},
+		resMu:            &sync.RWMutex{},
+		requests:         make(map[ulid.ULID]Request),
+		responses:        make(map[ulid.ULID]Response),
+		logger:           cfg.Logger,
+		requestsEnabled:  cfg.RequestsEnabled,
+		responsesEnabled: cfg.ResponsesEnabled,
+		reqFilter:        cfg.RequestFilter,
+		resFilter:        cfg.ResponseFilter,
 	}
 
 	if s.logger == nil {
@@ -122,7 +129,7 @@ func (svc *Service) InterceptRequest(ctx context.Context, req *http.Request) (*h
 		return req, nil
 	}
 
-	if !svc.enabled {
+	if !svc.requestsEnabled {
 		// If request intercept is disabled, return the incoming request as-is.
 		svc.logger.Debugw("Bypassed request interception: feature disabled.")
 		return req, nil
@@ -267,14 +274,20 @@ func (svc *Service) Items() []Item {
 }
 
 func (svc *Service) UpdateSettings(settings Settings) {
-	// When updating from `enabled` -> `disabled`, clear any pending reqs.
-	if svc.enabled && !settings.Enabled {
+	// When updating from requests `enabled` -> `disabled`, clear any pending reqs.
+	if svc.requestsEnabled && !settings.RequestsEnabled {
 		svc.ClearRequests()
+	}
+
+	// When updating from responses `enabled` -> `disabled`, clear any pending responses.
+	if svc.responsesEnabled && !settings.ResponsesEnabled {
 		svc.ClearResponses()
 	}
 
-	svc.enabled = settings.Enabled
+	svc.requestsEnabled = settings.RequestsEnabled
+	svc.responsesEnabled = settings.ResponsesEnabled
 	svc.reqFilter = settings.RequestFilter
+	svc.resFilter = settings.ResponseFilter
 }
 
 // ItemByID returns an intercepted item (request and possible response) by ID. It's safe for concurrent use.
@@ -358,25 +371,25 @@ func (svc *Service) InterceptResponse(ctx context.Context, res *http.Response) (
 		return res, nil
 	}
 
-	if !svc.enabled {
-		// If the feature is disabled, return the response as-is.
+	// If global response intercept is disabled and interception is *not* explicitly enabled for this response: bypass.
+	if !svc.responsesEnabled && !(ok && shouldIntercept) {
 		svc.logger.Debugw("Bypassed response interception: feature disabled.")
 		return res, nil
 	}
 
-	// if svc.reqFilter != nil {
-	// 	match, err := MatchRequestFilter(req, svc.reqFilter)
-	// 	if err != nil {
-	// 		return nil, fmt.Errorf("intercept: failed to match request rules for request (id: %v): %w",
-	// 			reqID.String(), err,
-	// 		)
-	// 	}
+	if svc.resFilter != nil {
+		match, err := MatchResponseFilter(res, svc.resFilter)
+		if err != nil {
+			return nil, fmt.Errorf("intercept: failed to match response rules for response (id: %v): %w",
+				reqID.String(), err,
+			)
+		}
 
-	// 	if !match {
-	// 		svc.logger.Debugw("Bypassed interception: request rules don't match.")
-	// 		return req, nil
-	// 	}
-	// }
+		if !match {
+			svc.logger.Debugw("Bypassed response interception: response rules don't match.")
+			return res, nil
+		}
+	}
 
 	ch := make(chan *http.Response)
 	done := make(chan struct{})

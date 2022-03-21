@@ -3,6 +3,8 @@ package intercept
 import "github.com/dstotijn/hetty/pkg/search"
 
 type Settings struct {
-	Enabled       bool
-	RequestFilter search.Expression
+	RequestsEnabled  bool
+	ResponsesEnabled bool
+	RequestFilter    search.Expression
+	ResponseFilter   search.Expression
 }

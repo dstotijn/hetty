@@ -119,8 +119,10 @@ type ComplexityRoot struct {
 	}
 
 	InterceptSettings struct {
-		Enabled       func(childComplexity int) int
-		RequestFilter func(childComplexity int) int
+		RequestFilter    func(childComplexity int) int
+		RequestsEnabled  func(childComplexity int) int
+		ResponseFilter   func(childComplexity int) int
+		ResponsesEnabled func(childComplexity int) int
 	}
 
 	ModifyRequestResult struct {
@@ -510,19 +512,33 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.HTTPResponseLog.StatusReason(childComplexity), true
 
-	case "InterceptSettings.enabled":
-		if e.complexity.InterceptSettings.Enabled == nil {
-			break
-		}
-
-		return e.complexity.InterceptSettings.Enabled(childComplexity), true
-
 	case "InterceptSettings.requestFilter":
 		if e.complexity.InterceptSettings.RequestFilter == nil {
 			break
 		}
 
 		return e.complexity.InterceptSettings.RequestFilter(childComplexity), true
+
+	case "InterceptSettings.requestsEnabled":
+		if e.complexity.InterceptSettings.RequestsEnabled == nil {
+			break
+		}
+
+		return e.complexity.InterceptSettings.RequestsEnabled(childComplexity), true
+
+	case "InterceptSettings.responseFilter":
+		if e.complexity.InterceptSettings.ResponseFilter == nil {
+			break
+		}
+
+		return e.complexity.InterceptSettings.ResponseFilter(childComplexity), true
+
+	case "InterceptSettings.responsesEnabled":
+		if e.complexity.InterceptSettings.ResponsesEnabled == nil {
+			break
+		}
+
+		return e.complexity.InterceptSettings.ResponsesEnabled(childComplexity), true
 
 	case "ModifyRequestResult.success":
 		if e.complexity.ModifyRequestResult.Success == nil {
@@ -1204,13 +1220,17 @@ type CancelResponseResult {
 }
 
 input UpdateInterceptSettingsInput {
-  enabled: Boolean!
+  requestsEnabled: Boolean!
+  responsesEnabled: Boolean!
   requestFilter: String
+  responseFilter: String
 }
 
 type InterceptSettings {
-  enabled: Boolean!
+  requestsEnabled: Boolean!
+  responsesEnabled: Boolean!
   requestFilter: String
+  responseFilter: String
 }
 
 type Query {
@@ -2861,7 +2881,7 @@ func (ec *executionContext) _HttpResponseLog_headers(ctx context.Context, field 
 	return ec.marshalNHttpHeader2ᚕgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐHTTPHeaderᚄ(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _InterceptSettings_enabled(ctx context.Context, field graphql.CollectedField, obj *InterceptSettings) (ret graphql.Marshaler) {
+func (ec *executionContext) _InterceptSettings_requestsEnabled(ctx context.Context, field graphql.CollectedField, obj *InterceptSettings) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -2879,7 +2899,42 @@ func (ec *executionContext) _InterceptSettings_enabled(ctx context.Context, fiel
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Enabled, nil
+		return obj.RequestsEnabled, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _InterceptSettings_responsesEnabled(ctx context.Context, field graphql.CollectedField, obj *InterceptSettings) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "InterceptSettings",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ResponsesEnabled, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -2915,6 +2970,38 @@ func (ec *executionContext) _InterceptSettings_requestFilter(ctx context.Context
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.RequestFilter, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _InterceptSettings_responseFilter(ctx context.Context, field graphql.CollectedField, obj *InterceptSettings) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "InterceptSettings",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ResponseFilter, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -6302,11 +6389,19 @@ func (ec *executionContext) unmarshalInputUpdateInterceptSettingsInput(ctx conte
 
 	for k, v := range asMap {
 		switch k {
-		case "enabled":
+		case "requestsEnabled":
 			var err error
 
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("enabled"))
-			it.Enabled, err = ec.unmarshalNBoolean2bool(ctx, v)
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("requestsEnabled"))
+			it.RequestsEnabled, err = ec.unmarshalNBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "responsesEnabled":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("responsesEnabled"))
+			it.ResponsesEnabled, err = ec.unmarshalNBoolean2bool(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -6315,6 +6410,14 @@ func (ec *executionContext) unmarshalInputUpdateInterceptSettingsInput(ctx conte
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("requestFilter"))
 			it.RequestFilter, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "responseFilter":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("responseFilter"))
+			it.ResponseFilter, err = ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -6771,13 +6874,20 @@ func (ec *executionContext) _InterceptSettings(ctx context.Context, sel ast.Sele
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("InterceptSettings")
-		case "enabled":
-			out.Values[i] = ec._InterceptSettings_enabled(ctx, field, obj)
+		case "requestsEnabled":
+			out.Values[i] = ec._InterceptSettings_requestsEnabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "responsesEnabled":
+			out.Values[i] = ec._InterceptSettings_responsesEnabled(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
 		case "requestFilter":
 			out.Values[i] = ec._InterceptSettings_requestFilter(ctx, field, obj)
+		case "responseFilter":
+			out.Values[i] = ec._InterceptSettings_responseFilter(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

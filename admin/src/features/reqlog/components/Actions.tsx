@@ -29,7 +29,7 @@ function Actions(): JSX.Element {
 
       {clearLogsResult.error && <Alert severity="error">Failed to clear HTTP logs: {clearLogsResult.error}</Alert>}
 
-      {activeProject?.settings.intercept.enabled && (
+      {(activeProject?.settings.intercept.requestsEnabled || activeProject?.settings.intercept.responsesEnabled) && (
         <Link href="/proxy/intercept/?id=" passHref>
           <Button
             variant="contained"

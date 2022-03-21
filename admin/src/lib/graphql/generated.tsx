@@ -135,8 +135,10 @@ export type HttpResponseLog = {
 
 export type InterceptSettings = {
   __typename?: 'InterceptSettings';
-  enabled: Scalars['Boolean'];
   requestFilter?: Maybe<Scalars['String']>;
+  requestsEnabled: Scalars['Boolean'];
+  responseFilter?: Maybe<Scalars['String']>;
+  responsesEnabled: Scalars['Boolean'];
 };
 
 export type ModifyRequestInput = {
@@ -359,8 +361,10 @@ export type SenderRequestInput = {
 };
 
 export type UpdateInterceptSettingsInput = {
-  enabled: Scalars['Boolean'];
   requestFilter?: InputMaybe<Scalars['String']>;
+  requestsEnabled: Scalars['Boolean'];
+  responseFilter?: InputMaybe<Scalars['String']>;
+  responsesEnabled: Scalars['Boolean'];
 };
 
 export type CancelRequestMutationVariables = Exact<{
@@ -401,7 +405,7 @@ export type ModifyResponseMutation = { __typename?: 'Mutation', modifyResponse: 
 export type ActiveProjectQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type ActiveProjectQuery = { __typename?: 'Query', activeProject?: { __typename?: 'Project', id: string, name: string, isActive: boolean, settings: { __typename?: 'ProjectSettings', intercept: { __typename?: 'InterceptSettings', enabled: boolean, requestFilter?: string | null } } } | null };
+export type ActiveProjectQuery = { __typename?: 'Query', activeProject?: { __typename?: 'Project', id: string, name: string, isActive: boolean, settings: { __typename?: 'ProjectSettings', intercept: { __typename?: 'InterceptSettings', requestsEnabled: boolean, responsesEnabled: boolean, requestFilter?: string | null, responseFilter?: string | null } } } | null };
 
 export type CloseProjectMutationVariables = Exact<{ [key: string]: never; }>;
 
@@ -513,7 +517,7 @@ export type UpdateInterceptSettingsMutationVariables = Exact<{
 }>;
 
 
-export type UpdateInterceptSettingsMutation = { __typename?: 'Mutation', updateInterceptSettings: { __typename?: 'InterceptSettings', enabled: boolean, requestFilter?: string | null } };
+export type UpdateInterceptSettingsMutation = { __typename?: 'Mutation', updateInterceptSettings: { __typename?: 'InterceptSettings', requestsEnabled: boolean, responsesEnabled: boolean, requestFilter?: string | null, responseFilter?: string | null } };
 
 export type GetInterceptedRequestsQueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -715,8 +719,10 @@ export const ActiveProjectDocument = gql`
     isActive
     settings {
       intercept {
-        enabled
+        requestsEnabled
+        responsesEnabled
         requestFilter
+        responseFilter
       }
     }
   }
@@ -1381,8 +1387,10 @@ export type GetSenderRequestsQueryResult = Apollo.QueryResult<GetSenderRequestsQ
 export const UpdateInterceptSettingsDocument = gql`
     mutation UpdateInterceptSettings($input: UpdateInterceptSettingsInput!) {
   updateInterceptSettings(input: $input) {
-    enabled
+    requestsEnabled
+    responsesEnabled
     requestFilter
+    responseFilter
   }
 }
     `;

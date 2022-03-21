@@ -5,8 +5,10 @@ query ActiveProject {
     isActive
     settings {
       intercept {
-        enabled
+        requestsEnabled
+        responsesEnabled
         requestFilter
+        responseFilter
       }
     }
   }

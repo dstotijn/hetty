@@ -596,9 +596,12 @@ func (r *mutationResolver) ModifyResponse(
 		return nil, fmt.Errorf("malformed HTTP version: %q", res.Proto)
 	}
 
+	var body string
 	if input.Body != nil {
-		res.Body = io.NopCloser(strings.NewReader(*input.Body))
+		body = *input.Body
 	}
+
+	res.Body = io.NopCloser(strings.NewReader(body))
 
 	for _, header := range input.Headers {
 		res.Header.Add(header.Key, header.Value)
@@ -626,16 +629,26 @@ func (r *mutationResolver) UpdateInterceptSettings(
 	input UpdateInterceptSettingsInput,
 ) (*InterceptSettings, error) {
 	settings := intercept.Settings{
-		Enabled: input.Enabled,
+		RequestsEnabled:  input.RequestsEnabled,
+		ResponsesEnabled: input.ResponsesEnabled,
 	}
 
 	if input.RequestFilter != nil && *input.RequestFilter != "" {
 		expr, err := search.ParseQuery(*input.RequestFilter)
 		if err != nil {
-			return nil, fmt.Errorf("could not parse search query: %w", err)
+			return nil, fmt.Errorf("could not parse request filter: %w", err)
 		}
 
 		settings.RequestFilter = expr
+	}
+
+	if input.ResponseFilter != nil && *input.ResponseFilter != "" {
+		expr, err := search.ParseQuery(*input.ResponseFilter)
+		if err != nil {
+			return nil, fmt.Errorf("could not parse response filter: %w", err)
+		}
+
+		settings.ResponseFilter = expr
 	}
 
 	err := r.ProjectService.UpdateInterceptSettings(ctx, settings)
@@ -646,12 +659,18 @@ func (r *mutationResolver) UpdateInterceptSettings(
 	}
 
 	updated := &InterceptSettings{
-		Enabled: settings.Enabled,
+		RequestsEnabled:  settings.RequestsEnabled,
+		ResponsesEnabled: settings.ResponsesEnabled,
 	}
 
 	if settings.RequestFilter != nil {
 		reqFilter := settings.RequestFilter.String()
 		updated.RequestFilter = &reqFilter
+	}
+
+	if settings.ResponseFilter != nil {
+		resFilter := settings.ResponseFilter.String()
+		updated.ResponseFilter = &resFilter
 	}
 
 	return updated, nil
@@ -842,7 +861,8 @@ func parseProject(projSvc proj.Service, p proj.Project) Project {
 		IsActive: projSvc.IsProjectActive(p.ID),
 		Settings: &ProjectSettings{
 			Intercept: &InterceptSettings{
-				Enabled: p.Settings.InterceptEnabled,
+				RequestsEnabled:  p.Settings.InterceptRequests,
+				ResponsesEnabled: p.Settings.InterceptResponses,
 			},
 		},
 	}
@@ -850,6 +870,11 @@ func parseProject(projSvc proj.Service, p proj.Project) Project {
 	if p.Settings.InterceptRequestFilter != nil {
 		interceptReqFilter := p.Settings.InterceptRequestFilter.String()
 		project.Settings.Intercept.RequestFilter = &interceptReqFilter
+	}
+
+	if p.Settings.InterceptResponseFilter != nil {
+		interceptResFilter := p.Settings.InterceptResponseFilter.String()
+		project.Settings.Intercept.ResponseFilter = &interceptResFilter
 	}
 
 	return project

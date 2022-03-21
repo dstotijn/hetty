@@ -62,8 +62,10 @@ type Settings struct {
 	ReqLogSearchExpr       search.Expression
 
 	// Intercept settings
-	InterceptEnabled       bool
-	InterceptRequestFilter search.Expression
+	InterceptRequests       bool
+	InterceptResponses      bool
+	InterceptRequestFilter  search.Expression
+	InterceptResponseFilter search.Expression
 
 	// Sender settings
 	SenderOnlyFindInScope bool
@@ -133,8 +135,10 @@ func (svc *service) CloseProject() error {
 	svc.reqLogSvc.SetBypassOutOfScopeRequests(false)
 	svc.reqLogSvc.SetFindReqsFilter(reqlog.FindRequestsFilter{})
 	svc.interceptSvc.UpdateSettings(intercept.Settings{
-		Enabled:       false,
-		RequestFilter: nil,
+		RequestsEnabled:  false,
+		ResponsesEnabled: false,
+		RequestFilter:    nil,
+		ResponseFilter:   nil,
 	})
 	svc.senderSvc.SetActiveProjectID(ulid.ULID{})
 	svc.senderSvc.SetFindReqsFilter(sender.FindRequestsFilter{})
@@ -179,8 +183,10 @@ func (svc *service) OpenProject(ctx context.Context, projectID ulid.ULID) (Proje
 
 	// Intercept settings.
 	svc.interceptSvc.UpdateSettings(intercept.Settings{
-		Enabled:       project.Settings.InterceptEnabled,
-		RequestFilter: project.Settings.InterceptRequestFilter,
+		RequestsEnabled:  project.Settings.InterceptRequests,
+		ResponsesEnabled: project.Settings.InterceptResponses,
+		RequestFilter:    project.Settings.InterceptRequestFilter,
+		ResponseFilter:   project.Settings.InterceptResponseFilter,
 	})
 
 	// Sender settings.
@@ -296,8 +302,10 @@ func (svc *service) UpdateInterceptSettings(ctx context.Context, settings interc
 		return err
 	}
 
-	project.Settings.InterceptEnabled = settings.Enabled
+	project.Settings.InterceptRequests = settings.RequestsEnabled
+	project.Settings.InterceptResponses = settings.ResponsesEnabled
 	project.Settings.InterceptRequestFilter = settings.RequestFilter
+	project.Settings.InterceptResponseFilter = settings.ResponseFilter
 
 	err = svc.repo.UpsertProject(ctx, project)
 	if err != nil {

@@ -217,14 +217,16 @@ func (svc *service) ResponseModifier(next proxy.ResponseModifyFunc) proxy.Respon
 
 		clone := *res
 
-		// TODO: Use io.LimitReader.
-		body, err := ioutil.ReadAll(res.Body)
-		if err != nil {
-			return fmt.Errorf("reqlog: could not read response body: %w", err)
-		}
+		if res.Body != nil {
+			// TODO: Use io.LimitReader.
+			body, err := io.ReadAll(res.Body)
+			if err != nil {
+				return fmt.Errorf("reqlog: could not read response body: %w", err)
+			}
 
-		res.Body = ioutil.NopCloser(bytes.NewBuffer(body))
-		clone.Body = ioutil.NopCloser(bytes.NewBuffer(body))
+			res.Body = io.NopCloser(bytes.NewBuffer(body))
+			clone.Body = io.NopCloser(bytes.NewBuffer(body))
+		}
 
 		go func() {
 			if err := svc.storeResponse(context.Background(), reqLogID, &clone); err != nil {
