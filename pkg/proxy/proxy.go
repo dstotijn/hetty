@@ -114,6 +114,11 @@ func (p *Proxy) modifyRequest(r *http.Request) {
 func (p *Proxy) modifyResponse(res *http.Response) error {
 	fn := nopResModifier
 
+	// TODO: Make decompressing gzip formatted response bodies a configurable project setting.
+	if err := gunzipResponseBody(res); err != nil {
+		return fmt.Errorf("proxy: failed to gunzip response body: %w", err)
+	}
+
 	for i := len(p.resModifiers) - 1; i >= 0; i-- {
 		fn = p.resModifiers[i](fn)
 	}

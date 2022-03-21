@@ -2,7 +2,6 @@ package reqlog
 
 import (
 	"bytes"
-	"compress/gzip"
 	"context"
 	"errors"
 	"fmt"
@@ -267,23 +266,6 @@ func (svc *service) BypassOutOfScopeRequests() bool {
 }
 
 func ParseHTTPResponse(res *http.Response) (ResponseLog, error) {
-	if res.Header.Get("Content-Encoding") == "gzip" {
-		gzipReader, err := gzip.NewReader(res.Body)
-		if err != nil {
-			return ResponseLog{}, fmt.Errorf("reqlog: could not create gzip reader: %w", err)
-		}
-		defer gzipReader.Close()
-
-		buf := &bytes.Buffer{}
-
-		//nolint:gosec
-		if _, err := io.Copy(buf, gzipReader); err != nil {
-			return ResponseLog{}, fmt.Errorf("reqlog: could not read gzipped response body: %w", err)
-		}
-
-		res.Body = io.NopCloser(buf)
-	}
-
 	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		return ResponseLog{}, fmt.Errorf("reqlog: could not read body: %w", err)
