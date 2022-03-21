@@ -2,12 +2,14 @@ import { useApolloClient } from "@apollo/client";
 import { TabContext, TabPanel } from "@mui/lab";
 import TabList from "@mui/lab/TabList";
 import {
+  Alert,
   Box,
   Button,
   CircularProgress,
   FormControl,
   FormControlLabel,
   FormHelperText,
+  Snackbar,
   Switch,
   Tab,
   TextField,
@@ -63,6 +65,7 @@ export default function Settings(): JSX.Element {
 
       setInterceptReqFilter(data.updateInterceptSettings.requestFilter || "");
       setInterceptResFilter(data.updateInterceptSettings.responseFilter || "");
+      setSettingsUpdatedOpen(true);
     },
   });
 
@@ -140,6 +143,15 @@ export default function Settings(): JSX.Element {
   };
 
   const [tabValue, setTabValue] = useState(TabValue.Intercept);
+  const [settingsUpdatedOpen, setSettingsUpdatedOpen] = useState(false);
+
+  const handleSettingsUpdatedClose = (_: Event | React.SyntheticEvent, reason?: string) => {
+    if (reason === "clickaway") {
+      return;
+    }
+
+    setSettingsUpdatedOpen(false);
+  };
 
   const tabSx = {
     textTransform: "none",
@@ -147,6 +159,12 @@ export default function Settings(): JSX.Element {
 
   return (
     <Box p={4}>
+      <Snackbar open={settingsUpdatedOpen} autoHideDuration={3000} onClose={handleSettingsUpdatedClose}>
+        <Alert onClose={handleSettingsUpdatedClose} severity="info">
+          Intercept settings have been updated.
+        </Alert>
+      </Snackbar>
+
       <Typography variant="h4" sx={{ mb: 2 }}>
         Settings
       </Typography>
