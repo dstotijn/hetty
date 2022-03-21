@@ -11,6 +11,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httputil"
+	"strings"
 	"time"
 
 	"github.com/oklog/ulid"
@@ -119,6 +120,25 @@ func (p *Proxy) modifyRequest(r *http.Request) {
 	// Setting `X-Forwarded-For` to `nil` ensures that http.ReverseProxy doesn't
 	// set this header.
 	r.Header["X-Forwarded-For"] = nil
+
+	// Strip unsupported encodings.
+	if acceptEncs := r.Header.Get("Accept-Encoding"); acceptEncs != "" {
+		directives := strings.Split(acceptEncs, ",")
+		updated := make([]string, 0, len(directives))
+
+		for _, directive := range directives {
+			stripped := strings.TrimSpace(directive)
+			if strings.HasPrefix(stripped, "*") || strings.HasPrefix(stripped, "gzip") {
+				updated = append(updated, stripped)
+			}
+		}
+
+		if len(updated) == 0 {
+			r.Header.Del("Accept-Encoding")
+		} else {
+			r.Header.Set("Accept-Encoding", strings.Join(updated, ", "))
+		}
+	}
 
 	fn := nopReqModifier
 
