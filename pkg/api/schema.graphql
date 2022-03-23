@@ -30,6 +30,11 @@ type Project {
   id: ID!
   name: String!
   isActive: Boolean!
+  settings: ProjectSettings!
+}
+
+type ProjectSettings {
+  intercept: InterceptSettings!
 }
 
 type ScopeRule {
@@ -116,6 +121,77 @@ type SenderRequestFilter {
   searchExpression: String
 }
 
+type HttpRequest {
+  id: ID!
+  url: URL!
+  method: HttpMethod!
+  proto: HttpProtocol!
+  headers: [HttpHeader!]!
+  body: String
+  response: HttpResponse
+}
+
+type HttpResponse {
+  """
+  Will be the same ID as its related request ID.
+  """
+  id: ID!
+  proto: HttpProtocol!
+  statusCode: Int!
+  statusReason: String!
+  body: String
+  headers: [HttpHeader!]!
+}
+
+input ModifyRequestInput {
+  id: ID!
+  url: URL!
+  method: HttpMethod!
+  proto: HttpProtocol!
+  headers: [HttpHeaderInput!]
+  body: String
+  modifyResponse: Boolean
+}
+
+type ModifyRequestResult {
+  success: Boolean!
+}
+
+type CancelRequestResult {
+  success: Boolean!
+}
+
+input ModifyResponseInput {
+  requestID: ID!
+  proto: HttpProtocol!
+  headers: [HttpHeaderInput!]
+  body: String
+  statusCode: Int!
+  statusReason: String!
+}
+
+type ModifyResponseResult {
+  success: Boolean!
+}
+
+type CancelResponseResult {
+  success: Boolean!
+}
+
+input UpdateInterceptSettingsInput {
+  requestsEnabled: Boolean!
+  responsesEnabled: Boolean!
+  requestFilter: String
+  responseFilter: String
+}
+
+type InterceptSettings {
+  requestsEnabled: Boolean!
+  responsesEnabled: Boolean!
+  requestFilter: String
+  responseFilter: String
+}
+
 type Query {
   httpRequestLog(id: ID!): HttpRequestLog
   httpRequestLogs: [HttpRequestLog!]!
@@ -125,6 +201,8 @@ type Query {
   scope: [ScopeRule!]!
   senderRequest(id: ID!): SenderRequest
   senderRequests: [SenderRequest!]!
+  interceptedRequests: [HttpRequest!]!
+  interceptedRequest(id: ID!): HttpRequest
 }
 
 type Mutation {
@@ -142,6 +220,13 @@ type Mutation {
   createSenderRequestFromHttpRequestLog(id: ID!): SenderRequest!
   sendRequest(id: ID!): SenderRequest!
   deleteSenderRequests: DeleteSenderRequestsResult!
+  modifyRequest(request: ModifyRequestInput!): ModifyRequestResult!
+  cancelRequest(id: ID!): CancelRequestResult!
+  modifyResponse(response: ModifyResponseInput!): ModifyResponseResult!
+  cancelResponse(requestID: ID!): CancelResponseResult!
+  updateInterceptSettings(
+    input: UpdateInterceptSettingsInput!
+  ): InterceptSettings!
 }
 
 enum HttpMethod {

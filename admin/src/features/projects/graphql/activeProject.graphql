@@ -1,0 +1,15 @@
+query ActiveProject {
+  activeProject {
+    id
+    name
+    isActive
+    settings {
+      intercept {
+        requestsEnabled
+        responsesEnabled
+        requestFilter
+        responseFilter
+      }
+    }
+  }
+}

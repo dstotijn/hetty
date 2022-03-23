@@ -208,7 +208,7 @@ func parseInfixExpression(p *Parser, left Expression) (Expression, error) {
 				return nil, fmt.Errorf("could not compile regular expression %q: %w", rightStr.Value, err)
 			}
 
-			right = re
+			right = RegexpLiteral{re}
 		}
 	}
 

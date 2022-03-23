@@ -94,7 +94,7 @@ func TestParseQuery(t *testing.T) {
 			expectedExpression: InfixExpression{
 				Operator: TokOpRe,
 				Left:     StringLiteral{Value: "foo"},
-				Right:    regexp.MustCompile("bar"),
+				Right:    RegexpLiteral{regexp.MustCompile("bar")},
 			},
 			expectedError: nil,
 		},
@@ -104,7 +104,7 @@ func TestParseQuery(t *testing.T) {
 			expectedExpression: InfixExpression{
 				Operator: TokOpNotRe,
 				Left:     StringLiteral{Value: "foo"},
-				Right:    regexp.MustCompile("bar"),
+				Right:    RegexpLiteral{regexp.MustCompile("bar")},
 			},
 			expectedError: nil,
 		},
@@ -197,7 +197,7 @@ func TestParseQuery(t *testing.T) {
 				Right: InfixExpression{
 					Operator: TokOpRe,
 					Left:     StringLiteral{Value: "baz"},
-					Right:    regexp.MustCompile("yolo"),
+					Right:    RegexpLiteral{regexp.MustCompile("yolo")},
 				},
 			},
 			expectedError: nil,

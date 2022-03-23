@@ -17,7 +17,12 @@
     "prettier/prettier": ["error"],
     "@next/next/no-css-tags": "off",
     "no-unused-vars": "off",
-    "@typescript-eslint/no-unused-vars": "error",
+    "@typescript-eslint/no-unused-vars": [
+      "error",
+      {
+        "ignoreRestSiblings": true
+      }
+    ],
 
     "import/default": "off",
 

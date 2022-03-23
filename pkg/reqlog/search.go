@@ -3,7 +3,6 @@ package reqlog
 import (
 	"errors"
 	"fmt"
-	"regexp"
 	"strconv"
 	"strings"
 
@@ -100,7 +99,7 @@ func (reqLog RequestLog) matchInfixExpr(expr search.InfixExpression) (bool, erro
 	leftVal := reqLog.getMappedStringLiteral(left.Value)
 
 	if expr.Operator == search.TokOpRe || expr.Operator == search.TokOpNotRe {
-		right, ok := expr.Right.(*regexp.Regexp)
+		right, ok := expr.Right.(search.RegexpLiteral)
 		if !ok {
 			return false, errors.New("right operand must be a regular expression")
 		}

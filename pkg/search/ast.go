@@ -3,6 +3,7 @@ package search
 import (
 	"encoding/gob"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -50,11 +51,15 @@ type StringLiteral struct {
 }
 
 func (sl StringLiteral) String() string {
-	return sl.Value
+	return strconv.Quote(sl.Value)
 }
 
 type RegexpLiteral struct {
 	*regexp.Regexp
+}
+
+func (rl RegexpLiteral) String() string {
+	return strconv.Quote(rl.Regexp.String())
 }
 
 func (rl RegexpLiteral) MarshalBinary() ([]byte, error) {

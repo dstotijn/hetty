@@ -1,0 +1,11 @@
+query GetInterceptedRequests {
+  interceptedRequests {
+    id
+    url
+    method
+    response {
+      statusCode
+      statusReason
+    }
+  }
+}

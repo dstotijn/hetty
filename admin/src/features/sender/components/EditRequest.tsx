@@ -1,15 +1,4 @@
-import {
-  Alert,
-  Box,
-  BoxProps,
-  Button,
-  InputLabel,
-  FormControl,
-  MenuItem,
-  Select,
-  TextField,
-  Typography,
-} from "@mui/material";
+import { Alert, Box, Button, Typography } from "@mui/material";
 import { useRouter } from "next/router";
 import React, { useState } from "react";
 
@@ -17,76 +6,16 @@ import { KeyValuePair, sortKeyValuePairs } from "lib/components/KeyValuePair";
 import RequestTabs from "lib/components/RequestTabs";
 import Response from "lib/components/Response";
 import SplitPane from "lib/components/SplitPane";
+import UrlBar, { HttpMethod, HttpProto, httpProtoMap } from "lib/components/UrlBar";
 import {
   GetSenderRequestQuery,
   useCreateOrUpdateSenderRequestMutation,
-  HttpProtocol,
   useGetSenderRequestQuery,
   useSendRequestMutation,
 } from "lib/graphql/generated";
 import { queryParamsFromURL } from "lib/queryParamsFromURL";
-
-enum HttpMethod {
-  Get = "GET",
-  Post = "POST",
-  Put = "PUT",
-  Patch = "PATCH",
-  Delete = "DELETE",
-  Head = "HEAD",
-  Options = "OPTIONS",
-  Connect = "CONNECT",
-  Trace = "TRACE",
-}
-
-enum HttpProto {
-  Http10 = "HTTP/1.0",
-  Http11 = "HTTP/1.1",
-  Http20 = "HTTP/2.0",
-}
-
-const httpProtoMap = new Map([
-  [HttpProto.Http10, HttpProtocol.Http10],
-  [HttpProto.Http11, HttpProtocol.Http11],
-  [HttpProto.Http20, HttpProtocol.Http20],
-]);
-
-function updateKeyPairItem(key: string, value: string, idx: number, items: KeyValuePair[]): KeyValuePair[] {
-  const updated = [...items];
-  updated[idx] = { key, value };
-
-  // Append an empty key-value pair if the last item in the array isn't blank
-  // anymore.
-  if (items.length - 1 === idx && items[idx].key === "" && items[idx].value === "") {
-    updated.push({ key: "", value: "" });
-  }
-
-  return updated;
-}
-
-function updateURLQueryParams(url: string, queryParams: KeyValuePair[]) {
-  // Note: We don't use the `URL` interface, because we're potentially dealing
-  // with malformed/incorrect URLs, which would yield TypeErrors when constructed
-  // via `URL`.
-  let newURL = url;
-
-  const questionMarkIndex = url.indexOf("?");
-  if (questionMarkIndex !== -1) {
-    newURL = newURL.slice(0, questionMarkIndex);
-  }
-
-  const searchParams = new URLSearchParams();
-  for (const { key, value } of queryParams.filter(({ key }) => key !== "")) {
-    searchParams.append(key, value);
-  }
-
-  const rawQueryParams = decodeURI(searchParams.toString());
-
-  if (rawQueryParams == "") {
-    return newURL;
-  }
-
-  return newURL + "?" + rawQueryParams;
-}
+import updateKeyPairItem from "lib/updateKeyPairItem";
+import updateURLQueryParams from "lib/updateURLQueryParams";
 
 function EditRequest(): JSX.Element {
   const router = useRouter();
@@ -259,96 +188,6 @@ function EditRequest(): JSX.Element {
           </Box>
         </SplitPane>
       </Box>
-    </Box>
-  );
-}
-
-interface UrlBarProps extends BoxProps {
-  method: HttpMethod;
-  onMethodChange: (method: HttpMethod) => void;
-  url: string;
-  onUrlChange: (url: string) => void;
-  proto: HttpProto;
-  onProtoChange: (proto: HttpProto) => void;
-}
-
-function UrlBar(props: UrlBarProps) {
-  const { method, onMethodChange, url, onUrlChange, proto, onProtoChange, ...other } = props;
-
-  return (
-    <Box {...other} sx={{ ...other.sx, display: "flex" }}>
-      <FormControl>
-        <InputLabel id="req-method-label">Method</InputLabel>
-        <Select
-          labelId="req-method-label"
-          id="req-method"
-          value={method}
-          label="Method"
-          onChange={(e) => onMethodChange(e.target.value as HttpMethod)}
-          sx={{
-            width: "8rem",
-            ".MuiOutlinedInput-notchedOutline": {
-              borderRightWidth: 0,
-              borderTopRightRadius: 0,
-              borderBottomRightRadius: 0,
-            },
-            "&:hover .MuiOutlinedInput-notchedOutline": {
-              borderRightWidth: 1,
-            },
-          }}
-        >
-          {Object.values(HttpMethod).map((method) => (
-            <MenuItem key={method} value={method}>
-              {method}
-            </MenuItem>
-          ))}
-        </Select>
-      </FormControl>
-      <TextField
-        label="URL"
-        placeholder="E.g. “https://example.com/foobar”"
-        value={url}
-        onChange={(e) => onUrlChange(e.target.value)}
-        required
-        variant="outlined"
-        InputLabelProps={{
-          shrink: true,
-        }}
-        InputProps={{
-          sx: {
-            ".MuiOutlinedInput-notchedOutline": {
-              borderRadius: 0,
-            },
-          },
-        }}
-        sx={{ flexGrow: 1 }}
-      />
-      <FormControl>
-        <InputLabel id="req-proto-label">Protocol</InputLabel>
-        <Select
-          labelId="req-proto-label"
-          id="req-proto"
-          value={proto}
-          label="Protocol"
-          onChange={(e) => onProtoChange(e.target.value as HttpProto)}
-          sx={{
-            ".MuiOutlinedInput-notchedOutline": {
-              borderLeftWidth: 0,
-              borderTopLeftRadius: 0,
-              borderBottomLeftRadius: 0,
-            },
-            "&:hover .MuiOutlinedInput-notchedOutline": {
-              borderLeftWidth: 1,
-            },
-          }}
-        >
-          {Object.values(HttpProto).map((proto) => (
-            <MenuItem key={proto} value={proto}>
-              {proto}
-            </MenuItem>
-          ))}
-        </Select>
-      </FormControl>
     </Box>
   );
 }

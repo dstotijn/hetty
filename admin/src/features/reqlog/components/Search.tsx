@@ -1,4 +1,3 @@
-import DeleteIcon from "@mui/icons-material/Delete";
 import FilterListIcon from "@mui/icons-material/FilterList";
 import SearchIcon from "@mui/icons-material/Search";
 import { Alert } from "@mui/lab";
@@ -17,11 +16,8 @@ import {
 import IconButton from "@mui/material/IconButton";
 import React, { useRef, useState } from "react";
 
-import { ConfirmationDialog, useConfirmationDialog } from "lib/components/ConfirmationDialog";
 import {
   HttpRequestLogFilterDocument,
-  HttpRequestLogsDocument,
-  useClearHttpRequestLogMutation,
   useHttpRequestLogFilterQuery,
   useSetHttpRequestLogFilterMutation,
 } from "lib/graphql/generated";
@@ -48,11 +44,6 @@ function Search(): JSX.Element {
       });
     },
   });
-
-  const [clearHTTPRequestLog, clearHTTPRequestLogResult] = useClearHttpRequestLogMutation({
-    refetchQueries: [{ query: HttpRequestLogsDocument }],
-  });
-  const clearHTTPConfirmationDialog = useConfirmationDialog();
 
   const filterRef = useRef<HTMLFormElement>(null);
   const [filterOpen, setFilterOpen] = useState(false);
@@ -81,7 +72,6 @@ function Search(): JSX.Element {
     <Box>
       <Error prefix="Error fetching filter" error={filterResult.error} />
       <Error prefix="Error setting filter" error={setFilterResult.error} />
-      <Error prefix="Error clearing all HTTP logs" error={clearHTTPRequestLogResult.error} />
       <Box style={{ display: "flex", flex: 1 }}>
         <ClickAwayListener onClickAway={handleClickAway}>
           <Paper
@@ -161,21 +151,7 @@ function Search(): JSX.Element {
             </Popper>
           </Paper>
         </ClickAwayListener>
-        <Box style={{ marginLeft: "auto" }}>
-          <Tooltip title="Clear all">
-            <IconButton onClick={clearHTTPConfirmationDialog.open}>
-              <DeleteIcon />
-            </IconButton>
-          </Tooltip>
-        </Box>
       </Box>
-      <ConfirmationDialog
-        isOpen={clearHTTPConfirmationDialog.isOpen}
-        onClose={clearHTTPConfirmationDialog.close}
-        onConfirm={clearHTTPRequestLog}
-      >
-        All proxy logs are going to be removed. This action cannot be undone.
-      </ConfirmationDialog>
     </Box>
   );
 }

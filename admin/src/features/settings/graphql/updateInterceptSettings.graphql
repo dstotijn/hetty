@@ -1,0 +1,8 @@
+mutation UpdateInterceptSettings($input: UpdateInterceptSettingsInput!) {
+  updateInterceptSettings(input: $input) {
+    requestsEnabled
+    responsesEnabled
+    requestFilter
+    responseFilter
+  }
+}

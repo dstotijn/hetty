@@ -1,0 +1,5 @@
+mutation CancelRequest($id: ID!) {
+  cancelRequest(id: $id) {
+    success
+  }
+}

@@ -28,6 +28,7 @@ import (
 	"github.com/dstotijn/hetty/pkg/db/badger"
 	"github.com/dstotijn/hetty/pkg/proj"
 	"github.com/dstotijn/hetty/pkg/proxy"
+	"github.com/dstotijn/hetty/pkg/proxy/intercept"
 	"github.com/dstotijn/hetty/pkg/reqlog"
 	"github.com/dstotijn/hetty/pkg/scope"
 	"github.com/dstotijn/hetty/pkg/sender"
@@ -175,16 +176,21 @@ func (cmd *HettyCommand) Exec(ctx context.Context, _ []string) error {
 		Logger:     cmd.config.logger.Named("reqlog").Sugar(),
 	})
 
+	interceptService := intercept.NewService(intercept.Config{
+		Logger: cmd.config.logger.Named("intercept").Sugar(),
+	})
+
 	senderService := sender.NewService(sender.Config{
 		Repository:    badger,
 		ReqLogService: reqLogService,
 	})
 
 	projService, err := proj.NewService(proj.Config{
-		Repository:    badger,
-		ReqLogService: reqLogService,
-		SenderService: senderService,
-		Scope:         scope,
+		Repository:       badger,
+		InterceptService: interceptService,
+		ReqLogService:    reqLogService,
+		SenderService:    senderService,
+		Scope:            scope,
 	})
 	if err != nil {
 		cmd.config.logger.Fatal("Failed to create new projects service.", zap.Error(err))
@@ -201,6 +207,8 @@ func (cmd *HettyCommand) Exec(ctx context.Context, _ []string) error {
 
 	proxy.UseRequestModifier(reqLogService.RequestModifier)
 	proxy.UseResponseModifier(reqLogService.ResponseModifier)
+	proxy.UseRequestModifier(interceptService.RequestModifier)
+	proxy.UseResponseModifier(interceptService.ResponseModifier)
 
 	fsSub, err := fs.Sub(adminContent, "admin")
 	if err != nil {
@@ -231,6 +239,7 @@ func (cmd *HettyCommand) Exec(ctx context.Context, _ []string) error {
 	adminRouter.Path(gqlEndpoint).Handler(api.HTTPHandler(&api.Resolver{
 		ProjectService:    projService,
 		RequestLogService: reqLogService,
+		InterceptService:  interceptService,
 		SenderService:     senderService,
 	}, gqlEndpoint))
 

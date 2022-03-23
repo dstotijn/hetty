@@ -3,9 +3,12 @@ package api
 //go:generate go run github.com/99designs/gqlgen
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"net/http"
 	"regexp"
 	"strings"
@@ -15,6 +18,8 @@ import (
 	"github.com/vektah/gqlparser/v2/gqlerror"
 
 	"github.com/dstotijn/hetty/pkg/proj"
+	"github.com/dstotijn/hetty/pkg/proxy"
+	"github.com/dstotijn/hetty/pkg/proxy/intercept"
 	"github.com/dstotijn/hetty/pkg/reqlog"
 	"github.com/dstotijn/hetty/pkg/scope"
 	"github.com/dstotijn/hetty/pkg/search"
@@ -36,6 +41,7 @@ var revHTTPProtocolMap = map[HTTPProtocol]string{
 type Resolver struct {
 	ProjectService    proj.Service
 	RequestLogService reqlog.Service
+	InterceptService  *intercept.Service
 	SenderService     sender.Service
 }
 
@@ -179,11 +185,9 @@ func (r *mutationResolver) CreateProject(ctx context.Context, name string) (*Pro
 		return nil, fmt.Errorf("could not open project: %w", err)
 	}
 
-	return &Project{
-		ID:       p.ID,
-		Name:     p.Name,
-		IsActive: r.ProjectService.IsProjectActive(p.ID),
-	}, nil
+	project := parseProject(r.ProjectService, p)
+
+	return &project, nil
 }
 
 func (r *mutationResolver) OpenProject(ctx context.Context, id ulid.ULID) (*Project, error) {
@@ -194,11 +198,9 @@ func (r *mutationResolver) OpenProject(ctx context.Context, id ulid.ULID) (*Proj
 		return nil, fmt.Errorf("could not open project: %w", err)
 	}
 
-	return &Project{
-		ID:       p.ID,
-		Name:     p.Name,
-		IsActive: r.ProjectService.IsProjectActive(p.ID),
-	}, nil
+	project := parseProject(r.ProjectService, p)
+
+	return &project, nil
 }
 
 func (r *queryResolver) ActiveProject(ctx context.Context) (*Project, error) {
@@ -209,11 +211,9 @@ func (r *queryResolver) ActiveProject(ctx context.Context) (*Project, error) {
 		return nil, fmt.Errorf("could not open project: %w", err)
 	}
 
-	return &Project{
-		ID:       p.ID,
-		Name:     p.Name,
-		IsActive: r.ProjectService.IsProjectActive(p.ID),
-	}, nil
+	project := parseProject(r.ProjectService, p)
+
+	return &project, nil
 }
 
 func (r *queryResolver) Projects(ctx context.Context) ([]Project, error) {
@@ -224,11 +224,7 @@ func (r *queryResolver) Projects(ctx context.Context) ([]Project, error) {
 
 	projects := make([]Project, len(p))
 	for i, proj := range p {
-		projects[i] = Project{
-			ID:       proj.ID,
-			Name:     proj.Name,
-			IsActive: r.ProjectService.IsProjectActive(proj.ID),
-		}
+		projects[i] = parseProject(r.ProjectService, proj)
 	}
 
 	return projects, nil
@@ -520,6 +516,166 @@ func (r *mutationResolver) DeleteSenderRequests(ctx context.Context) (*DeleteSen
 	return &DeleteSenderRequestsResult{true}, nil
 }
 
+func (r *queryResolver) InterceptedRequests(ctx context.Context) (httpReqs []HTTPRequest, err error) {
+	items := r.InterceptService.Items()
+
+	for _, item := range items {
+		req, err := parseInterceptItem(item)
+		if err != nil {
+			return nil, err
+		}
+
+		httpReqs = append(httpReqs, req)
+	}
+
+	return httpReqs, nil
+}
+
+func (r *queryResolver) InterceptedRequest(ctx context.Context, id ulid.ULID) (*HTTPRequest, error) {
+	item, err := r.InterceptService.ItemByID(id)
+	if errors.Is(err, intercept.ErrRequestNotFound) {
+		return nil, nil
+	} else if err != nil {
+		return nil, fmt.Errorf("could not get request by ID: %w", err)
+	}
+
+	req, err := parseInterceptItem(item)
+	if err != nil {
+		return nil, err
+	}
+
+	return &req, nil
+}
+
+func (r *mutationResolver) ModifyRequest(ctx context.Context, input ModifyRequestInput) (*ModifyRequestResult, error) {
+	body := ""
+	if input.Body != nil {
+		body = *input.Body
+	}
+
+	//nolint:noctx
+	req, err := http.NewRequest(input.Method.String(), input.URL.String(), strings.NewReader(body))
+	if err != nil {
+		return nil, fmt.Errorf("failed to construct HTTP request: %w", err)
+	}
+
+	for _, header := range input.Headers {
+		req.Header.Add(header.Key, header.Value)
+	}
+
+	err = r.InterceptService.ModifyRequest(input.ID, req, input.ModifyResponse)
+	if err != nil {
+		return nil, fmt.Errorf("could not modify http request: %w", err)
+	}
+
+	return &ModifyRequestResult{Success: true}, nil
+}
+
+func (r *mutationResolver) CancelRequest(ctx context.Context, id ulid.ULID) (*CancelRequestResult, error) {
+	err := r.InterceptService.CancelRequest(id)
+	if err != nil {
+		return nil, fmt.Errorf("could not cancel http request: %w", err)
+	}
+
+	return &CancelRequestResult{Success: true}, nil
+}
+
+func (r *mutationResolver) ModifyResponse(
+	ctx context.Context,
+	input ModifyResponseInput,
+) (*ModifyResponseResult, error) {
+	res := &http.Response{
+		Header:     make(http.Header),
+		Status:     fmt.Sprintf("%v %v", input.StatusCode, input.StatusReason),
+		StatusCode: input.StatusCode,
+		Proto:      revHTTPProtocolMap[input.Proto],
+	}
+
+	var ok bool
+	if res.ProtoMajor, res.ProtoMinor, ok = http.ParseHTTPVersion(res.Proto); !ok {
+		return nil, fmt.Errorf("malformed HTTP version: %q", res.Proto)
+	}
+
+	var body string
+	if input.Body != nil {
+		body = *input.Body
+	}
+
+	res.Body = io.NopCloser(strings.NewReader(body))
+
+	for _, header := range input.Headers {
+		res.Header.Add(header.Key, header.Value)
+	}
+
+	err := r.InterceptService.ModifyResponse(input.RequestID, res)
+	if err != nil {
+		return nil, fmt.Errorf("could not modify http request: %w", err)
+	}
+
+	return &ModifyResponseResult{Success: true}, nil
+}
+
+func (r *mutationResolver) CancelResponse(ctx context.Context, requestID ulid.ULID) (*CancelResponseResult, error) {
+	err := r.InterceptService.CancelResponse(requestID)
+	if err != nil {
+		return nil, fmt.Errorf("could not cancel http response: %w", err)
+	}
+
+	return &CancelResponseResult{Success: true}, nil
+}
+
+func (r *mutationResolver) UpdateInterceptSettings(
+	ctx context.Context,
+	input UpdateInterceptSettingsInput,
+) (*InterceptSettings, error) {
+	settings := intercept.Settings{
+		RequestsEnabled:  input.RequestsEnabled,
+		ResponsesEnabled: input.ResponsesEnabled,
+	}
+
+	if input.RequestFilter != nil && *input.RequestFilter != "" {
+		expr, err := search.ParseQuery(*input.RequestFilter)
+		if err != nil {
+			return nil, fmt.Errorf("could not parse request filter: %w", err)
+		}
+
+		settings.RequestFilter = expr
+	}
+
+	if input.ResponseFilter != nil && *input.ResponseFilter != "" {
+		expr, err := search.ParseQuery(*input.ResponseFilter)
+		if err != nil {
+			return nil, fmt.Errorf("could not parse response filter: %w", err)
+		}
+
+		settings.ResponseFilter = expr
+	}
+
+	err := r.ProjectService.UpdateInterceptSettings(ctx, settings)
+	if errors.Is(err, proj.ErrNoProject) {
+		return nil, noActiveProjectErr(ctx)
+	} else if err != nil {
+		return nil, fmt.Errorf("could not update intercept settings: %w", err)
+	}
+
+	updated := &InterceptSettings{
+		RequestsEnabled:  settings.RequestsEnabled,
+		ResponsesEnabled: settings.ResponsesEnabled,
+	}
+
+	if settings.RequestFilter != nil {
+		reqFilter := settings.RequestFilter.String()
+		updated.RequestFilter = &reqFilter
+	}
+
+	if settings.ResponseFilter != nil {
+		resFilter := settings.ResponseFilter.String()
+		updated.ResponseFilter = &resFilter
+	}
+
+	return updated, nil
+}
+
 func parseSenderRequest(req sender.Request) (SenderRequest, error) {
 	method := HTTPMethod(req.Method)
 	if method != "" && !method.IsValid() {
@@ -573,6 +729,155 @@ func parseSenderRequest(req sender.Request) (SenderRequest, error) {
 	}
 
 	return senderReq, nil
+}
+
+func parseHTTPRequest(req *http.Request) (HTTPRequest, error) {
+	method := HTTPMethod(req.Method)
+	if method != "" && !method.IsValid() {
+		return HTTPRequest{}, fmt.Errorf("http request has invalid method: %v", method)
+	}
+
+	reqProto := httpProtocolMap[req.Proto]
+	if !reqProto.IsValid() {
+		return HTTPRequest{}, fmt.Errorf("http request has invalid protocol: %v", req.Proto)
+	}
+
+	id, ok := proxy.RequestIDFromContext(req.Context())
+	if !ok {
+		return HTTPRequest{}, errors.New("http request has missing ID")
+	}
+
+	httpReq := HTTPRequest{
+		ID:     id,
+		URL:    req.URL,
+		Method: method,
+		Proto:  HTTPProtocol(req.Proto),
+	}
+
+	if req.Header != nil {
+		httpReq.Headers = make([]HTTPHeader, 0)
+
+		for key, values := range req.Header {
+			for _, value := range values {
+				httpReq.Headers = append(httpReq.Headers, HTTPHeader{
+					Key:   key,
+					Value: value,
+				})
+			}
+		}
+	}
+
+	if req.Body != nil {
+		body, err := ioutil.ReadAll(req.Body)
+		if err != nil {
+			return HTTPRequest{}, fmt.Errorf("failed to read request body: %w", err)
+		}
+
+		req.Body = ioutil.NopCloser(bytes.NewBuffer(body))
+		bodyStr := string(body)
+		httpReq.Body = &bodyStr
+	}
+
+	return httpReq, nil
+}
+
+func parseHTTPResponse(res *http.Response) (HTTPResponse, error) {
+	resProto := httpProtocolMap[res.Proto]
+	if !resProto.IsValid() {
+		return HTTPResponse{}, fmt.Errorf("http response has invalid protocol: %v", res.Proto)
+	}
+
+	id, ok := proxy.RequestIDFromContext(res.Request.Context())
+	if !ok {
+		return HTTPResponse{}, errors.New("http response has missing ID")
+	}
+
+	httpRes := HTTPResponse{
+		ID:         id,
+		Proto:      resProto,
+		StatusCode: res.StatusCode,
+	}
+
+	statusReasonSubs := strings.SplitN(res.Status, " ", 2)
+
+	if len(statusReasonSubs) == 2 {
+		httpRes.StatusReason = statusReasonSubs[1]
+	}
+
+	if res.Header != nil {
+		httpRes.Headers = make([]HTTPHeader, 0)
+
+		for key, values := range res.Header {
+			for _, value := range values {
+				httpRes.Headers = append(httpRes.Headers, HTTPHeader{
+					Key:   key,
+					Value: value,
+				})
+			}
+		}
+	}
+
+	if res.Body != nil {
+		body, err := ioutil.ReadAll(res.Body)
+		if err != nil {
+			return HTTPResponse{}, fmt.Errorf("failed to read response body: %w", err)
+		}
+
+		res.Body = ioutil.NopCloser(bytes.NewBuffer(body))
+		bodyStr := string(body)
+		httpRes.Body = &bodyStr
+	}
+
+	return httpRes, nil
+}
+
+func parseInterceptItem(item intercept.Item) (req HTTPRequest, err error) {
+	if item.Response != nil {
+		req, err = parseHTTPRequest(item.Response.Request)
+		if err != nil {
+			return HTTPRequest{}, err
+		}
+
+		res, err := parseHTTPResponse(item.Response)
+		if err != nil {
+			return HTTPRequest{}, err
+		}
+
+		req.Response = &res
+	} else if item.Request != nil {
+		req, err = parseHTTPRequest(item.Request)
+		if err != nil {
+			return HTTPRequest{}, err
+		}
+	}
+
+	return req, nil
+}
+
+func parseProject(projSvc proj.Service, p proj.Project) Project {
+	project := Project{
+		ID:       p.ID,
+		Name:     p.Name,
+		IsActive: projSvc.IsProjectActive(p.ID),
+		Settings: &ProjectSettings{
+			Intercept: &InterceptSettings{
+				RequestsEnabled:  p.Settings.InterceptRequests,
+				ResponsesEnabled: p.Settings.InterceptResponses,
+			},
+		},
+	}
+
+	if p.Settings.InterceptRequestFilter != nil {
+		interceptReqFilter := p.Settings.InterceptRequestFilter.String()
+		project.Settings.Intercept.RequestFilter = &interceptReqFilter
+	}
+
+	if p.Settings.InterceptResponseFilter != nil {
+		interceptResFilter := p.Settings.InterceptResponseFilter.String()
+		project.Settings.Intercept.ResponseFilter = &interceptResFilter
+	}
+
+	return project
 }
 
 func stringPtrToRegexp(s *string) (*regexp.Regexp, error) {

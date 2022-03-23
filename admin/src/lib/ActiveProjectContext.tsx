@@ -1,6 +1,6 @@
 import React, { createContext, useContext } from "react";
 
-import { Project, useProjectsQuery } from "./graphql/generated";
+import { Project, useActiveProjectQuery } from "./graphql/generated";
 
 const ActiveProjectContext = createContext<Project | null>(null);
 
@@ -9,8 +9,8 @@ interface Props {
 }
 
 export function ActiveProjectProvider({ children }: Props): JSX.Element {
-  const { data } = useProjectsQuery();
-  const project = data?.projects.find((project) => project.isActive) || null;
+  const { data } = useActiveProjectQuery();
+  const project = data?.activeProject || null;
 
   return <ActiveProjectContext.Provider value={project}>{children}</ActiveProjectContext.Provider>;
 }
