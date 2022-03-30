@@ -69,6 +69,31 @@ scoop:
   description: An HTTP toolkit for security research.
   license: MIT
 
+dockers:
+  - extra_files:
+    - go.mod
+    - go.sum
+    - pkg
+    - cmd
+    - admin
+    image_templates:
+    - "ghcr.io/dstotijn/hetty:{{ .Version }}"
+    - "ghcr.io/dstotijn/hetty:{{ .Major }}"
+    - "ghcr.io/dstotijn/hetty:{{ .Major }}.{{ .Minor }}"
+    - "ghcr.io/dstotijn/hetty:latest"
+    - "dstotijn/hetty:{{ .Version }}"
+    - "dstotijn/hetty:{{ .Major }}"
+    - "dstotijn/hetty:{{ .Major }}.{{ .Minor }}"
+    - "dstotijn/hetty:latest"
+    build_flag_templates:
+    - "--pull"
+    - "--label=org.opencontainers.image.created={{.Date}}"
+    - "--label=org.opencontainers.image.title={{.ProjectName}}"
+    - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+    - "--label=org.opencontainers.image.version={{.Version}}"
+    - "--label=org.opencontainers.image.source=https://github.com/dstotijn/hetty"
+    - "--build-arg=HETTY_VERSION={{.Version}}"
+
 checksum:
   name_template: "checksums.txt"
 

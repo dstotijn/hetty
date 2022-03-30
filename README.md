@@ -64,8 +64,18 @@ Alternatively, you can [download the latest release from
 GitHub](https://github.com/dstotijn/hetty/releases/latest) for your OS and
 architecture, and move the binary to a directory in your `$PATH`. If your OS is
 not available for one of the package managers or not listed in the GitHub
-releases, you can compile from source _(link coming soon)_ or use a Docker image
-_(link coming soon)_.
+releases, you can compile from source _(link coming soon)_.
+
+#### Docker
+
+Docker images are distributed via [GitHub's Container registry](https://github.com/dstotijn/hetty/pkgs/container/hetty)
+and [Docker Hub](https://hub.docker.com/r/dstotijn/hetty). To run Hetty via with a volume for database and certificate
+storage, and port 8080 forwarded:
+
+```
+docker run -v $HOME/.hetty:/root/.hetty -p 8080:8080 \
+  ghcr.io/dstotijn/hetty:latest
+```
 
 ### Usage
 
