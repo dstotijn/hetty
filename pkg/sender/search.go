@@ -174,6 +174,17 @@ func (req Request) getMappedStringLiteral(s string) string {
 }
 
 func (req Request) matchStringLiteral(strLiteral filter.StringLiteral) (bool, error) {
+	for key, values := range req.Header {
+		for _, value := range values {
+			if strings.Contains(
+				strings.ToLower(fmt.Sprintf("%v: %v", key, value)),
+				strings.ToLower(strLiteral.Value),
+			) {
+				return true, nil
+			}
+		}
+	}
+
 	for _, fn := range senderReqSearchKeyFns {
 		if strings.Contains(
 			strings.ToLower(fn(req)),
@@ -184,6 +195,17 @@ func (req Request) matchStringLiteral(strLiteral filter.StringLiteral) (bool, er
 	}
 
 	if req.Response != nil {
+		for key, values := range req.Response.Header {
+			for _, value := range values {
+				if strings.Contains(
+					strings.ToLower(fmt.Sprintf("%v: %v", key, value)),
+					strings.ToLower(strLiteral.Value),
+				) {
+					return true, nil
+				}
+			}
+		}
+
 		for _, fn := range reqlog.ResLogSearchKeyFns {
 			if strings.Contains(
 				strings.ToLower(fn(*req.Response)),

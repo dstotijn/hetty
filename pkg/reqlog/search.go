@@ -181,6 +181,17 @@ func (reqLog RequestLog) getMappedStringLiteral(s string) string {
 }
 
 func (reqLog RequestLog) matchStringLiteral(strLiteral filter.StringLiteral) (bool, error) {
+	for key, values := range reqLog.Header {
+		for _, value := range values {
+			if strings.Contains(
+				strings.ToLower(fmt.Sprintf("%v: %v", key, value)),
+				strings.ToLower(strLiteral.Value),
+			) {
+				return true, nil
+			}
+		}
+	}
+
 	for _, fn := range reqLogSearchKeyFns {
 		if strings.Contains(
 			strings.ToLower(fn(reqLog)),
@@ -191,6 +202,17 @@ func (reqLog RequestLog) matchStringLiteral(strLiteral filter.StringLiteral) (bo
 	}
 
 	if reqLog.Response != nil {
+		for key, values := range reqLog.Response.Header {
+			for _, value := range values {
+				if strings.Contains(
+					strings.ToLower(fmt.Sprintf("%v: %v", key, value)),
+					strings.ToLower(strLiteral.Value),
+				) {
+					return true, nil
+				}
+			}
+		}
+
 		for _, fn := range ResLogSearchKeyFns {
 			if strings.Contains(
 				strings.ToLower(fn(*reqLog.Response)),

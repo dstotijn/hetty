@@ -198,6 +198,17 @@ func getMappedStringLiteralFromReq(req *http.Request, s string) (string, error) 
 }
 
 func matchReqStringLiteral(req *http.Request, strLiteral filter.StringLiteral) (bool, error) {
+	for key, values := range req.Header {
+		for _, value := range values {
+			if strings.Contains(
+				strings.ToLower(fmt.Sprintf("%v: %v", key, value)),
+				strings.ToLower(strLiteral.Value),
+			) {
+				return true, nil
+			}
+		}
+	}
+
 	for _, fn := range reqFilterKeyFns {
 		value, err := fn(req)
 		if err != nil {
@@ -398,6 +409,17 @@ func getMappedStringLiteralFromRes(res *http.Response, s string) (string, error)
 }
 
 func matchResStringLiteral(res *http.Response, strLiteral filter.StringLiteral) (bool, error) {
+	for key, values := range res.Header {
+		for _, value := range values {
+			if strings.Contains(
+				strings.ToLower(fmt.Sprintf("%v: %v", key, value)),
+				strings.ToLower(strLiteral.Value),
+			) {
+				return true, nil
+			}
+		}
+	}
+
 	for _, fn := range resFilterKeyFns {
 		value, err := fn(res)
 		if err != nil {
