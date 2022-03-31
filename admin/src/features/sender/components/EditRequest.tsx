@@ -1,4 +1,5 @@
-import { Alert, Box, Button, Typography } from "@mui/material";
+import AddIcon from "@mui/icons-material/Add";
+import { Alert, Box, Button, Fab, Tooltip, Typography, useTheme } from "@mui/material";
 import { useRouter } from "next/router";
 import React, { useState } from "react";
 
@@ -17,15 +18,21 @@ import { queryParamsFromURL } from "lib/queryParamsFromURL";
 import updateKeyPairItem from "lib/updateKeyPairItem";
 import updateURLQueryParams from "lib/updateURLQueryParams";
 
+const defaultMethod = HttpMethod.Get;
+const defaultProto = HttpProto.Http20;
+const emptyKeyPair = [{ key: "", value: "" }];
+
 function EditRequest(): JSX.Element {
   const router = useRouter();
   const reqId = router.query.id as string | undefined;
 
-  const [method, setMethod] = useState(HttpMethod.Get);
+  const theme = useTheme();
+
+  const [method, setMethod] = useState(defaultMethod);
   const [url, setURL] = useState("");
-  const [proto, setProto] = useState(HttpProto.Http20);
-  const [queryParams, setQueryParams] = useState<KeyValuePair[]>([{ key: "", value: "" }]);
-  const [headers, setHeaders] = useState<KeyValuePair[]>([{ key: "", value: "" }]);
+  const [proto, setProto] = useState(defaultProto);
+  const [queryParams, setQueryParams] = useState<KeyValuePair[]>(emptyKeyPair);
+  const [headers, setHeaders] = useState<KeyValuePair[]>(emptyKeyPair);
   const [body, setBody] = useState("");
 
   const handleQueryParamChange = (key: string, value: string, idx: number) => {
@@ -131,8 +138,26 @@ function EditRequest(): JSX.Element {
     createOrUpdateRequestAndSend();
   };
 
+  const handleNewRequest = () => {
+    setURL("");
+    setMethod(defaultMethod);
+    setProto(defaultProto);
+    setQueryParams(emptyKeyPair);
+    setHeaders(emptyKeyPair);
+    setBody("");
+    setResponse(null);
+    router.push(`/sender`);
+  };
+
   return (
     <Box display="flex" flexDirection="column" height="100%" gap={2}>
+      <Box sx={{ position: "absolute", bottom: theme.spacing(2), right: theme.spacing(2) }}>
+        <Tooltip title="New request">
+          <Fab color="primary" onClick={handleNewRequest}>
+            <AddIcon />
+          </Fab>
+        </Tooltip>
+      </Box>
       <Box component="form" autoComplete="off" onSubmit={handleFormSubmit}>
         <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
           <UrlBar
