@@ -49,3 +49,17 @@ func UnmarshalURL(v interface{}) (*url.URL, error) {
 
 	return u, nil
 }
+
+type HTTPHeaders []HTTPHeader
+
+func (h HTTPHeaders) Len() int {
+	return len(h)
+}
+
+func (h HTTPHeaders) Less(i, j int) bool {
+	return h[i].Key < h[j].Key
+}
+
+func (h HTTPHeaders) Swap(i, j int) {
+	h[i], h[j] = h[j], h[i]
+}

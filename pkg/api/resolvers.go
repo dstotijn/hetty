@@ -11,6 +11,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"regexp"
+	"sort"
 	"strings"
 
 	"github.com/99designs/gqlgen/graphql"
@@ -124,6 +125,8 @@ func parseRequestLog(reqLog reqlog.RequestLog) (HTTPRequestLog, error) {
 				})
 			}
 		}
+
+		sort.Sort(HTTPHeaders(log.Headers))
 	}
 
 	if reqLog.Response != nil {
@@ -172,6 +175,8 @@ func parseResponseLog(resLog reqlog.ResponseLog) (HTTPResponseLog, error) {
 				})
 			}
 		}
+
+		sort.Sort(HTTPHeaders(httpResLog.Headers))
 	}
 
 	return httpResLog, nil
@@ -710,6 +715,8 @@ func parseSenderRequest(req sender.Request) (SenderRequest, error) {
 				})
 			}
 		}
+
+		sort.Sort(HTTPHeaders(senderReq.Headers))
 	}
 
 	if len(req.Body) > 0 {
@@ -765,6 +772,8 @@ func parseHTTPRequest(req *http.Request) (HTTPRequest, error) {
 				})
 			}
 		}
+
+		sort.Sort(HTTPHeaders(httpReq.Headers))
 	}
 
 	if req.Body != nil {
@@ -815,6 +824,8 @@ func parseHTTPResponse(res *http.Response) (HTTPResponse, error) {
 				})
 			}
 		}
+
+		sort.Sort(HTTPHeaders(httpRes.Headers))
 	}
 
 	if res.Body != nil {

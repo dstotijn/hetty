@@ -184,20 +184,4 @@ export function KeyValuePairTable({ items, onChange, onDelete }: KeyValuePairTab
   );
 }
 
-export function sortKeyValuePairs(items: KeyValuePair[]): KeyValuePair[] {
-  const sorted = [...items];
-
-  sorted.sort((a, b) => {
-    if (a.key < b.key) {
-      return -1;
-    }
-    if (a.key > b.key) {
-      return 1;
-    }
-    return 0;
-  });
-
-  return sorted;
-}
-
 export default KeyValuePairTable;

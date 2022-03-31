@@ -7,7 +7,7 @@ import { useRouter } from "next/router";
 import React, { useEffect, useState } from "react";
 
 import { useInterceptedRequests } from "lib/InterceptedRequestsContext";
-import { KeyValuePair, sortKeyValuePairs } from "lib/components/KeyValuePair";
+import { KeyValuePair } from "lib/components/KeyValuePair";
 import Link from "lib/components/Link";
 import RequestTabs from "lib/components/RequestTabs";
 import ResponseStatus from "lib/components/ResponseStatus";
@@ -112,11 +112,11 @@ function EditRequest(): JSX.Element {
       newQueryParams.push({ key: "", value: "" });
       setQueryParams(newQueryParams);
 
-      const newReqHeaders = sortKeyValuePairs(interceptedRequest.headers || []);
+      const newReqHeaders = interceptedRequest.headers || [];
       setReqHeaders([...newReqHeaders.map(({ key, value }) => ({ key, value })), { key: "", value: "" }]);
 
       setResBody(interceptedRequest.response?.body || "");
-      const newResHeaders = sortKeyValuePairs(interceptedRequest.response?.headers || []);
+      const newResHeaders = interceptedRequest.response?.headers || [];
       setResHeaders([...newResHeaders.map(({ key, value }) => ({ key, value })), { key: "", value: "" }]);
     },
   });

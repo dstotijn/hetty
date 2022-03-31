@@ -3,7 +3,7 @@ import { Alert, Box, Button, Fab, Tooltip, Typography, useTheme } from "@mui/mat
 import { useRouter } from "next/router";
 import React, { useState } from "react";
 
-import { KeyValuePair, sortKeyValuePairs } from "lib/components/KeyValuePair";
+import { KeyValuePair } from "lib/components/KeyValuePair";
 import RequestTabs from "lib/components/RequestTabs";
 import Response from "lib/components/Response";
 import SplitPane from "lib/components/SplitPane";
@@ -90,7 +90,7 @@ function EditRequest(): JSX.Element {
       newQueryParams.push({ key: "", value: "" });
       setQueryParams(newQueryParams);
 
-      const newHeaders = sortKeyValuePairs(senderRequest.headers || []);
+      const newHeaders = senderRequest.headers || [];
       setHeaders([...newHeaders.map(({ key, value }) => ({ key, value })), { key: "", value: "" }]);
       setResponse(senderRequest.response);
     },

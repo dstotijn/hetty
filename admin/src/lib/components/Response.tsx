@@ -1,6 +1,5 @@
 import { Box, Typography } from "@mui/material";
 
-import { sortKeyValuePairs } from "./KeyValuePair";
 import ResponseTabs from "./ResponseTabs";
 
 import ResponseStatus from "lib/components/ResponseStatus";
@@ -29,7 +28,7 @@ function Response({ response }: ResponseProps): JSX.Element {
       </Box>
       <ResponseTabs
         body={response?.body}
-        headers={sortKeyValuePairs(response?.headers || [])}
+        headers={response?.headers || []}
         hasResponse={response !== undefined && response !== null}
       />
     </Box>
