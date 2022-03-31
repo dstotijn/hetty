@@ -1,4 +1,4 @@
-package search
+package filter
 
 import (
 	"errors"
@@ -20,7 +20,7 @@ func TestParseQuery(t *testing.T) {
 			name:               "empty query",
 			input:              "",
 			expectedExpression: nil,
-			expectedError:      errors.New("search: unexpected EOF"),
+			expectedError:      errors.New("filter: unexpected EOF"),
 		},
 		{
 			name:               "string literal expression",

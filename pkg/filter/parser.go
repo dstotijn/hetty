@@ -1,4 +1,4 @@
-package search
+package filter
 
 import (
 	"fmt"
@@ -88,7 +88,7 @@ func ParseQuery(input string) (expr Expression, err error) {
 	p.nextToken()
 
 	if p.curTokenIs(TokEOF) {
-		return nil, fmt.Errorf("search: unexpected EOF")
+		return nil, fmt.Errorf("filter: unexpected EOF")
 	}
 
 	for !p.curTokenIs(TokEOF) {
@@ -96,7 +96,7 @@ func ParseQuery(input string) (expr Expression, err error) {
 
 		switch {
 		case err != nil:
-			return nil, fmt.Errorf("search: could not parse expression: %w", err)
+			return nil, fmt.Errorf("filter: could not parse expression: %w", err)
 		case expr == nil:
 			expr = right
 		default:

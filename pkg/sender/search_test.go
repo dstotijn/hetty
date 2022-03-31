@@ -3,8 +3,8 @@ package sender_test
 import (
 	"testing"
 
+	"github.com/dstotijn/hetty/pkg/filter"
 	"github.com/dstotijn/hetty/pkg/reqlog"
-	"github.com/dstotijn/hetty/pkg/search"
 	"github.com/dstotijn/hetty/pkg/sender"
 )
 
@@ -177,7 +177,7 @@ func TestRequestLogMatch(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			searchExpr, err := search.ParseQuery(tt.query)
+			searchExpr, err := filter.ParseQuery(tt.query)
 			assertError(t, nil, err)
 
 			got, err := tt.senderReq.Matches(searchExpr)

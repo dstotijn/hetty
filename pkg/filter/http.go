@@ -1,4 +1,4 @@
-package search
+package filter
 
 import (
 	"errors"
@@ -15,7 +15,7 @@ func MatchHTTPHeaders(op TokenType, expr Expression, headers http.Header) (bool,
 	case TokOpEq:
 		strLiteral, ok := expr.(StringLiteral)
 		if !ok {
-			return false, errors.New("search: expression must be a string literal")
+			return false, errors.New("filter: expression must be a string literal")
 		}
 
 		// Return `true` if at least one header (<key>: <value>) is equal to the string literal.
@@ -31,7 +31,7 @@ func MatchHTTPHeaders(op TokenType, expr Expression, headers http.Header) (bool,
 	case TokOpNotEq:
 		strLiteral, ok := expr.(StringLiteral)
 		if !ok {
-			return false, errors.New("search: expression must be a string literal")
+			return false, errors.New("filter: expression must be a string literal")
 		}
 
 		// Return `true` if none of the headers (<key>: <value>) are equal to the string literal.
@@ -47,7 +47,7 @@ func MatchHTTPHeaders(op TokenType, expr Expression, headers http.Header) (bool,
 	case TokOpRe:
 		re, ok := expr.(RegexpLiteral)
 		if !ok {
-			return false, errors.New("search: expression must be a regular expression")
+			return false, errors.New("filter: expression must be a regular expression")
 		}
 
 		// Return `true` if at least one header (<key>: <value>) matches the regular expression.
@@ -63,7 +63,7 @@ func MatchHTTPHeaders(op TokenType, expr Expression, headers http.Header) (bool,
 	case TokOpNotRe:
 		re, ok := expr.(RegexpLiteral)
 		if !ok {
-			return false, errors.New("search: expression must be a regular expression")
+			return false, errors.New("filter: expression must be a regular expression")
 		}
 
 		// Return `true` if none of the headers (<key>: <value>) match the regular expression.
@@ -77,6 +77,6 @@ func MatchHTTPHeaders(op TokenType, expr Expression, headers http.Header) (bool,
 
 		return true, nil
 	default:
-		return false, fmt.Errorf("search: unsupported operator %q", op.String())
+		return false, fmt.Errorf("filter: unsupported operator %q", op.String())
 	}
 }

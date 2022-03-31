@@ -7,9 +7,9 @@ import (
 
 	"github.com/oklog/ulid"
 
+	"github.com/dstotijn/hetty/pkg/filter"
 	"github.com/dstotijn/hetty/pkg/reqlog"
 	"github.com/dstotijn/hetty/pkg/scope"
-	"github.com/dstotijn/hetty/pkg/search"
 )
 
 var senderReqSearchKeyFns = map[string]func(req Request) string{
@@ -29,22 +29,22 @@ var senderReqSearchKeyFns = map[string]func(req Request) string{
 // TODO: Request and response headers search key functions.
 
 // Matches returns true if the supplied search expression evaluates to true.
-func (req Request) Matches(expr search.Expression) (bool, error) {
+func (req Request) Matches(expr filter.Expression) (bool, error) {
 	switch e := expr.(type) {
-	case search.PrefixExpression:
+	case filter.PrefixExpression:
 		return req.matchPrefixExpr(e)
-	case search.InfixExpression:
+	case filter.InfixExpression:
 		return req.matchInfixExpr(e)
-	case search.StringLiteral:
+	case filter.StringLiteral:
 		return req.matchStringLiteral(e)
 	default:
 		return false, fmt.Errorf("expression type (%T) not supported", expr)
 	}
 }
 
-func (req Request) matchPrefixExpr(expr search.PrefixExpression) (bool, error) {
+func (req Request) matchPrefixExpr(expr filter.PrefixExpression) (bool, error) {
 	switch expr.Operator {
-	case search.TokOpNot:
+	case filter.TokOpNot:
 		match, err := req.Matches(expr.Right)
 		if err != nil {
 			return false, err
@@ -56,9 +56,9 @@ func (req Request) matchPrefixExpr(expr search.PrefixExpression) (bool, error) {
 	}
 }
 
-func (req Request) matchInfixExpr(expr search.InfixExpression) (bool, error) {
+func (req Request) matchInfixExpr(expr filter.InfixExpression) (bool, error) {
 	switch expr.Operator {
-	case search.TokOpAnd:
+	case filter.TokOpAnd:
 		left, err := req.Matches(expr.Left)
 		if err != nil {
 			return false, err
@@ -70,7 +70,7 @@ func (req Request) matchInfixExpr(expr search.InfixExpression) (bool, error) {
 		}
 
 		return left && right, nil
-	case search.TokOpOr:
+	case filter.TokOpOr:
 		left, err := req.Matches(expr.Left)
 		if err != nil {
 			return false, err
@@ -84,7 +84,7 @@ func (req Request) matchInfixExpr(expr search.InfixExpression) (bool, error) {
 		return left || right, nil
 	}
 
-	left, ok := expr.Left.(search.StringLiteral)
+	left, ok := expr.Left.(filter.StringLiteral)
 	if !ok {
 		return false, errors.New("left operand must be a string literal")
 	}
@@ -92,7 +92,7 @@ func (req Request) matchInfixExpr(expr search.InfixExpression) (bool, error) {
 	leftVal := req.getMappedStringLiteral(left.Value)
 
 	if leftVal == "req.headers" {
-		match, err := search.MatchHTTPHeaders(expr.Operator, expr.Right, req.Header)
+		match, err := filter.MatchHTTPHeaders(expr.Operator, expr.Right, req.Header)
 		if err != nil {
 			return false, fmt.Errorf("failed to match request HTTP headers: %w", err)
 		}
@@ -101,7 +101,7 @@ func (req Request) matchInfixExpr(expr search.InfixExpression) (bool, error) {
 	}
 
 	if leftVal == "res.headers" && req.Response != nil {
-		match, err := search.MatchHTTPHeaders(expr.Operator, expr.Right, req.Response.Header)
+		match, err := filter.MatchHTTPHeaders(expr.Operator, expr.Right, req.Response.Header)
 		if err != nil {
 			return false, fmt.Errorf("failed to match response HTTP headers: %w", err)
 		}
@@ -109,21 +109,21 @@ func (req Request) matchInfixExpr(expr search.InfixExpression) (bool, error) {
 		return match, nil
 	}
 
-	if expr.Operator == search.TokOpRe || expr.Operator == search.TokOpNotRe {
-		right, ok := expr.Right.(search.RegexpLiteral)
+	if expr.Operator == filter.TokOpRe || expr.Operator == filter.TokOpNotRe {
+		right, ok := expr.Right.(filter.RegexpLiteral)
 		if !ok {
 			return false, errors.New("right operand must be a regular expression")
 		}
 
 		switch expr.Operator {
-		case search.TokOpRe:
+		case filter.TokOpRe:
 			return right.MatchString(leftVal), nil
-		case search.TokOpNotRe:
+		case filter.TokOpNotRe:
 			return !right.MatchString(leftVal), nil
 		}
 	}
 
-	right, ok := expr.Right.(search.StringLiteral)
+	right, ok := expr.Right.(filter.StringLiteral)
 	if !ok {
 		return false, errors.New("right operand must be a string literal")
 	}
@@ -131,20 +131,20 @@ func (req Request) matchInfixExpr(expr search.InfixExpression) (bool, error) {
 	rightVal := req.getMappedStringLiteral(right.Value)
 
 	switch expr.Operator {
-	case search.TokOpEq:
+	case filter.TokOpEq:
 		return leftVal == rightVal, nil
-	case search.TokOpNotEq:
+	case filter.TokOpNotEq:
 		return leftVal != rightVal, nil
-	case search.TokOpGt:
+	case filter.TokOpGt:
 		// TODO(?) attempt to parse as int.
 		return leftVal > rightVal, nil
-	case search.TokOpLt:
+	case filter.TokOpLt:
 		// TODO(?) attempt to parse as int.
 		return leftVal < rightVal, nil
-	case search.TokOpGtEq:
+	case filter.TokOpGtEq:
 		// TODO(?) attempt to parse as int.
 		return leftVal >= rightVal, nil
-	case search.TokOpLtEq:
+	case filter.TokOpLtEq:
 		// TODO(?) attempt to parse as int.
 		return leftVal <= rightVal, nil
 	default:
@@ -173,7 +173,7 @@ func (req Request) getMappedStringLiteral(s string) string {
 	return s
 }
 
-func (req Request) matchStringLiteral(strLiteral search.StringLiteral) (bool, error) {
+func (req Request) matchStringLiteral(strLiteral filter.StringLiteral) (bool, error) {
 	for _, fn := range senderReqSearchKeyFns {
 		if strings.Contains(
 			strings.ToLower(fn(req)),

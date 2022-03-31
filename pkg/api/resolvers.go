@@ -18,12 +18,12 @@ import (
 	"github.com/oklog/ulid"
 	"github.com/vektah/gqlparser/v2/gqlerror"
 
+	"github.com/dstotijn/hetty/pkg/filter"
 	"github.com/dstotijn/hetty/pkg/proj"
 	"github.com/dstotijn/hetty/pkg/proxy"
 	"github.com/dstotijn/hetty/pkg/proxy/intercept"
 	"github.com/dstotijn/hetty/pkg/reqlog"
 	"github.com/dstotijn/hetty/pkg/scope"
-	"github.com/dstotijn/hetty/pkg/search"
 	"github.com/dstotijn/hetty/pkg/sender"
 )
 
@@ -639,7 +639,7 @@ func (r *mutationResolver) UpdateInterceptSettings(
 	}
 
 	if input.RequestFilter != nil && *input.RequestFilter != "" {
-		expr, err := search.ParseQuery(*input.RequestFilter)
+		expr, err := filter.ParseQuery(*input.RequestFilter)
 		if err != nil {
 			return nil, fmt.Errorf("could not parse request filter: %w", err)
 		}
@@ -648,7 +648,7 @@ func (r *mutationResolver) UpdateInterceptSettings(
 	}
 
 	if input.ResponseFilter != nil && *input.ResponseFilter != "" {
-		expr, err := search.ParseQuery(*input.ResponseFilter)
+		expr, err := filter.ParseQuery(*input.ResponseFilter)
 		if err != nil {
 			return nil, fmt.Errorf("could not parse response filter: %w", err)
 		}
@@ -916,43 +916,43 @@ func scopeToScopeRules(rules []scope.Rule) []ScopeRule {
 	return scopeRules
 }
 
-func findRequestsFilterFromInput(input *HTTPRequestLogFilterInput) (filter reqlog.FindRequestsFilter, err error) {
+func findRequestsFilterFromInput(input *HTTPRequestLogFilterInput) (findFilter reqlog.FindRequestsFilter, err error) {
 	if input == nil {
 		return
 	}
 
 	if input.OnlyInScope != nil {
-		filter.OnlyInScope = *input.OnlyInScope
+		findFilter.OnlyInScope = *input.OnlyInScope
 	}
 
 	if input.SearchExpression != nil && *input.SearchExpression != "" {
-		expr, err := search.ParseQuery(*input.SearchExpression)
+		expr, err := filter.ParseQuery(*input.SearchExpression)
 		if err != nil {
 			return reqlog.FindRequestsFilter{}, fmt.Errorf("could not parse search query: %w", err)
 		}
 
-		filter.SearchExpr = expr
+		findFilter.SearchExpr = expr
 	}
 
 	return
 }
 
-func findSenderRequestsFilterFromInput(input *SenderRequestFilterInput) (filter sender.FindRequestsFilter, err error) {
+func findSenderRequestsFilterFromInput(input *SenderRequestFilterInput) (findFilter sender.FindRequestsFilter, err error) {
 	if input == nil {
 		return
 	}
 
 	if input.OnlyInScope != nil {
-		filter.OnlyInScope = *input.OnlyInScope
+		findFilter.OnlyInScope = *input.OnlyInScope
 	}
 
 	if input.SearchExpression != nil && *input.SearchExpression != "" {
-		expr, err := search.ParseQuery(*input.SearchExpression)
+		expr, err := filter.ParseQuery(*input.SearchExpression)
 		if err != nil {
 			return sender.FindRequestsFilter{}, fmt.Errorf("could not parse search query: %w", err)
 		}
 
-		filter.SearchExpr = expr
+		findFilter.SearchExpr = expr
 	}
 
 	return

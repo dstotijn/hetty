@@ -12,9 +12,9 @@ import (
 
 	"github.com/oklog/ulid"
 
+	"github.com/dstotijn/hetty/pkg/filter"
 	"github.com/dstotijn/hetty/pkg/reqlog"
 	"github.com/dstotijn/hetty/pkg/scope"
-	"github.com/dstotijn/hetty/pkg/search"
 )
 
 //nolint:gosec
@@ -54,7 +54,7 @@ type service struct {
 type FindRequestsFilter struct {
 	ProjectID   ulid.ULID
 	OnlyInScope bool
-	SearchExpr  search.Expression
+	SearchExpr  filter.Expression
 }
 
 type Config struct {

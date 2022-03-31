@@ -1,4 +1,4 @@
-package search
+package filter
 
 import (
 	"encoding/gob"
@@ -78,8 +78,10 @@ func (rl *RegexpLiteral) UnmarshalBinary(data []byte) error {
 }
 
 func init() {
-	gob.Register(PrefixExpression{})
-	gob.Register(InfixExpression{})
-	gob.Register(StringLiteral{})
-	gob.Register(RegexpLiteral{})
+	// The `filter` package was previously named `search`.
+	// We use the legacy names for backwards compatibility with existing database data.
+	gob.RegisterName("github.com/dstotijn/hetty/pkg/search.PrefixExpression", PrefixExpression{})
+	gob.RegisterName("github.com/dstotijn/hetty/pkg/search.InfixExpression", InfixExpression{})
+	gob.RegisterName("github.com/dstotijn/hetty/pkg/search.StringLiteral", StringLiteral{})
+	gob.RegisterName("github.com/dstotijn/hetty/pkg/search.RegexpLiteral", RegexpLiteral{})
 }

@@ -35,7 +35,7 @@ linters-settings:
   godot:
     capital: true
   ireturn:
-    allow: "error,empty,anon,stdlib,.*(or|er)$,github.com/99designs/gqlgen/graphql.Marshaler,github.com/dstotijn/hetty/pkg/api.QueryResolver,github.com/dstotijn/hetty/pkg/search.Expression"
+    allow: "error,empty,anon,stdlib,.*(or|er)$,github.com/99designs/gqlgen/graphql.Marshaler,github.com/dstotijn/hetty/pkg/api.QueryResolver,github.com/dstotijn/hetty/pkg/filter.Expression"
     
 issues:
   exclude-rules:

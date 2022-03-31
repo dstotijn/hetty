@@ -15,9 +15,9 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/oklog/ulid"
 
+	"github.com/dstotijn/hetty/pkg/filter"
 	"github.com/dstotijn/hetty/pkg/proj"
 	"github.com/dstotijn/hetty/pkg/scope"
-	"github.com/dstotijn/hetty/pkg/search"
 )
 
 //nolint:gosec
@@ -45,7 +45,7 @@ func TestUpsertProject(t *testing.T) {
 	database := DatabaseFromBadgerDB(badgerDB)
 	defer database.Close()
 
-	searchExpr, err := search.ParseQuery("foo AND bar OR NOT baz")
+	searchExpr, err := filter.ParseQuery("foo AND bar OR NOT baz")
 	if err != nil {
 		t.Fatalf("unexpected error (expected: nil, got: %v)", err)
 	}

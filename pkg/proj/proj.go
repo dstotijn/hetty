@@ -11,10 +11,10 @@ import (
 
 	"github.com/oklog/ulid"
 
+	"github.com/dstotijn/hetty/pkg/filter"
 	"github.com/dstotijn/hetty/pkg/proxy/intercept"
 	"github.com/dstotijn/hetty/pkg/reqlog"
 	"github.com/dstotijn/hetty/pkg/scope"
-	"github.com/dstotijn/hetty/pkg/search"
 	"github.com/dstotijn/hetty/pkg/sender"
 )
 
@@ -59,17 +59,17 @@ type Settings struct {
 	// Request log settings
 	ReqLogBypassOutOfScope bool
 	ReqLogOnlyFindInScope  bool
-	ReqLogSearchExpr       search.Expression
+	ReqLogSearchExpr       filter.Expression
 
 	// Intercept settings
 	InterceptRequests       bool
 	InterceptResponses      bool
-	InterceptRequestFilter  search.Expression
-	InterceptResponseFilter search.Expression
+	InterceptRequestFilter  filter.Expression
+	InterceptResponseFilter filter.Expression
 
 	// Sender settings
 	SenderOnlyFindInScope bool
-	SenderSearchExpr      search.Expression
+	SenderSearchExpr      filter.Expression
 
 	// Scope settings
 	ScopeRules []scope.Rule

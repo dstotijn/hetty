@@ -10,9 +10,9 @@ import (
 
 	"github.com/oklog/ulid"
 
+	"github.com/dstotijn/hetty/pkg/filter"
 	"github.com/dstotijn/hetty/pkg/log"
 	"github.com/dstotijn/hetty/pkg/proxy"
-	"github.com/dstotijn/hetty/pkg/search"
 )
 
 var (
@@ -56,16 +56,16 @@ type Service struct {
 
 	requestsEnabled  bool
 	responsesEnabled bool
-	reqFilter        search.Expression
-	resFilter        search.Expression
+	reqFilter        filter.Expression
+	resFilter        filter.Expression
 }
 
 type Config struct {
 	Logger           log.Logger
 	RequestsEnabled  bool
 	ResponsesEnabled bool
-	RequestFilter    search.Expression
-	ResponseFilter   search.Expression
+	RequestFilter    filter.Expression
+	ResponseFilter   filter.Expression
 }
 
 // RequestIDs implements sort.Interface.
