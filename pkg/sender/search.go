@@ -91,6 +91,24 @@ func (req Request) matchInfixExpr(expr search.InfixExpression) (bool, error) {
 
 	leftVal := req.getMappedStringLiteral(left.Value)
 
+	if leftVal == "req.headers" {
+		match, err := search.MatchHTTPHeaders(expr.Operator, expr.Right, req.Header)
+		if err != nil {
+			return false, fmt.Errorf("failed to match request HTTP headers: %w", err)
+		}
+
+		return match, nil
+	}
+
+	if leftVal == "res.headers" && req.Response != nil {
+		match, err := search.MatchHTTPHeaders(expr.Operator, expr.Right, req.Response.Header)
+		if err != nil {
+			return false, fmt.Errorf("failed to match response HTTP headers: %w", err)
+		}
+
+		return match, nil
+	}
+
 	if expr.Operator == search.TokOpRe || expr.Operator == search.TokOpNotRe {
 		right, ok := expr.Right.(search.RegexpLiteral)
 		if !ok {

@@ -98,6 +98,24 @@ func (reqLog RequestLog) matchInfixExpr(expr search.InfixExpression) (bool, erro
 
 	leftVal := reqLog.getMappedStringLiteral(left.Value)
 
+	if leftVal == "req.headers" {
+		match, err := search.MatchHTTPHeaders(expr.Operator, expr.Right, reqLog.Header)
+		if err != nil {
+			return false, fmt.Errorf("failed to match request HTTP headers: %w", err)
+		}
+
+		return match, nil
+	}
+
+	if leftVal == "res.headers" && reqLog.Response != nil {
+		match, err := search.MatchHTTPHeaders(expr.Operator, expr.Right, reqLog.Response.Header)
+		if err != nil {
+			return false, fmt.Errorf("failed to match response HTTP headers: %w", err)
+		}
+
+		return match, nil
+	}
+
 	if expr.Operator == search.TokOpRe || expr.Operator == search.TokOpNotRe {
 		right, ok := expr.Right.(search.RegexpLiteral)
 		if !ok {

@@ -133,6 +133,15 @@ func matchReqInfixExpr(req *http.Request, expr search.InfixExpression) (bool, er
 		return false, fmt.Errorf("failed to get string literal from request for left operand: %w", err)
 	}
 
+	if leftVal == "headers" {
+		match, err := search.MatchHTTPHeaders(expr.Operator, expr.Right, req.Header)
+		if err != nil {
+			return false, fmt.Errorf("failed to match request HTTP headers: %w", err)
+		}
+
+		return match, nil
+	}
+
 	if expr.Operator == search.TokOpRe || expr.Operator == search.TokOpNotRe {
 		right, ok := expr.Right.(search.RegexpLiteral)
 		if !ok {
@@ -322,6 +331,15 @@ func matchResInfixExpr(res *http.Response, expr search.InfixExpression) (bool, e
 	leftVal, err := getMappedStringLiteralFromRes(res, left.Value)
 	if err != nil {
 		return false, fmt.Errorf("failed to get string literal from response for left operand: %w", err)
+	}
+
+	if leftVal == "headers" {
+		match, err := search.MatchHTTPHeaders(expr.Operator, expr.Right, res.Header)
+		if err != nil {
+			return false, fmt.Errorf("failed to match request HTTP headers: %w", err)
+		}
+
+		return match, nil
 	}
 
 	if expr.Operator == search.TokOpRe || expr.Operator == search.TokOpNotRe {

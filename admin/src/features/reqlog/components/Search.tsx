@@ -76,6 +76,7 @@ function Search(): JSX.Element {
         <ClickAwayListener onClickAway={handleClickAway}>
           <Paper
             component="form"
+            autoComplete="off"
             onSubmit={handleSubmit}
             ref={filterRef}
             sx={{
@@ -109,6 +110,8 @@ function Search(): JSX.Element {
               value={searchExpr}
               onChange={(e) => setSearchExpr(e.target.value)}
               onFocus={() => setFilterOpen(true)}
+              autoCorrect="false"
+              spellCheck="false"
             />
             <Tooltip title="Search">
               <IconButton type="submit" sx={{ padding: 1.25 }}>
