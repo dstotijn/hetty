@@ -221,17 +221,12 @@ func (cmd *HettyCommand) Exec(ctx context.Context, _ []string) error {
 		hostname, _ := os.Hostname()
 		host, _, _ := net.SplitHostPort(req.Host)
 
-		// Serve local admin routes when either:
-		// - The `Host` is well-known, e.g. `hetty.proxy`, `localhost:[port]`
-		//   or the listen addr `[host]:[port]`.
-		// - The request is not for TLS proxying (e.g. no `CONNECT`) and not
-		//   for proxying an external URL. E.g. Request-Line (RFC 7230, Section 3.1.1)
-		//   has no scheme.
+		// Serve local admin routes when the `Host` is well-known, e.g. `[hostname]:[port]`,
+		// `hetty.proxy`, `localhost:[port]` or the listen addr `[host]:[port]`.
 		return strings.EqualFold(host, hostname) ||
 			req.Host == "hetty.proxy" ||
 			req.Host == fmt.Sprintf("%v:%v", "localhost", listenPort) ||
-			req.Host == fmt.Sprintf("%v:%v", listenHost, listenPort) ||
-			req.Method != http.MethodConnect && !strings.HasPrefix(req.RequestURI, "http://")
+			req.Host == fmt.Sprintf("%v:%v", listenHost, listenPort)
 	}).Subrouter().StrictSlash(true)
 
 	// GraphQL server.
