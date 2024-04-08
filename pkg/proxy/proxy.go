@@ -208,7 +208,7 @@ func (p *Proxy) handleConnect(w http.ResponseWriter) {
 		return
 	}
 
-	clientConnNotify := &ConnNotify{tlsConn, make(chan struct{})}
+	clientConnNotify := &ConnNotify{tlsConn, make(chan struct{}, 1)}
 	l := &OnceAcceptListener{clientConnNotify}
 
 	err = http.Serve(l, p)
