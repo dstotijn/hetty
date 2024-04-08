@@ -43,6 +43,9 @@ type ConnNotify struct {
 
 func (c *ConnNotify) Close() error {
 	err := c.Conn.Close()
-	c.closed <- struct{}{}
+	select {
+	case c.closed <- struct{}{}:
+	default:
+	}
 	return err
 }
