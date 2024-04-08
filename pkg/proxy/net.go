@@ -41,7 +41,8 @@ type ConnNotify struct {
 	closed chan struct{}
 }
 
-func (c *ConnNotify) Close() {
-	c.Conn.Close()
+func (c *ConnNotify) Close() error {
+	err := c.Conn.Close()
 	c.closed <- struct{}{}
+	return err
 }
