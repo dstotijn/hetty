@@ -114,11 +114,13 @@ func LoadOrCreateCA(caKeyFile, caCertFile string) (*x509.Certificate, *rsa.Priva
 	if err != nil {
 		return nil, nil, fmt.Errorf("proxy: could not open cert file for writing: %w", err)
 	}
+	defer certOut.Close()
 
 	keyOut, err := os.OpenFile(caKeyFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600)
 	if err != nil {
 		return nil, nil, fmt.Errorf("proxy: could not open key file for writing: %w", err)
 	}
+	defer keyOut.Close()
 
 	// Write PEM blocks to CA certificate and key files.
 	if err := pem.Encode(certOut, &pem.Block{Type: "CERTIFICATE", Bytes: caCert.Raw}); err != nil {
