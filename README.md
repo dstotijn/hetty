@@ -146,10 +146,6 @@ Guidelines](CONTRIBUTING.md) for details.
 
 ## Sponsors
 
-<p><a href="https://www.tines.com/?utm_source=oss&utm_medium=sponsorship&utm_campaign=hetty">
-<img src="https://hetty.xyz/img/tines-sponsorship-badge.png" width="140" alt="Sponsored by Tines">
-</a></p>
-
 💖 Are you enjoying Hetty? You can [sponsor me](https://github.com/sponsors/dstotijn)!
 
 ## License
