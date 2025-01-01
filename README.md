@@ -152,4 +152,4 @@ Guidelines](CONTRIBUTING.md) for details.
 
 [MIT](LICENSE)
 
-© 2022 Hetty Software
+© 2019–2025 Hetty Software
