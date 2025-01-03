@@ -40,10 +40,10 @@ var revHTTPProtocolMap = map[HTTPProtocol]string{
 }
 
 type Resolver struct {
-	ProjectService    proj.Service
-	RequestLogService reqlog.Service
+	ProjectService    *proj.Service
+	RequestLogService *reqlog.Service
 	InterceptService  *intercept.Service
-	SenderService     sender.Service
+	SenderService     *sender.Service
 }
 
 type (
@@ -865,7 +865,7 @@ func parseInterceptItem(item intercept.Item) (req HTTPRequest, err error) {
 	return req, nil
 }
 
-func parseProject(projSvc proj.Service, p proj.Project) Project {
+func parseProject(projSvc *proj.Service, p proj.Project) Project {
 	project := Project{
 		ID:       p.ID,
 		Name:     p.Name,

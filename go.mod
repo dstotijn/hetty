@@ -8,7 +8,6 @@ require (
 	github.com/dgraph-io/badger/v3 v3.2103.2
 	github.com/google/go-cmp v0.5.6
 	github.com/gorilla/mux v1.7.4
-	github.com/matryer/moq v0.2.5
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/oklog/ulid v1.3.1
 	github.com/peterbourgon/ff/v3 v3.1.2
@@ -40,6 +39,7 @@ require (
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/klauspost/compress v1.12.3 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
+	github.com/matryer/moq v0.2.5 // indirect
 	github.com/mitchellh/mapstructure v1.1.2 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/russross/blackfriday/v2 v2.0.1 // indirect

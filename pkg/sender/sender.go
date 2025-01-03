@@ -30,24 +30,12 @@ var (
 	ErrRequestNotFound    = errors.New("sender: request not found")
 )
 
-type Service interface {
-	FindRequestByID(ctx context.Context, id ulid.ULID) (Request, error)
-	FindRequests(ctx context.Context) ([]Request, error)
-	CreateOrUpdateRequest(ctx context.Context, req Request) (Request, error)
-	CloneFromRequestLog(ctx context.Context, reqLogID ulid.ULID) (Request, error)
-	DeleteRequests(ctx context.Context, projectID ulid.ULID) error
-	SendRequest(ctx context.Context, id ulid.ULID) (Request, error)
-	SetActiveProjectID(ulid.ULID)
-	SetFindReqsFilter(filter FindRequestsFilter)
-	FindReqsFilter() FindRequestsFilter
-}
-
-type service struct {
+type Service struct {
 	activeProjectID ulid.ULID
 	findReqsFilter  FindRequestsFilter
 	scope           *scope.Scope
 	repo            Repository
-	reqLogSvc       reqlog.Service
+	reqLogSvc       *reqlog.Service
 	httpClient      *http.Client
 }
 
@@ -60,7 +48,7 @@ type FindRequestsFilter struct {
 type Config struct {
 	Scope         *scope.Scope
 	Repository    Repository
-	ReqLogService reqlog.Service
+	ReqLogService *reqlog.Service
 	HTTPClient    *http.Client
 }
 
@@ -68,8 +56,8 @@ type SendError struct {
 	err error
 }
 
-func NewService(cfg Config) Service {
-	svc := &service{
+func NewService(cfg Config) *Service {
+	svc := &Service{
 		repo:       cfg.Repository,
 		reqLogSvc:  cfg.ReqLogService,
 		httpClient: defaultHTTPClient,
@@ -97,7 +85,7 @@ type Request struct {
 	Response *reqlog.ResponseLog
 }
 
-func (svc *service) FindRequestByID(ctx context.Context, id ulid.ULID) (Request, error) {
+func (svc *Service) FindRequestByID(ctx context.Context, id ulid.ULID) (Request, error) {
 	req, err := svc.repo.FindSenderRequestByID(ctx, id)
 	if err != nil {
 		return Request{}, fmt.Errorf("sender: failed to find request: %w", err)
@@ -106,11 +94,11 @@ func (svc *service) FindRequestByID(ctx context.Context, id ulid.ULID) (Request,
 	return req, nil
 }
 
-func (svc *service) FindRequests(ctx context.Context) ([]Request, error) {
+func (svc *Service) FindRequests(ctx context.Context) ([]Request, error) {
 	return svc.repo.FindSenderRequests(ctx, svc.findReqsFilter, svc.scope)
 }
 
-func (svc *service) CreateOrUpdateRequest(ctx context.Context, req Request) (Request, error) {
+func (svc *Service) CreateOrUpdateRequest(ctx context.Context, req Request) (Request, error) {
 	if svc.activeProjectID.Compare(ulid.ULID{}) == 0 {
 		return Request{}, ErrProjectIDMustBeSet
 	}
@@ -141,7 +129,7 @@ func (svc *service) CreateOrUpdateRequest(ctx context.Context, req Request) (Req
 	return req, nil
 }
 
-func (svc *service) CloneFromRequestLog(ctx context.Context, reqLogID ulid.ULID) (Request, error) {
+func (svc *Service) CloneFromRequestLog(ctx context.Context, reqLogID ulid.ULID) (Request, error) {
 	if svc.activeProjectID.Compare(ulid.ULID{}) == 0 {
 		return Request{}, ErrProjectIDMustBeSet
 	}
@@ -170,15 +158,15 @@ func (svc *service) CloneFromRequestLog(ctx context.Context, reqLogID ulid.ULID)
 	return req, nil
 }
 
-func (svc *service) SetFindReqsFilter(filter FindRequestsFilter) {
+func (svc *Service) SetFindReqsFilter(filter FindRequestsFilter) {
 	svc.findReqsFilter = filter
 }
 
-func (svc *service) FindReqsFilter() FindRequestsFilter {
+func (svc *Service) FindReqsFilter() FindRequestsFilter {
 	return svc.findReqsFilter
 }
 
-func (svc *service) SendRequest(ctx context.Context, id ulid.ULID) (Request, error) {
+func (svc *Service) SendRequest(ctx context.Context, id ulid.ULID) (Request, error) {
 	req, err := svc.repo.FindSenderRequestByID(ctx, id)
 	if err != nil {
 		return Request{}, fmt.Errorf("sender: failed to find request: %w", err)
@@ -219,7 +207,7 @@ func parseHTTPRequest(ctx context.Context, req Request) (*http.Request, error) {
 	return httpReq, nil
 }
 
-func (svc *service) sendHTTPRequest(httpReq *http.Request) (reqlog.ResponseLog, error) {
+func (svc *Service) sendHTTPRequest(httpReq *http.Request) (reqlog.ResponseLog, error) {
 	res, err := svc.httpClient.Do(httpReq)
 	if err != nil {
 		return reqlog.ResponseLog{}, &SendError{err}
@@ -234,11 +222,11 @@ func (svc *service) sendHTTPRequest(httpReq *http.Request) (reqlog.ResponseLog, 
 	return resLog, err
 }
 
-func (svc *service) SetActiveProjectID(id ulid.ULID) {
+func (svc *Service) SetActiveProjectID(id ulid.ULID) {
 	svc.activeProjectID = id
 }
 
-func (svc *service) DeleteRequests(ctx context.Context, projectID ulid.ULID) error {
+func (svc *Service) DeleteRequests(ctx context.Context, projectID ulid.ULID) error {
 	return svc.repo.DeleteSenderRequests(ctx, projectID)
 }
 

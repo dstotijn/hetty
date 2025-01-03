@@ -1,8 +1,5 @@
 package sender_test
 
-//go:generate go run github.com/matryer/moq -out reqlog_mock_test.go -pkg sender_test ../reqlog Service:ReqLogServiceMock
-//go:generate go run github.com/matryer/moq -out repo_mock_test.go -pkg sender_test . Repository:RepoMock
-
 import (
 	"context"
 	"errors"
@@ -14,9 +11,12 @@ import (
 	"testing"
 	"time"
 
+	badgerdb "github.com/dgraph-io/badger/v3"
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/oklog/ulid"
 
+	"github.com/dstotijn/hetty/pkg/db/badger"
 	"github.com/dstotijn/hetty/pkg/reqlog"
 	"github.com/dstotijn/hetty/pkg/sender"
 )
@@ -54,13 +54,13 @@ func TestStoreRequest(t *testing.T) {
 	t.Run("with active project", func(t *testing.T) {
 		t.Parallel()
 
-		repoMock := &RepoMock{
-			StoreSenderRequestFunc: func(ctx context.Context, req sender.Request) error {
-				return nil
-			},
+		db, err := badger.OpenDatabase(badgerdb.DefaultOptions("").WithInMemory(true))
+		if err != nil {
+			t.Fatalf("failed to open database: %v", err)
 		}
+
 		svc := sender.NewService(sender.Config{
-			Repository: repoMock,
+			Repository: db,
 		})
 
 		projectID := ulid.MustNew(ulid.Timestamp(time.Now()), ulidEntropy)
@@ -94,18 +94,18 @@ func TestStoreRequest(t *testing.T) {
 			t.Fatal("expected request ID to be non-empty value")
 		}
 
-		if len(repoMock.StoreSenderRequestCalls()) != 1 {
-			t.Fatal("expected `svc.repo.StoreSenderRequest()` to have been called 1 time")
+		diff := cmp.Diff(exp, got, cmpopts.IgnoreFields(sender.Request{}, "ID"))
+		if diff != "" {
+			t.Fatalf("request not equal (-exp, +got):\n%v", diff)
 		}
 
-		if diff := cmp.Diff(got, repoMock.StoreSenderRequestCalls()[0].Req); diff != "" {
-			t.Fatalf("repo call arg not equal (-exp, +got):\n%v", diff)
+		got, err = db.FindSenderRequestByID(context.Background(), got.ID)
+		if err != nil {
+			t.Fatalf("failed to find request by ID: %v", err)
 		}
 
-		// Reset ID to make comparison with expected easier.
-		got.ID = ulid.ULID{}
-
-		if diff := cmp.Diff(exp, got); diff != "" {
+		diff = cmp.Diff(exp, got, cmpopts.IgnoreFields(sender.Request{}, "ID"))
+		if diff != "" {
 			t.Fatalf("request not equal (-exp, +got):\n%v", diff)
 		}
 	})
@@ -130,6 +130,13 @@ func TestCloneFromRequestLog(t *testing.T) {
 	t.Run("with active project", func(t *testing.T) {
 		t.Parallel()
 
+		db, err := badger.OpenDatabase(badgerdb.DefaultOptions("").WithInMemory(true))
+		if err != nil {
+			t.Fatalf("failed to open database: %v", err)
+		}
+
+		defer db.Close()
+
 		reqLog := reqlog.RequestLog{
 			ID:        reqLogID,
 			ProjectID: ulid.MustNew(ulid.Timestamp(time.Now()), ulidEntropy),
@@ -142,19 +149,15 @@ func TestCloneFromRequestLog(t *testing.T) {
 			Body: []byte("foobar"),
 		}
 
-		reqLogMock := &ReqLogServiceMock{
-			FindRequestLogByIDFunc: func(ctx context.Context, id ulid.ULID) (reqlog.RequestLog, error) {
-				return reqLog, nil
-			},
+		if err := db.StoreRequestLog(context.Background(), reqLog); err != nil {
+			t.Fatalf("failed to store request log: %v", err)
 		}
-		repoMock := &RepoMock{
-			StoreSenderRequestFunc: func(ctx context.Context, req sender.Request) error {
-				return nil
-			},
-		}
+
 		svc := sender.NewService(sender.Config{
-			ReqLogService: reqLogMock,
-			Repository:    repoMock,
+			ReqLogService: reqlog.NewService(reqlog.Config{
+				Repository: db,
+			}),
+			Repository: db,
 		})
 
 		projectID := ulid.MustNew(ulid.Timestamp(time.Now()), ulidEntropy)
@@ -177,30 +180,8 @@ func TestCloneFromRequestLog(t *testing.T) {
 			t.Fatalf("unexpected error cloning from request log: %v", err)
 		}
 
-		if len(reqLogMock.FindRequestLogByIDCalls()) != 1 {
-			t.Fatal("expected `svc.reqLogSvc.FindRequestLogByID()` to have been called 1 time")
-		}
-
-		if got := reqLogMock.FindRequestLogByIDCalls()[0].ID; reqLogID.Compare(got) != 0 {
-			t.Fatalf("reqlog service call arg `id` not equal (expected: %q, got: %q)", reqLogID, got)
-		}
-
-		if got.ID.Compare(ulid.ULID{}) == 0 {
-			t.Fatal("expected request ID to be non-empty value")
-		}
-
-		if len(repoMock.StoreSenderRequestCalls()) != 1 {
-			t.Fatal("expected `svc.repo.StoreSenderRequest()` to have been called 1 time")
-		}
-
-		if diff := cmp.Diff(got, repoMock.StoreSenderRequestCalls()[0].Req); diff != "" {
-			t.Fatalf("repo call arg not equal (-exp, +got):\n%v", diff)
-		}
-
-		// Reset ID to make comparison with expected easier.
-		got.ID = ulid.ULID{}
-
-		if diff := cmp.Diff(exp, got); diff != "" {
+		diff := cmp.Diff(exp, got, cmpopts.IgnoreFields(sender.Request{}, "ID"))
+		if diff != "" {
 			t.Fatalf("request not equal (-exp, +got):\n%v", diff)
 		}
 	})
@@ -208,6 +189,11 @@ func TestCloneFromRequestLog(t *testing.T) {
 
 func TestSendRequest(t *testing.T) {
 	t.Parallel()
+
+	db, err := badger.OpenDatabase(badgerdb.DefaultOptions("").WithInMemory(true))
+	if err != nil {
+		t.Fatalf("failed to open database: %v", err)
+	}
 
 	date := time.Now().Format(http.TimeFormat)
 
@@ -233,19 +219,18 @@ func TestSendRequest(t *testing.T) {
 		Body: []byte("foobar"),
 	}
 
-	repoMock := &RepoMock{
-		FindSenderRequestByIDFunc: func(ctx context.Context, id ulid.ULID) (sender.Request, error) {
-			return req, nil
-		},
-		StoreResponseLogFunc: func(ctx context.Context, reqLogID ulid.ULID, resLog reqlog.ResponseLog) error {
-			return nil
-		},
+	if err := db.StoreSenderRequest(context.Background(), req); err != nil {
+		t.Fatalf("failed to store request: %v", err)
 	}
+
 	svc := sender.NewService(sender.Config{
-		Repository: repoMock,
+		ReqLogService: reqlog.NewService(reqlog.Config{
+			Repository: db,
+		}),
+		Repository: db,
 	})
 
-	exp := reqlog.ResponseLog{
+	exp := &reqlog.ResponseLog{
 		Proto:      "HTTP/1.1",
 		StatusCode: http.StatusOK,
 		Status:     "200 OK",
@@ -263,27 +248,8 @@ func TestSendRequest(t *testing.T) {
 		t.Fatalf("unexpected error sending request: %v", err)
 	}
 
-	if len(repoMock.FindSenderRequestByIDCalls()) != 1 {
-		t.Fatal("expected `svc.repo.FindSenderRequestByID()` to have been called 1 time")
-	}
-
-	if diff := cmp.Diff(reqID, repoMock.FindSenderRequestByIDCalls()[0].ID); diff != "" {
-		t.Fatalf("call arg `id` for `svc.repo.FindSenderRequestByID()` not equal (-exp, +got):\n%v", diff)
-	}
-
-	if len(repoMock.StoreResponseLogCalls()) != 1 {
-		t.Fatal("expected `svc.repo.StoreResponseLog()` to have been called 1 time")
-	}
-
-	if diff := cmp.Diff(reqID, repoMock.StoreResponseLogCalls()[0].ReqLogID); diff != "" {
-		t.Fatalf("call arg `reqLogID` for `svc.repo.StoreResponseLog()` not equal (-exp, +got):\n%v", diff)
-	}
-
-	if diff := cmp.Diff(exp, repoMock.StoreResponseLogCalls()[0].ResLog); diff != "" {
-		t.Fatalf("call arg `resLog` for `svc.repo.StoreResponseLog()` not equal (-exp, +got):\n%v", diff)
-	}
-
-	if diff := cmp.Diff(repoMock.StoreResponseLogCalls()[0].ResLog, *got.Response); diff != "" {
-		t.Fatalf("returned response log value and persisted value not equal (-exp, +got):\n%v", diff)
+	diff := cmp.Diff(exp, got.Response, cmpopts.IgnoreFields(sender.Request{}, "ID"))
+	if diff != "" {
+		t.Fatalf("request not equal (-exp, +got):\n%v", diff)
 	}
 }

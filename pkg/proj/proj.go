@@ -21,27 +21,11 @@ import (
 //nolint:gosec
 var ulidEntropy = rand.New(rand.NewSource(time.Now().UnixNano()))
 
-// Service is used for managing projects.
-type Service interface {
-	CreateProject(ctx context.Context, name string) (Project, error)
-	OpenProject(ctx context.Context, projectID ulid.ULID) (Project, error)
-	CloseProject() error
-	DeleteProject(ctx context.Context, projectID ulid.ULID) error
-	ActiveProject(ctx context.Context) (Project, error)
-	IsProjectActive(projectID ulid.ULID) bool
-	Projects(ctx context.Context) ([]Project, error)
-	Scope() *scope.Scope
-	SetScopeRules(ctx context.Context, rules []scope.Rule) error
-	SetRequestLogFindFilter(ctx context.Context, filter reqlog.FindRequestsFilter) error
-	SetSenderRequestFindFilter(ctx context.Context, filter sender.FindRequestsFilter) error
-	UpdateInterceptSettings(ctx context.Context, settings intercept.Settings) error
-}
-
-type service struct {
+type Service struct {
 	repo            Repository
 	interceptSvc    *intercept.Service
-	reqLogSvc       reqlog.Service
-	senderSvc       sender.Service
+	reqLogSvc       *reqlog.Service
+	senderSvc       *sender.Service
 	scope           *scope.Scope
 	activeProjectID ulid.ULID
 	mu              sync.RWMutex
@@ -87,14 +71,14 @@ var nameRegexp = regexp.MustCompile(`^[\w\d\s]+$`)
 type Config struct {
 	Repository       Repository
 	InterceptService *intercept.Service
-	ReqLogService    reqlog.Service
-	SenderService    sender.Service
+	ReqLogService    *reqlog.Service
+	SenderService    *sender.Service
 	Scope            *scope.Scope
 }
 
 // NewService returns a new Service.
-func NewService(cfg Config) (Service, error) {
-	return &service{
+func NewService(cfg Config) (*Service, error) {
+	return &Service{
 		repo:         cfg.Repository,
 		interceptSvc: cfg.InterceptService,
 		reqLogSvc:    cfg.ReqLogService,
@@ -103,7 +87,7 @@ func NewService(cfg Config) (Service, error) {
 	}, nil
 }
 
-func (svc *service) CreateProject(ctx context.Context, name string) (Project, error) {
+func (svc *Service) CreateProject(ctx context.Context, name string) (Project, error) {
 	if !nameRegexp.MatchString(name) {
 		return Project{}, ErrInvalidName
 	}
@@ -122,7 +106,7 @@ func (svc *service) CreateProject(ctx context.Context, name string) (Project, er
 }
 
 // CloseProject closes the currently open project (if there is one).
-func (svc *service) CloseProject() error {
+func (svc *Service) CloseProject() error {
 	svc.mu.Lock()
 	defer svc.mu.Unlock()
 
@@ -148,7 +132,7 @@ func (svc *service) CloseProject() error {
 }
 
 // DeleteProject removes a project from the repository.
-func (svc *service) DeleteProject(ctx context.Context, projectID ulid.ULID) error {
+func (svc *Service) DeleteProject(ctx context.Context, projectID ulid.ULID) error {
 	if svc.activeProjectID.Compare(projectID) == 0 {
 		return fmt.Errorf("proj: project (%v) is active", projectID.String())
 	}
@@ -161,7 +145,7 @@ func (svc *service) DeleteProject(ctx context.Context, projectID ulid.ULID) erro
 }
 
 // OpenProject sets a project as the currently active project.
-func (svc *service) OpenProject(ctx context.Context, projectID ulid.ULID) (Project, error) {
+func (svc *Service) OpenProject(ctx context.Context, projectID ulid.ULID) (Project, error) {
 	svc.mu.Lock()
 	defer svc.mu.Unlock()
 
@@ -203,7 +187,7 @@ func (svc *service) OpenProject(ctx context.Context, projectID ulid.ULID) (Proje
 	return project, nil
 }
 
-func (svc *service) ActiveProject(ctx context.Context) (Project, error) {
+func (svc *Service) ActiveProject(ctx context.Context) (Project, error) {
 	activeProjectID := svc.activeProjectID
 	if activeProjectID.Compare(ulid.ULID{}) == 0 {
 		return Project{}, ErrNoProject
@@ -219,7 +203,7 @@ func (svc *service) ActiveProject(ctx context.Context) (Project, error) {
 	return project, nil
 }
 
-func (svc *service) Projects(ctx context.Context) ([]Project, error) {
+func (svc *Service) Projects(ctx context.Context) ([]Project, error) {
 	projects, err := svc.repo.Projects(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("proj: could not get projects: %w", err)
@@ -228,11 +212,11 @@ func (svc *service) Projects(ctx context.Context) ([]Project, error) {
 	return projects, nil
 }
 
-func (svc *service) Scope() *scope.Scope {
+func (svc *Service) Scope() *scope.Scope {
 	return svc.scope
 }
 
-func (svc *service) SetScopeRules(ctx context.Context, rules []scope.Rule) error {
+func (svc *Service) SetScopeRules(ctx context.Context, rules []scope.Rule) error {
 	project, err := svc.ActiveProject(ctx)
 	if err != nil {
 		return err
@@ -250,7 +234,7 @@ func (svc *service) SetScopeRules(ctx context.Context, rules []scope.Rule) error
 	return nil
 }
 
-func (svc *service) SetRequestLogFindFilter(ctx context.Context, filter reqlog.FindRequestsFilter) error {
+func (svc *Service) SetRequestLogFindFilter(ctx context.Context, filter reqlog.FindRequestsFilter) error {
 	project, err := svc.ActiveProject(ctx)
 	if err != nil {
 		return err
@@ -271,7 +255,7 @@ func (svc *service) SetRequestLogFindFilter(ctx context.Context, filter reqlog.F
 	return nil
 }
 
-func (svc *service) SetSenderRequestFindFilter(ctx context.Context, filter sender.FindRequestsFilter) error {
+func (svc *Service) SetSenderRequestFindFilter(ctx context.Context, filter sender.FindRequestsFilter) error {
 	project, err := svc.ActiveProject(ctx)
 	if err != nil {
 		return err
@@ -292,11 +276,11 @@ func (svc *service) SetSenderRequestFindFilter(ctx context.Context, filter sende
 	return nil
 }
 
-func (svc *service) IsProjectActive(projectID ulid.ULID) bool {
+func (svc *Service) IsProjectActive(projectID ulid.ULID) bool {
 	return projectID.Compare(svc.activeProjectID) == 0
 }
 
-func (svc *service) UpdateInterceptSettings(ctx context.Context, settings intercept.Settings) error {
+func (svc *Service) UpdateInterceptSettings(ctx context.Context, settings intercept.Settings) error {
 	project, err := svc.ActiveProject(ctx)
 	if err != nil {
 		return err

@@ -51,21 +51,7 @@ type ResponseLog struct {
 	Body       []byte
 }
 
-type Service interface {
-	FindRequests(ctx context.Context) ([]RequestLog, error)
-	FindRequestLogByID(ctx context.Context, id ulid.ULID) (RequestLog, error)
-	ClearRequests(ctx context.Context, projectID ulid.ULID) error
-	RequestModifier(next proxy.RequestModifyFunc) proxy.RequestModifyFunc
-	ResponseModifier(next proxy.ResponseModifyFunc) proxy.ResponseModifyFunc
-	SetActiveProjectID(id ulid.ULID)
-	ActiveProjectID() ulid.ULID
-	SetBypassOutOfScopeRequests(bool)
-	BypassOutOfScopeRequests() bool
-	SetFindReqsFilter(filter FindRequestsFilter)
-	FindReqsFilter() FindRequestsFilter
-}
-
-type service struct {
+type Service struct {
 	bypassOutOfScopeRequests bool
 	findReqsFilter           FindRequestsFilter
 	activeProjectID          ulid.ULID
@@ -86,8 +72,8 @@ type Config struct {
 	Logger     log.Logger
 }
 
-func NewService(cfg Config) Service {
-	s := &service{
+func NewService(cfg Config) *Service {
+	s := &Service{
 		repo:   cfg.Repository,
 		scope:  cfg.Scope,
 		logger: cfg.Logger,
@@ -100,19 +86,19 @@ func NewService(cfg Config) Service {
 	return s
 }
 
-func (svc *service) FindRequests(ctx context.Context) ([]RequestLog, error) {
+func (svc *Service) FindRequests(ctx context.Context) ([]RequestLog, error) {
 	return svc.repo.FindRequestLogs(ctx, svc.findReqsFilter, svc.scope)
 }
 
-func (svc *service) FindRequestLogByID(ctx context.Context, id ulid.ULID) (RequestLog, error) {
+func (svc *Service) FindRequestLogByID(ctx context.Context, id ulid.ULID) (RequestLog, error) {
 	return svc.repo.FindRequestLogByID(ctx, id)
 }
 
-func (svc *service) ClearRequests(ctx context.Context, projectID ulid.ULID) error {
+func (svc *Service) ClearRequests(ctx context.Context, projectID ulid.ULID) error {
 	return svc.repo.ClearRequestLogs(ctx, projectID)
 }
 
-func (svc *service) storeResponse(ctx context.Context, reqLogID ulid.ULID, res *http.Response) error {
+func (svc *Service) storeResponse(ctx context.Context, reqLogID ulid.ULID, res *http.Response) error {
 	resLog, err := ParseHTTPResponse(res)
 	if err != nil {
 		return err
@@ -121,7 +107,7 @@ func (svc *service) storeResponse(ctx context.Context, reqLogID ulid.ULID, res *
 	return svc.repo.StoreResponseLog(ctx, reqLogID, resLog)
 }
 
-func (svc *service) RequestModifier(next proxy.RequestModifyFunc) proxy.RequestModifyFunc {
+func (svc *Service) RequestModifier(next proxy.RequestModifyFunc) proxy.RequestModifyFunc {
 	return func(req *http.Request) {
 		next(req)
 
@@ -199,7 +185,7 @@ func (svc *service) RequestModifier(next proxy.RequestModifyFunc) proxy.RequestM
 	}
 }
 
-func (svc *service) ResponseModifier(next proxy.ResponseModifyFunc) proxy.ResponseModifyFunc {
+func (svc *Service) ResponseModifier(next proxy.ResponseModifyFunc) proxy.ResponseModifyFunc {
 	return func(res *http.Response) error {
 		if err := next(res); err != nil {
 			return err
@@ -241,27 +227,27 @@ func (svc *service) ResponseModifier(next proxy.ResponseModifyFunc) proxy.Respon
 	}
 }
 
-func (svc *service) SetActiveProjectID(id ulid.ULID) {
+func (svc *Service) SetActiveProjectID(id ulid.ULID) {
 	svc.activeProjectID = id
 }
 
-func (svc *service) ActiveProjectID() ulid.ULID {
+func (svc *Service) ActiveProjectID() ulid.ULID {
 	return svc.activeProjectID
 }
 
-func (svc *service) SetFindReqsFilter(filter FindRequestsFilter) {
+func (svc *Service) SetFindReqsFilter(filter FindRequestsFilter) {
 	svc.findReqsFilter = filter
 }
 
-func (svc *service) FindReqsFilter() FindRequestsFilter {
+func (svc *Service) FindReqsFilter() FindRequestsFilter {
 	return svc.findReqsFilter
 }
 
-func (svc *service) SetBypassOutOfScopeRequests(bypass bool) {
+func (svc *Service) SetBypassOutOfScopeRequests(bypass bool) {
 	svc.bypassOutOfScopeRequests = bypass
 }
 
-func (svc *service) BypassOutOfScopeRequests() bool {
+func (svc *Service) BypassOutOfScopeRequests() bool {
 	return svc.bypassOutOfScopeRequests
 }
 
