@@ -1,4 +1,4 @@
-package badger
+package bolt_test
 
 import (
 	"context"
@@ -8,10 +8,12 @@ import (
 	"testing"
 	"time"
 
-	badgerdb "github.com/dgraph-io/badger/v3"
 	"github.com/google/go-cmp/cmp"
 	"github.com/oklog/ulid"
+	"go.etcd.io/bbolt"
 
+	"github.com/dstotijn/hetty/pkg/db/bolt"
+	"github.com/dstotijn/hetty/pkg/proj"
 	"github.com/dstotijn/hetty/pkg/reqlog"
 )
 
@@ -21,15 +23,21 @@ func TestFindRequestLogs(t *testing.T) {
 	t.Run("without project ID in filter", func(t *testing.T) {
 		t.Parallel()
 
-		database, err := OpenDatabase(badgerdb.DefaultOptions("").WithInMemory(true))
+		path := t.TempDir() + "bolt.db"
+		boltDB, err := bbolt.Open(path, 0o600, nil)
 		if err != nil {
-			t.Fatalf("failed to open badger database: %v", err)
+			t.Fatalf("failed to open bolt database: %v", err)
 		}
-		defer database.Close()
+
+		db, err := bolt.DatabaseFromBoltDB(boltDB)
+		if err != nil {
+			t.Fatalf("failed to create database: %v", err)
+		}
+		defer db.Close()
 
 		filter := reqlog.FindRequestsFilter{}
 
-		_, err = database.FindRequestLogs(context.Background(), filter, nil)
+		_, err = db.FindRequestLogs(context.Background(), filter, nil)
 		if !errors.Is(err, reqlog.ErrProjectIDMustBeSet) {
 			t.Fatalf("expected `reqlog.ErrProjectIDMustBeSet`, got: %v", err)
 		}
@@ -38,13 +46,26 @@ func TestFindRequestLogs(t *testing.T) {
 	t.Run("returns request logs and related response logs", func(t *testing.T) {
 		t.Parallel()
 
-		database, err := OpenDatabase(badgerdb.DefaultOptions("").WithInMemory(true))
+		path := t.TempDir() + "bolt.db"
+		boltDB, err := bbolt.Open(path, 0o600, nil)
 		if err != nil {
-			t.Fatalf("failed to open badger database: %v", err)
+			t.Fatalf("failed to open bolt database: %v", err)
 		}
-		defer database.Close()
+
+		db, err := bolt.DatabaseFromBoltDB(boltDB)
+		if err != nil {
+			t.Fatalf("failed to create database: %v", err)
+		}
+		defer db.Close()
 
 		projectID := ulid.MustNew(ulid.Timestamp(time.Now()), ulidEntropy)
+
+		err = db.UpsertProject(context.Background(), proj.Project{
+			ID: projectID,
+		})
+		if err != nil {
+			t.Fatalf("unexpected error upserting project: %v", err)
+		}
 
 		fixtures := []reqlog.RequestLog{
 			{
@@ -81,16 +102,9 @@ func TestFindRequestLogs(t *testing.T) {
 
 		// Store fixtures.
 		for _, reqLog := range fixtures {
-			err = database.StoreRequestLog(context.Background(), reqLog)
+			err = db.StoreRequestLog(context.Background(), reqLog)
 			if err != nil {
 				t.Fatalf("unexpected error creating request log fixture: %v", err)
-			}
-
-			if reqLog.Response != nil {
-				err = database.StoreResponseLog(context.Background(), reqLog.ID, *reqLog.Response)
-				if err != nil {
-					t.Fatalf("unexpected error creating response log fixture: %v", err)
-				}
 			}
 		}
 
@@ -98,7 +112,7 @@ func TestFindRequestLogs(t *testing.T) {
 			ProjectID: projectID,
 		}
 
-		got, err := database.FindRequestLogs(context.Background(), filter, nil)
+		got, err := db.FindRequestLogs(context.Background(), filter, nil)
 		if err != nil {
 			t.Fatalf("unexpected error finding request logs: %v", err)
 		}

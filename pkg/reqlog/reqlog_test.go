@@ -12,9 +12,10 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/oklog/ulid"
+	"go.etcd.io/bbolt"
 
-	badgerdb "github.com/dgraph-io/badger/v3"
-	"github.com/dstotijn/hetty/pkg/db/badger"
+	"github.com/dstotijn/hetty/pkg/db/bolt"
+	"github.com/dstotijn/hetty/pkg/proj"
 	"github.com/dstotijn/hetty/pkg/proxy"
 	"github.com/dstotijn/hetty/pkg/reqlog"
 	"github.com/dstotijn/hetty/pkg/scope"
@@ -25,16 +26,32 @@ var ulidEntropy = rand.New(rand.NewSource(time.Now().UnixNano()))
 
 //nolint:paralleltest
 func TestRequestModifier(t *testing.T) {
-	db, err := badger.OpenDatabase(badgerdb.DefaultOptions("").WithInMemory(true))
+	path := t.TempDir() + "bolt.db"
+	boltDB, err := bbolt.Open(path, 0o600, nil)
 	if err != nil {
-		t.Fatalf("failed to open database: %v", err)
+		t.Fatalf("failed to open bolt database: %v", err)
+	}
+	defer boltDB.Close()
+
+	db, err := bolt.DatabaseFromBoltDB(boltDB)
+	if err != nil {
+		t.Fatalf("failed to create database: %v", err)
+	}
+	defer db.Close()
+
+	projectID := ulid.MustNew(ulid.Timestamp(time.Now()), ulidEntropy)
+	err = db.UpsertProject(context.Background(), proj.Project{
+		ID: projectID,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error upserting project: %v", err)
 	}
 
 	svc := reqlog.NewService(reqlog.Config{
 		Repository: db,
 		Scope:      &scope.Scope{},
 	})
-	svc.SetActiveProjectID(ulid.MustNew(ulid.Timestamp(time.Now()), ulidEntropy))
+	svc.SetActiveProjectID(projectID)
 
 	next := func(req *http.Request) {
 		req.Body = io.NopCloser(strings.NewReader("modified body"))
@@ -70,15 +87,31 @@ func TestRequestModifier(t *testing.T) {
 
 //nolint:paralleltest
 func TestResponseModifier(t *testing.T) {
-	db, err := badger.OpenDatabase(badgerdb.DefaultOptions("").WithInMemory(true))
+	path := t.TempDir() + "bolt.db"
+	boltDB, err := bbolt.Open(path, 0o600, nil)
 	if err != nil {
-		t.Fatalf("failed to open database: %v", err)
+		t.Fatalf("failed to open bolt database: %v", err)
+	}
+	defer boltDB.Close()
+
+	db, err := bolt.DatabaseFromBoltDB(boltDB)
+	if err != nil {
+		t.Fatalf("failed to create database: %v", err)
+	}
+	defer db.Close()
+
+	projectID := ulid.MustNew(ulid.Timestamp(time.Now()), ulidEntropy)
+	err = db.UpsertProject(context.Background(), proj.Project{
+		ID: projectID,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error upserting project: %v", err)
 	}
 
 	svc := reqlog.NewService(reqlog.Config{
 		Repository: db,
 	})
-	svc.SetActiveProjectID(ulid.MustNew(ulid.Timestamp(time.Now()), ulidEntropy))
+	svc.SetActiveProjectID(projectID)
 
 	next := func(res *http.Response) error {
 		res.Body = io.NopCloser(strings.NewReader("modified body"))
@@ -91,7 +124,8 @@ func TestResponseModifier(t *testing.T) {
 	req = req.WithContext(context.WithValue(req.Context(), reqlog.ReqLogIDKey, reqLogID))
 
 	err = db.StoreRequestLog(context.Background(), reqlog.RequestLog{
-		ID: reqLogID,
+		ID:        reqLogID,
+		ProjectID: projectID,
 	})
 	if err != nil {
 		t.Fatalf("failed to store request log: %v", err)

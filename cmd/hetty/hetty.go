@@ -16,16 +16,15 @@ import (
 	"strings"
 
 	"github.com/chromedp/chromedp"
-	badgerdb "github.com/dgraph-io/badger/v3"
 	"github.com/gorilla/mux"
 	"github.com/mitchellh/go-homedir"
 	"github.com/peterbourgon/ff/v3/ffcli"
+	"go.etcd.io/bbolt"
 	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 
 	"github.com/dstotijn/hetty/pkg/api"
 	"github.com/dstotijn/hetty/pkg/chrome"
-	"github.com/dstotijn/hetty/pkg/db/badger"
+	"github.com/dstotijn/hetty/pkg/db/bolt"
 	"github.com/dstotijn/hetty/pkg/proj"
 	"github.com/dstotijn/hetty/pkg/proxy"
 	"github.com/dstotijn/hetty/pkg/proxy/intercept"
@@ -89,7 +88,7 @@ func NewHettyCommand() (*ffcli.Command, *Config) {
 		"Path to root CA certificate. Creates a new certificate if file doesn't exist.")
 	fs.StringVar(&cmd.key, "key", "~/.hetty/hetty_key.pem",
 		"Path to root CA private key. Creates a new private key if file doesn't exist.")
-	fs.StringVar(&cmd.db, "db", "~/.hetty/db", "Database directory path.")
+	fs.StringVar(&cmd.db, "db", "~/.hetty/hetty.db", "Database file path. Creates file if it doesn't exist.")
 	fs.StringVar(&cmd.addr, "addr", ":8080", "TCP address to listen on, in the form \"host:port\".")
 	fs.BoolVar(&cmd.chrome, "chrome", false, "Launch Chrome with proxy settings applied and certificate errors ignored.")
 	fs.BoolVar(&cmd.version, "version", false, "Output version.")
@@ -154,25 +153,21 @@ func (cmd *HettyCommand) Exec(ctx context.Context, _ []string) error {
 		cmd.config.logger.Fatal("Failed to load or create CA key pair.", zap.Error(err))
 	}
 
-	// BadgerDB logs some verbose entries with `INFO` level, so unless
-	// we're running in debug mode, bump the minimal level to `WARN`.
-	dbLogger := cmd.config.logger.Named("badgerdb").WithOptions(zap.IncreaseLevel(zapcore.WarnLevel))
+	dbLogger := cmd.config.logger.Named("boltdb").Sugar()
+	boltOpts := *bbolt.DefaultOptions
+	boltOpts.Logger = &bolt.Logger{SugaredLogger: dbLogger}
 
-	dbSugaredLogger := dbLogger.Sugar()
-
-	badger, err := badger.OpenDatabase(
-		badgerdb.DefaultOptions(dbPath).WithLogger(badger.NewLogger(dbSugaredLogger)),
-	)
+	boltDB, err := bolt.OpenDatabase(dbPath, &boltOpts)
 	if err != nil {
 		cmd.config.logger.Fatal("Failed to open database.", zap.Error(err))
 	}
-	defer badger.Close()
+	defer boltDB.Close()
 
 	scope := &scope.Scope{}
 
 	reqLogService := reqlog.NewService(reqlog.Config{
 		Scope:      scope,
-		Repository: badger,
+		Repository: boltDB,
 		Logger:     cmd.config.logger.Named("reqlog").Sugar(),
 	})
 
@@ -181,12 +176,12 @@ func (cmd *HettyCommand) Exec(ctx context.Context, _ []string) error {
 	})
 
 	senderService := sender.NewService(sender.Config{
-		Repository:    badger,
+		Repository:    boltDB,
 		ReqLogService: reqLogService,
 	})
 
 	projService, err := proj.NewService(proj.Config{
-		Repository:       badger,
+		Repository:       boltDB,
 		InterceptService: interceptService,
 		ReqLogService:    reqLogService,
 		SenderService:    senderService,

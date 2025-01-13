@@ -67,16 +67,18 @@ type FindRequestsFilter struct {
 }
 
 type Config struct {
-	Scope      *scope.Scope
-	Repository Repository
-	Logger     log.Logger
+	ActiveProjectID ulid.ULID
+	Scope           *scope.Scope
+	Repository      Repository
+	Logger          log.Logger
 }
 
 func NewService(cfg Config) *Service {
 	s := &Service{
-		repo:   cfg.Repository,
-		scope:  cfg.Scope,
-		logger: cfg.Logger,
+		activeProjectID: cfg.ActiveProjectID,
+		repo:            cfg.Repository,
+		scope:           cfg.Scope,
+		logger:          cfg.Logger,
 	}
 
 	if s.logger == nil {
@@ -91,7 +93,7 @@ func (svc *Service) FindRequests(ctx context.Context) ([]RequestLog, error) {
 }
 
 func (svc *Service) FindRequestLogByID(ctx context.Context, id ulid.ULID) (RequestLog, error) {
-	return svc.repo.FindRequestLogByID(ctx, id)
+	return svc.repo.FindRequestLogByID(ctx, svc.activeProjectID, id)
 }
 
 func (svc *Service) ClearRequests(ctx context.Context, projectID ulid.ULID) error {
@@ -104,7 +106,7 @@ func (svc *Service) storeResponse(ctx context.Context, reqLogID ulid.ULID, res *
 		return err
 	}
 
-	return svc.repo.StoreResponseLog(ctx, reqLogID, resLog)
+	return svc.repo.StoreResponseLog(ctx, svc.activeProjectID, reqLogID, resLog)
 }
 
 func (svc *Service) RequestModifier(next proxy.RequestModifyFunc) proxy.RequestModifyFunc {

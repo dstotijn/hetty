@@ -11,12 +11,13 @@ import (
 	"testing"
 	"time"
 
-	badgerdb "github.com/dgraph-io/badger/v3"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/oklog/ulid"
+	"go.etcd.io/bbolt"
 
-	"github.com/dstotijn/hetty/pkg/db/badger"
+	"github.com/dstotijn/hetty/pkg/db/bolt"
+	"github.com/dstotijn/hetty/pkg/proj"
 	"github.com/dstotijn/hetty/pkg/reqlog"
 	"github.com/dstotijn/hetty/pkg/sender"
 )
@@ -54,16 +55,34 @@ func TestStoreRequest(t *testing.T) {
 	t.Run("with active project", func(t *testing.T) {
 		t.Parallel()
 
-		db, err := badger.OpenDatabase(badgerdb.DefaultOptions("").WithInMemory(true))
+		path := t.TempDir() + "bolt.db"
+		boltDB, err := bbolt.Open(path, 0o600, nil)
 		if err != nil {
-			t.Fatalf("failed to open database: %v", err)
+			t.Fatalf("failed to open bolt database: %v", err)
 		}
+		defer boltDB.Close()
+
+		db, err := bolt.DatabaseFromBoltDB(boltDB)
+		if err != nil {
+			t.Fatalf("failed to create database: %v", err)
+		}
+		defer db.Close()
 
 		svc := sender.NewService(sender.Config{
 			Repository: db,
 		})
 
 		projectID := ulid.MustNew(ulid.Timestamp(time.Now()), ulidEntropy)
+		err = db.UpsertProject(context.Background(), proj.Project{
+			ID:       projectID,
+			Name:     "foobar",
+			Settings: proj.Settings{},
+		})
+		if err != nil {
+			t.Fatalf("unexpected error upserting project: %v", err)
+		}
+
+		svc.SetActiveProjectID(projectID)
 		svc.SetActiveProjectID(projectID)
 
 		exp := sender.Request{
@@ -99,7 +118,7 @@ func TestStoreRequest(t *testing.T) {
 			t.Fatalf("request not equal (-exp, +got):\n%v", diff)
 		}
 
-		got, err = db.FindSenderRequestByID(context.Background(), got.ID)
+		got, err = db.FindSenderRequestByID(context.Background(), projectID, got.ID)
 		if err != nil {
 			t.Fatalf("failed to find request by ID: %v", err)
 		}
@@ -130,16 +149,30 @@ func TestCloneFromRequestLog(t *testing.T) {
 	t.Run("with active project", func(t *testing.T) {
 		t.Parallel()
 
-		db, err := badger.OpenDatabase(badgerdb.DefaultOptions("").WithInMemory(true))
+		path := t.TempDir() + "bolt.db"
+		boltDB, err := bbolt.Open(path, 0o600, nil)
 		if err != nil {
-			t.Fatalf("failed to open database: %v", err)
+			t.Fatalf("failed to open bolt database: %v", err)
 		}
+		defer boltDB.Close()
 
+		db, err := bolt.DatabaseFromBoltDB(boltDB)
+		if err != nil {
+			t.Fatalf("failed to create database: %v", err)
+		}
 		defer db.Close()
+
+		projectID := ulid.MustNew(ulid.Timestamp(time.Now()), ulidEntropy)
+		err = db.UpsertProject(context.Background(), proj.Project{
+			ID: projectID,
+		})
+		if err != nil {
+			t.Fatalf("unexpected error upserting project: %v", err)
+		}
 
 		reqLog := reqlog.RequestLog{
 			ID:        reqLogID,
-			ProjectID: ulid.MustNew(ulid.Timestamp(time.Now()), ulidEntropy),
+			ProjectID: projectID,
 			URL:       exampleURL,
 			Method:    http.MethodPost,
 			Proto:     "HTTP/1.1",
@@ -155,12 +188,12 @@ func TestCloneFromRequestLog(t *testing.T) {
 
 		svc := sender.NewService(sender.Config{
 			ReqLogService: reqlog.NewService(reqlog.Config{
-				Repository: db,
+				ActiveProjectID: projectID,
+				Repository:      db,
 			}),
 			Repository: db,
 		})
 
-		projectID := ulid.MustNew(ulid.Timestamp(time.Now()), ulidEntropy)
 		svc.SetActiveProjectID(projectID)
 
 		exp := sender.Request{
@@ -190,10 +223,18 @@ func TestCloneFromRequestLog(t *testing.T) {
 func TestSendRequest(t *testing.T) {
 	t.Parallel()
 
-	db, err := badger.OpenDatabase(badgerdb.DefaultOptions("").WithInMemory(true))
+	path := t.TempDir() + "bolt.db"
+	boltDB, err := bbolt.Open(path, 0o600, nil)
 	if err != nil {
-		t.Fatalf("failed to open database: %v", err)
+		t.Fatalf("failed to open bolt database: %v", err)
 	}
+	defer boltDB.Close()
+
+	db, err := bolt.DatabaseFromBoltDB(boltDB)
+	if err != nil {
+		t.Fatalf("failed to create database: %v", err)
+	}
+	defer db.Close()
 
 	date := time.Now().Format(http.TimeFormat)
 
@@ -206,10 +247,19 @@ func TestSendRequest(t *testing.T) {
 
 	tsURL, _ := url.Parse(ts.URL)
 
+	projectID := ulid.MustNew(ulid.Timestamp(time.Now()), ulidEntropy)
+	err = db.UpsertProject(context.Background(), proj.Project{
+		ID:       projectID,
+		Settings: proj.Settings{},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error upserting project: %v", err)
+	}
+
 	reqID := ulid.MustNew(ulid.Timestamp(time.Now()), ulidEntropy)
 	req := sender.Request{
 		ID:        reqID,
-		ProjectID: ulid.MustNew(ulid.Timestamp(time.Now()), ulidEntropy),
+		ProjectID: projectID,
 		URL:       tsURL,
 		Method:    http.MethodPost,
 		Proto:     "HTTP/1.1",
@@ -229,6 +279,7 @@ func TestSendRequest(t *testing.T) {
 		}),
 		Repository: db,
 	})
+	svc.SetActiveProjectID(projectID)
 
 	exp := &reqlog.ResponseLog{
 		Proto:      "HTTP/1.1",

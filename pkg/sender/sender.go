@@ -86,7 +86,7 @@ type Request struct {
 }
 
 func (svc *Service) FindRequestByID(ctx context.Context, id ulid.ULID) (Request, error) {
-	req, err := svc.repo.FindSenderRequestByID(ctx, id)
+	req, err := svc.repo.FindSenderRequestByID(ctx, svc.activeProjectID, id)
 	if err != nil {
 		return Request{}, fmt.Errorf("sender: failed to find request: %w", err)
 	}
@@ -167,7 +167,7 @@ func (svc *Service) FindReqsFilter() FindRequestsFilter {
 }
 
 func (svc *Service) SendRequest(ctx context.Context, id ulid.ULID) (Request, error) {
-	req, err := svc.repo.FindSenderRequestByID(ctx, id)
+	req, err := svc.repo.FindSenderRequestByID(ctx, svc.activeProjectID, id)
 	if err != nil {
 		return Request{}, fmt.Errorf("sender: failed to find request: %w", err)
 	}
@@ -182,7 +182,9 @@ func (svc *Service) SendRequest(ctx context.Context, id ulid.ULID) (Request, err
 		return Request{}, fmt.Errorf("sender: could not send HTTP request: %w", err)
 	}
 
-	err = svc.repo.StoreResponseLog(ctx, id, resLog)
+	req.Response = &resLog
+
+	err = svc.repo.StoreSenderRequest(ctx, req)
 	if err != nil {
 		return Request{}, fmt.Errorf("sender: failed to store sender response log: %w", err)
 	}
