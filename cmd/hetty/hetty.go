@@ -50,7 +50,7 @@ Runs an HTTP server with (MITM) proxy, GraphQL service, and a web based admin in
 Options:
     --cert         Path to root CA certificate. Creates file if it doesn't exist. (Default: "~/.hetty/hetty_cert.pem")
     --key          Path to root CA private key. Creates file if it doesn't exist. (Default: "~/.hetty/hetty_key.pem")
-    --db           Database directory path. (Default: "~/.hetty/db")
+    --db           Database file path. Creates file if it doesn't exist. (Default: "~/.hetty/hetty.db")
     --addr         TCP address for HTTP server to listen on, in the form \"host:port\". (Default: ":8080")
     --chrome       Launch Chrome with proxy settings applied and certificate errors ignored. (Default: false)
     --verbose      Enable verbose logging.
