@@ -130,6 +130,64 @@ func TestRequestModifier(t *testing.T) {
 	})
 }
 
+func TestCancelRequest(t *testing.T) {
+	t.Parallel()
+
+	t.Run("cancel intercepted request does not panic", func(t *testing.T) {
+		t.Parallel()
+
+		req := httptest.NewRequest("GET", "https://example.com/foo", nil)
+		reqID := ulid.MustNew(ulid.Timestamp(time.Now()), ulidEntropy)
+		*req = *req.WithContext(proxy.WithRequestID(req.Context(), reqID))
+
+		logger, _ := zap.NewDevelopment()
+		svc := intercept.NewService(intercept.Config{
+			Logger:           logger.Sugar(),
+			RequestsEnabled:  true,
+			ResponsesEnabled: false,
+		})
+
+		var wg sync.WaitGroup
+		wg.Add(1)
+
+		next := func(req *http.Request) {}
+		go func() {
+			defer wg.Done()
+			svc.RequestModifier(next)(req)
+		}()
+
+		// Wait shortly, to allow the req modifier goroutine to add `req` to the
+		// array of intercepted reqs.
+		time.Sleep(10 * time.Millisecond)
+
+		// CancelRequest forwards a nil *http.Request through ModifyRequest;
+		// this should not panic and should signal the interceptor to abort.
+		if err := svc.CancelRequest(reqID); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		wg.Wait()
+	})
+
+	t.Run("cancel request that's not found", func(t *testing.T) {
+		t.Parallel()
+
+		logger, _ := zap.NewDevelopment()
+		svc := intercept.NewService(intercept.Config{
+			Logger:           logger.Sugar(),
+			RequestsEnabled:  true,
+			ResponsesEnabled: false,
+		})
+
+		reqID := ulid.MustNew(ulid.Timestamp(time.Now()), ulidEntropy)
+
+		err := svc.CancelRequest(reqID)
+		if !errors.Is(err, intercept.ErrRequestNotFound) {
+			t.Fatalf("expected `intercept.ErrRequestNotFound`, got: %v", err)
+		}
+	})
+}
+
 func TestResponseModifier(t *testing.T) {
 	t.Parallel()
 
