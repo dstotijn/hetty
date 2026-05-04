@@ -96,7 +96,7 @@ func LoadOrCreateCA(caKeyFile, caCertFile string) (*x509.Certificate, *rsa.Priva
 
 	keyDir, _ = filepath.Split(caCertFile)
 	if keyDir != "" {
-		if _, err := os.Stat("keyDir"); os.IsNotExist(err) {
+		if _, err := os.Stat(keyDir); os.IsNotExist(err) {
 			if err := os.MkdirAll(keyDir, 0o755); err != nil {
 				return nil, nil, fmt.Errorf("proxy: could not create directory for CA cert: %w", err)
 			}
