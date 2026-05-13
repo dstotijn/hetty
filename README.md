@@ -62,9 +62,21 @@ scoop install hettysoft/hetty
 
 Alternatively, you can [download the latest release from
 GitHub](https://github.com/dstotijn/hetty/releases/latest) for your OS and
-architecture, and move the binary to a directory in your `$PATH`. If your OS is
-not available for one of the package managers or not listed in the GitHub
-releases, you can compile from source _(link coming soon)_.
+architecture, and move the binary to a directory in your `$PATH`.
+
+If you want to compile from source, first build the admin frontend and then
+build the Go binary:
+
+```sh
+make build-admin
+go build ./cmd/hetty
+```
+
+To install the binary into your `$PATH`, run:
+
+```sh
+go install ./cmd/hetty
+```
 
 #### Docker
 

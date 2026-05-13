@@ -10,7 +10,8 @@ build-admin:
 	cd admin && \
 	yarn install --frozen-lockfile && \
 	yarn run export && \
-    mv dist ../cmd/hetty/admin
+	rm -rf ../cmd/hetty/admin && \
+	cp -R dist ../cmd/hetty/admin
 
 .PHONY: clean
 clean:
