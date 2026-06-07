@@ -23,8 +23,8 @@ features tailored to the needs of the infosec and bug bounty community.
 - Project based database storage, to help keep work organized
 
 👷‍♂️ Hetty is under active development. Check the <a
-href="https://github.com/dstotijn/hetty/projects/1">backlog</a> for the current
-status.
+href="https://github.com/dstotijn/hetty/issues">issue tracker</a> for the
+current status.
 
 📣 Are you pen testing professionaly in a team? I would love to hear your
 thoughts on tooling via [this 5 minute
