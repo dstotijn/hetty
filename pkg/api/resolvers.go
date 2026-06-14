@@ -300,7 +300,7 @@ func (r *mutationResolver) SetScope(ctx context.Context, input []ScopeRuleInput)
 				return nil, fmt.Errorf("invalid header key in scope rule: %w", err)
 			}
 
-			headerValue, err = stringPtrToRegexp(rule.Header.Key)
+			headerValue, err = stringPtrToRegexp(rule.Header.Value)
 			if err != nil {
 				return nil, fmt.Errorf("invalid header value in scope rule: %w", err)
 			}
