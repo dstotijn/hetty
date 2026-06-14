@@ -84,6 +84,10 @@ func NewParser(l *Lexer) *Parser {
 
 func ParseQuery(input string) (expr Expression, err error) {
 	p := &Parser{l: NewLexer(input)}
+	// Ensure the lexer goroutine is always released, including on early returns
+	// caused by parse errors that leave unread tokens on the channel.
+	defer p.l.Stop()
+
 	p.nextToken()
 	p.nextToken()
 
