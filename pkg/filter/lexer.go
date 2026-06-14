@@ -2,6 +2,8 @@ package filter
 
 import (
 	"fmt"
+	"runtime"
+	"sync"
 	"unicode"
 	"unicode/utf8"
 )
@@ -72,17 +74,20 @@ var (
 type stateFn func(*Lexer) stateFn
 
 type Lexer struct {
-	input  string
-	pos    int
-	start  int
-	width  int
-	tokens chan Token
+	input    string
+	pos      int
+	start    int
+	width    int
+	tokens   chan Token
+	done     chan struct{}
+	stopOnce sync.Once
 }
 
 func NewLexer(input string) *Lexer {
 	l := &Lexer{
 		input:  input,
 		tokens: make(chan Token),
+		done:   make(chan struct{}),
 	}
 
 	go l.run(begin)
@@ -94,6 +99,17 @@ func (l *Lexer) Next() Token {
 	return <-l.tokens
 }
 
+// Stop signals the lexer goroutine to terminate. It must be called by consumers
+// that stop reading tokens before EOF (e.g. when parsing fails mid-stream),
+// otherwise the goroutine started by NewLexer blocks forever on an unbuffered
+// channel send and leaks. Stop is safe to call multiple times and from any
+// goroutine.
+func (l *Lexer) Stop() {
+	l.stopOnce.Do(func() {
+		close(l.done)
+	})
+}
+
 func (tt TokenType) String() string {
 	if typeString, ok := tokenTypeStrings[tt]; ok {
 		return typeString
@@ -103,10 +119,13 @@ func (tt TokenType) String() string {
 }
 
 func (l *Lexer) run(init stateFn) {
+	// Closing on return guarantees the channel is closed even when a send is
+	// abandoned via runtime.Goexit (see emit/errorf) after Stop was called.
+	defer close(l.tokens)
+
 	for nextState := init; nextState != nil; {
 		nextState = nextState(l)
 	}
-	close(l.tokens)
 }
 
 func (l *Lexer) read() (r rune) {
@@ -122,12 +141,17 @@ func (l *Lexer) read() (r rune) {
 }
 
 func (l *Lexer) emit(tokenType TokenType) {
-	l.tokens <- Token{
+	select {
+	case l.tokens <- Token{
 		Type:    tokenType,
 		Literal: l.input[l.start:l.pos],
+	}:
+		l.start = l.pos
+	case <-l.done:
+		// Consumer stopped reading; abandon the goroutine instead of blocking
+		// forever. Deferred close(l.tokens) in run still executes.
+		runtime.Goexit()
 	}
-
-	l.start = l.pos
 }
 
 func (l *Lexer) ignore() {
@@ -144,9 +168,13 @@ func (l *Lexer) backup() {
 }
 
 func (l *Lexer) errorf(format string, args ...interface{}) stateFn {
-	l.tokens <- Token{
+	select {
+	case l.tokens <- Token{
 		Type:    TokInvalid,
 		Literal: fmt.Sprintf(format, args...),
+	}:
+	case <-l.done:
+		runtime.Goexit()
 	}
 
 	return nil
