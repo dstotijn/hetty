@@ -2,5 +2,7 @@
 /dist
 /hetty
 /cmd/hetty/admin
+/cmd/hetty-desktop/admin
+/hetty-desktop
 *.pem
 *.test
