@@ -192,6 +192,17 @@ func (svc *Service) ModifyRequest(reqID ulid.ULID, modReq *http.Request, modifyR
 		return ErrRequestNotFound
 	}
 
+	// A nil modReq signals that the request should be dropped. Avoid
+	// dereferencing it and forward nil to the channel as the abort signal.
+	if modReq == nil {
+		select {
+		case <-req.done:
+			return ErrRequestDone
+		case req.ch <- nil:
+			return nil
+		}
+	}
+
 	*modReq = *modReq.WithContext(req.req.Context())
 	if modifyResponse != nil {
 		*modReq = *modReq.WithContext(WithInterceptResponse(modReq.Context(), *modifyResponse))
