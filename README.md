@@ -26,7 +26,7 @@ features tailored to the needs of the infosec and bug bounty community.
 href="https://github.com/dstotijn/hetty/projects/1">backlog</a> for the current
 status.
 
-📣 Are you pen testing professionaly in a team? I would love to hear your
+📣 Are you pen testing professionally in a team? I would love to hear your
 thoughts on tooling via [this 5 minute
 survey](https://forms.gle/36jtgNc3TJ2imi5A8). Thank you!
 
