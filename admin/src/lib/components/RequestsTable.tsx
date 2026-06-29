@@ -67,6 +67,29 @@ interface Props {
   onContextMenu?: (e: React.MouseEvent, id: string) => void;
 }
 
+function decodeURLPart(value: string): string {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
+function parseURLForDisplay(url: string): { origin: string; path: string } {
+  try {
+    const { origin, pathname, search, hash } = new URL(url);
+    return {
+      origin,
+      path: decodeURLPart(pathname + search + hash),
+    };
+  } catch {
+    return {
+      origin: "",
+      path: url,
+    };
+  }
+}
+
 export default function RequestsTable(props: Props): JSX.Element {
   const { requests, activeRowId, actionsCell, onRowClick, onContextMenu } = props;
 
@@ -84,7 +107,7 @@ export default function RequestsTable(props: Props): JSX.Element {
         </TableHead>
         <TableBody>
           {requests.map(({ id, method, url, response }) => {
-            const { origin, pathname, search, hash } = new URL(url);
+            const { origin, path } = parseURLForDisplay(url);
 
             return (
               <RequestTableRow
@@ -102,7 +125,7 @@ export default function RequestsTable(props: Props): JSX.Element {
                   <code>{method}</code>
                 </MethodTableCell>
                 <OriginTableCell>{origin}</OriginTableCell>
-                <PathTableCell>{decodeURIComponent(pathname + search + hash)}</PathTableCell>
+                <PathTableCell>{path}</PathTableCell>
                 <StatusTableCell>
                   {response && <Status code={response.statusCode} reason={response.statusReason} />}
                 </StatusTableCell>
