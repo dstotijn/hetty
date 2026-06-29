@@ -128,6 +128,52 @@ func TestRequestModifier(t *testing.T) {
 			t.Fatalf("incorrect modified request header value (expected: %v, got: %v)", exp, got.Header.Get("X-Foo"))
 		}
 	})
+
+	t.Run("cancel a pending request", func(t *testing.T) {
+		t.Parallel()
+
+		req := httptest.NewRequest("GET", "https://example.com/foo", nil)
+
+		reqID := ulid.MustNew(ulid.Timestamp(time.Now()), ulidEntropy)
+		*req = *req.WithContext(proxy.WithRequestID(req.Context(), reqID))
+
+		logger, _ := zap.NewDevelopment()
+		svc := intercept.NewService(intercept.Config{
+			Logger:           logger.Sugar(),
+			RequestsEnabled:  true,
+			ResponsesEnabled: false,
+		})
+
+		var nextCalled bool
+
+		next := func(req *http.Request) {
+			nextCalled = true
+		}
+
+		var wg sync.WaitGroup
+		wg.Add(1)
+
+		go func() {
+			svc.RequestModifier(next)(req)
+			wg.Done()
+		}()
+
+		// Wait shortly, to allow the req modifier goroutine to add `req` to the
+		// array of intercepted reqs.
+		time.Sleep(10 * time.Millisecond)
+
+		// CancelRequest passes a nil request through ModifyRequest, which used to
+		// panic on a nil pointer dereference instead of aborting the request.
+		if err := svc.CancelRequest(reqID); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		wg.Wait()
+
+		if nextCalled {
+			t.Fatal("expected next not to be called for a cancelled request")
+		}
+	})
 }
 
 func TestResponseModifier(t *testing.T) {
