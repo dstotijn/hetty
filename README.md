@@ -117,6 +117,23 @@ Run `hetty <subcommand> --help` for subcommand specific usage instructions.
 Visit https://hetty.xyz to learn more about Hetty.
 ```
 
+### Desktop application (Wails v3)
+
+Hetty can also run as a native desktop app with the admin UI in an embedded window
+(`hetty-desktop`), built with [Wails v3](https://wails.io/).
+
+**Linux build requirements:** `libwebkit2gtk-4.1-dev` (or `libwebkit2gtk-4.0-dev` on
+older distributions) and a C compiler for CGO.
+
+```sh
+make build-desktop
+./hetty-desktop
+```
+
+By default the desktop app listens on `127.0.0.1:8080`. Use `--addr` to change the
+listen address (same flags as the CLI). To proxy external browser traffic, configure
+your browser or use `hetty --chrome`.
+
 ## Documentation
 
 📖 [Read the docs](https://hetty.xyz/docs)
