@@ -68,10 +68,23 @@ func init() {
 	prefixParsers[TokParenOpen] = parseGroupedExpression
 }
 
+// maxParseDepth bounds the recursion depth of the parser. Filter expressions
+// are short, human-written search queries, so any legitimate query nests far
+// below this limit. Without a bound, deeply nested input (e.g. many "(" or
+// repeated "NOT" prefixes) recurses until the goroutine stack is exhausted,
+// which is a *fatal*, unrecoverable runtime error in Go (it cannot be caught by
+// recover, so it crashes the whole process). ParseQuery is reachable from the
+// unauthenticated GraphQL API via search expressions, so this would be a remote
+// denial of service.
+const maxParseDepth = 256
+
+var ErrMaxDepthExceeded = fmt.Errorf("filter: expression nesting exceeds maximum depth of %d", maxParseDepth)
+
 type Parser struct {
-	l    *Lexer
-	cur  Token
-	peek Token
+	l     *Lexer
+	cur   Token
+	peek  Token
+	depth int
 }
 
 func NewParser(l *Lexer) *Parser {
@@ -84,6 +97,10 @@ func NewParser(l *Lexer) *Parser {
 
 func ParseQuery(input string) (expr Expression, err error) {
 	p := &Parser{l: NewLexer(input)}
+	// Ensure the lexer goroutine is always released, including on early returns
+	// caused by parse errors that leave unread tokens on the channel.
+	defer p.l.Stop()
+
 	p.nextToken()
 	p.nextToken()
 
@@ -143,6 +160,16 @@ func (p *Parser) peekPrecedence() precedence {
 }
 
 func (p *Parser) parseExpression(prec precedence) (Expression, error) {
+	// Guard against stack exhaustion from deeply nested input. parseExpression
+	// is the single recursion point reached by grouped, prefix and infix
+	// sub-expression parsing, so bounding it here bounds total recursion depth.
+	p.depth++
+	defer func() { p.depth-- }()
+
+	if p.depth > maxParseDepth {
+		return nil, ErrMaxDepthExceeded
+	}
+
 	prefixParser, ok := prefixParsers[p.cur.Type]
 	if !ok {
 		return nil, fmt.Errorf("no prefix parse function for %v found", p.cur.Type)
