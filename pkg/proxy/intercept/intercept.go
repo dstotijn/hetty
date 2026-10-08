@@ -192,6 +192,15 @@ func (svc *Service) ModifyRequest(reqID ulid.ULID, modReq *http.Request, modifyR
 		return ErrRequestNotFound
 	}
 
+	if modReq == nil {
+		select {
+		case <-req.done:
+			return ErrRequestDone
+		case req.ch <- nil:
+			return nil
+		}
+	}
+
 	*modReq = *modReq.WithContext(req.req.Context())
 	if modifyResponse != nil {
 		*modReq = *modReq.WithContext(WithInterceptResponse(modReq.Context(), *modifyResponse))

@@ -69,10 +69,13 @@ func init() {
 }
 
 type Parser struct {
-	l    *Lexer
-	cur  Token
-	peek Token
+	l     *Lexer
+	cur   Token
+	peek  Token
+	depth int
 }
+
+const maxParseDepth = 100
 
 func NewParser(l *Lexer) *Parser {
 	p := &Parser{l: l}
@@ -143,6 +146,13 @@ func (p *Parser) peekPrecedence() precedence {
 }
 
 func (p *Parser) parseExpression(prec precedence) (Expression, error) {
+	p.depth++
+	defer func() { p.depth-- }()
+
+	if p.depth > maxParseDepth {
+		return nil, fmt.Errorf("parser: maximum expression nesting depth (%d) exceeded", maxParseDepth)
+	}
+
 	prefixParser, ok := prefixParsers[p.cur.Type]
 	if !ok {
 		return nil, fmt.Errorf("no prefix parse function for %v found", p.cur.Type)
