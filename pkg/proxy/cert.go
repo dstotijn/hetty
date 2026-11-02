@@ -16,6 +16,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -220,12 +221,21 @@ func (c *CertConfig) TLSConfig(hostname ...string) *tls.Config {
 	}
 }
 
-func (c *CertConfig) cert(hostname string) (*tls.Certificate, error) {
-	// Remove the port if it exists.
-	host, _, err := net.SplitHostPort(hostname)
-	if err == nil {
+func normalizeHostname(hostname string) string {
+	hostname = strings.TrimSpace(hostname)
+	if hostname == "" {
+		return ""
+	}
+
+	if host, _, err := net.SplitHostPort(hostname); err == nil {
 		hostname = host
 	}
+
+	return strings.Trim(hostname, "[]")
+}
+
+func (c *CertConfig) cert(hostname string) (*tls.Certificate, error) {
+	hostname = normalizeHostname(hostname)
 
 	serial, err := rand.Int(rand.Reader, MaxSerialNumber)
 	if err != nil {
