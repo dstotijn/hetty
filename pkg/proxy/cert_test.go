@@ -1,9 +1,12 @@
 package proxy
 
 import (
+	"crypto"
 	"crypto/tls"
 	"crypto/x509"
 	"net"
+	"net/http"
+	"net/http/httputil"
 	"testing"
 	"time"
 )
@@ -59,6 +62,28 @@ func TestCertConfigCertIncludesIPSANForHostIP(t *testing.T) {
 	}
 }
 
+func TestNewProxyDisablesUpstreamTLSVerification(t *testing.T) {
+	cfg := Config{CACert: mustCA(t), CAKey: mustCAKey(t), Logger: nil}
+	p, err := NewProxy(cfg)
+	if err != nil {
+		t.Fatalf("NewProxy() error = %v", err)
+	}
+
+	reverseProxy, ok := p.handler.(*httputil.ReverseProxy)
+	if !ok {
+		t.Fatal("NewProxy() did not create a reverse proxy")
+	}
+
+	transport, ok := reverseProxy.Transport.(*http.Transport)
+	if !ok {
+		t.Fatal("NewProxy() did not configure an http.Transport")
+	}
+
+	if transport.TLSClientConfig == nil || !transport.TLSClientConfig.InsecureSkipVerify {
+		t.Fatal("NewProxy() should disable upstream TLS verification for MITM interception")
+	}
+}
+
 func TestCertConfigTLSConfigRequiresHostWhenSNIIsMissing(t *testing.T) {
 	caCert, caKey, err := NewCA("Hetty", "Hetty CA", time.Hour)
 	if err != nil {
@@ -74,4 +99,22 @@ func TestCertConfigTLSConfigRequiresHostWhenSNIIsMissing(t *testing.T) {
 	if err == nil {
 		t.Fatal("GetCertificate() expected an error when SNI and fallback host are both missing")
 	}
+}
+
+func mustCA(t *testing.T) *x509.Certificate {
+	t.Helper()
+	caCert, _, err := NewCA("Hetty", "Hetty CA", time.Hour)
+	if err != nil {
+		t.Fatalf("NewCA() error = %v", err)
+	}
+	return caCert
+}
+
+func mustCAKey(t *testing.T) crypto.PrivateKey {
+	t.Helper()
+	_, caKey, err := NewCA("Hetty", "Hetty CA", time.Hour)
+	if err != nil {
+		t.Fatalf("NewCA() error = %v", err)
+	}
+	return caKey
 }

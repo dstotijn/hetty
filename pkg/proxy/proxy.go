@@ -74,6 +74,9 @@ func NewProxy(cfg Config) (*Proxy, error) {
 		IdleConnTimeout:       90 * time.Second,
 		TLSHandshakeTimeout:   10 * time.Second,
 		ExpectContinueTimeout: 1 * time.Second,
+		TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: true,
+		},
 
 		// Non-default transport values.
 		DisableCompression: true,
