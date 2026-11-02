@@ -195,15 +195,25 @@ func NewCA(name, organization string, validity time.Duration) (*x509.Certificate
 }
 
 // TLSConfig returns a *tls.Config that will generate certificates on-the-fly using
-// the SNI extension in the TLS ClientHello.
-func (c *CertConfig) TLSConfig() *tls.Config {
+// the SNI extension in the TLS ClientHello. When no SNI is present, the provided
+// hostname is used as a fallback, typically the host from an HTTP CONNECT request.
+func (c *CertConfig) TLSConfig(hostname ...string) *tls.Config {
+	var fallbackHost string
+	if len(hostname) > 0 {
+		fallbackHost = hostname[0]
+	}
+
 	return &tls.Config{
 		GetCertificate: func(clientHello *tls.ClientHelloInfo) (*tls.Certificate, error) {
-			if clientHello.ServerName == "" {
+			serverName := clientHello.ServerName
+			if serverName == "" {
+				serverName = fallbackHost
+			}
+			if serverName == "" {
 				return nil, errors.New("missing server name (SNI)")
 			}
 
-			return c.cert(clientHello.ServerName)
+			return c.cert(serverName)
 		},
 		MinVersion: tls.VersionTLS12,
 		NextProtos: []string{"http/1.1"},
