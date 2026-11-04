@@ -17,24 +17,6 @@ const (
 	HTTPProto20 = "HTTP/2.0"
 )
 
-// defaultHTTPTransport is used for outbound requests in MITM mode. The sender
-// intentionally skips certificate verification because it may connect to HTTPS
-// targets using IP literals that do not include SAN entries.
-var defaultHTTPTransport = &http.Transport{
-	Proxy: http.ProxyFromEnvironment,
-	DialContext: (&net.Dialer{
-		Timeout:   30 * time.Second,
-		KeepAlive: 30 * time.Second,
-	}).DialContext,
-	MaxIdleConns:          100,
-	IdleConnTimeout:       90 * time.Second,
-	TLSHandshakeTimeout:   10 * time.Second,
-	ExpectContinueTimeout: 1 * time.Second,
-	TLSClientConfig: &tls.Config{
-		InsecureSkipVerify: true,
-	},
-}
-
 // h1OnlyTransport mimics `http.DefaultTransport`, but with HTTP/2 disabled.
 var h1OnlyTransport = &http.Transport{
 	Proxy: http.ProxyFromEnvironment,
@@ -46,9 +28,6 @@ var h1OnlyTransport = &http.Transport{
 	IdleConnTimeout:       90 * time.Second,
 	TLSHandshakeTimeout:   10 * time.Second,
 	ExpectContinueTimeout: 1 * time.Second,
-	TLSClientConfig: &tls.Config{
-		InsecureSkipVerify: true,
-	},
 
 	// Disable HTTP/2.
 	TLSNextProto: map[string]func(string, *tls.Conn) http.RoundTripper{},
@@ -64,7 +43,7 @@ func (t *HTTPTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 		return h1OnlyTransport.RoundTrip(req)
 	}
 
-	return defaultHTTPTransport.RoundTrip(req)
+	return http.DefaultTransport.RoundTrip(req)
 }
 
 func isValidProto(proto string) bool {
