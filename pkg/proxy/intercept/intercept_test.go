@@ -2,8 +2,8 @@ package intercept_test
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
-	"math/rand"
 	"net/http"
 	"net/http/httptest"
 	"sync"
@@ -13,12 +13,14 @@ import (
 	"github.com/oklog/ulid"
 	"go.uber.org/zap"
 
-	"github.com/dstotijn/hetty/pkg/proxy"
-	"github.com/dstotijn/hetty/pkg/proxy/intercept"
+	"github.com/pocikode/ratatoskr/pkg/proxy"
+	"github.com/pocikode/ratatoskr/pkg/proxy/intercept"
 )
 
+// crypto/rand is safe for concurrent use; parallel subtests share this source.
+//
 //nolint:gosec
-var ulidEntropy = rand.New(rand.NewSource(time.Now().UnixNano()))
+var ulidEntropy = rand.Reader
 
 func TestRequestModifier(t *testing.T) {
 	t.Parallel()
@@ -59,20 +61,26 @@ func TestRequestModifier(t *testing.T) {
 		*req = *req.WithContext(ctx)
 		*req = *req.WithContext(proxy.WithRequestID(req.Context(), reqID))
 
-		next := func(req *http.Request) {}
-		go svc.RequestModifier(next)(req)
+		var wg sync.WaitGroup
 
-		// Wait shortly, to allow the req modifier goroutine to add `req` to the
-		// array of intercepted reqs.
-		time.Sleep(10 * time.Millisecond)
+		next := func(req *http.Request) {}
+		wg.Go(func() {
+			svc.RequestModifier(next)(req)
+		})
+
+		waitForItem(t, svc, reqID)
 		cancel()
+		// ErrRequestDone is only observable in the window between cancellation and
+		// queue removal, which made this test flaky. Wait for the intercept to finish
+		// and assert the settled state: the request is gone from the queue (T-001).
+		wg.Wait()
 
 		modReq := req.Clone(req.Context())
 		modReq.Header.Set("X-Foo", "bar")
 
 		err := svc.ModifyRequest(reqID, modReq, nil)
-		if !errors.Is(err, intercept.ErrRequestDone) {
-			t.Fatalf("expected `intercept.ErrRequestDone`, got: %v", err)
+		if !errors.Is(err, intercept.ErrRequestNotFound) {
+			t.Fatalf("expected `intercept.ErrRequestNotFound`, got: %v", err)
 		}
 	})
 
@@ -102,16 +110,12 @@ func TestRequestModifier(t *testing.T) {
 		}
 
 		var wg sync.WaitGroup
-		wg.Add(1)
 
-		go func() {
+		wg.Go(func() {
 			svc.RequestModifier(next)(req)
-			wg.Done()
-		}()
+		})
 
-		// Wait shortly, to allow the req modifier goroutine to add `req` to the
-		// array of intercepted reqs.
-		time.Sleep(10 * time.Millisecond)
+		waitForItem(t, svc, reqID)
 
 		err := svc.ModifyRequest(reqID, modReq, nil)
 		if err != nil {
@@ -185,21 +189,20 @@ func TestResponseModifier(t *testing.T) {
 			modErr = svc.ResponseModifier(next)(res)
 		}()
 
-		// Wait shortly, to allow the res modifier goroutine to add `res` to the
-		// array of intercepted responses.
-		time.Sleep(10 * time.Millisecond)
+		waitForItem(t, svc, reqID)
 		cancel()
+		// See "modify request that's done": assert the settled state, not the
+		// transient ErrRequestDone window (T-001).
+		wg.Wait()
 
 		modRes := *res
 		modRes.Header = make(http.Header)
 		modRes.Header.Set("X-Foo", "bar")
 
 		err := svc.ModifyResponse(reqID, &modRes)
-		if !errors.Is(err, intercept.ErrRequestDone) {
-			t.Fatalf("expected `intercept.ErrRequestDone`, got: %v", err)
+		if !errors.Is(err, intercept.ErrRequestNotFound) {
+			t.Fatalf("expected `intercept.ErrRequestNotFound`, got: %v", err)
 		}
-
-		wg.Wait()
 
 		if !errors.Is(modErr, context.Canceled) {
 			t.Fatalf("expected `context.Canceled`, got: %v", modErr)
@@ -241,16 +244,12 @@ func TestResponseModifier(t *testing.T) {
 
 		var modErr error
 		var wg sync.WaitGroup
-		wg.Add(1)
 
-		go func() {
+		wg.Go(func() {
 			modErr = svc.ResponseModifier(next)(res)
-			wg.Done()
-		}()
+		})
 
-		// Wait shortly, to allow the res modifier goroutine to add `req` to the
-		// array of intercepted reqs.
-		time.Sleep(10 * time.Millisecond)
+		waitForItem(t, svc, reqID)
 
 		err := svc.ModifyResponse(reqID, &modRes)
 		if err != nil {
@@ -267,4 +266,23 @@ func TestResponseModifier(t *testing.T) {
 			t.Fatalf("incorrect modified request header value (expected: %v, got: %v)", exp, gotHeader)
 		}
 	})
+}
+
+// waitForItem blocks until id is pending in the intercept queue of svc.
+func waitForItem(t *testing.T, svc *intercept.Service, id ulid.ULID) {
+	t.Helper()
+
+	deadline := time.Now().Add(5 * time.Second)
+
+	for {
+		if _, err := svc.ItemByID(id); err == nil {
+			return
+		}
+
+		if time.Now().After(deadline) {
+			t.Fatalf("timed out waiting for intercepted item %v", id)
+		}
+
+		time.Sleep(time.Millisecond)
+	}
 }

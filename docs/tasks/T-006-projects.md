@@ -25,7 +25,7 @@ The schema part (`project.graphqls`) is added by the lead in T-007's follow-up c
 ## Acceptance criteria
 - [ ] All F-WSP-1 operations via GraphQL with tests (httptest + gqlgen client).
 - [ ] Deleting the selected project falls back to the default or a new temp project.
-- [ ] Switching closes the old DB handle (no file locks remain on Windows — CI test).
+- [ ] Switching closes the old DB handle (no open handles remain on the old DB file — test).
 - [ ] Temp project removed on clean shutdown unless renamed/saved.
 
 ## Plan (implementer, ≤15 lines)

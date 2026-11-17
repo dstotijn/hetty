@@ -1,53 +1,82 @@
-linters:
-  presets:
-    - bugs
-    - comment
-    - error
-    - format
-    - import
-    - metalinter
-    - module
-    - performance
-    - style
-    - test
-    - unused
-  disable:
-    - dupl
-    - exhaustive
-    - exhaustivestruct
-    - gochecknoglobals
-    - gochecknoinits
-    - godox
-    - goerr113
-    - gomnd
-    - interfacer
-    - maligned
-    - nilnil
-    - nlreturn
-    - scopelint 
-    - testpackage
-    - varnamelen
-    - wrapcheck
+# golangci-lint v2 config. Linter set: docs/05-go-conventions.md §3.
+version: "2"
 
-linters-settings:
-  gci:
-    local-prefixes: github.com/dstotijn/hetty
-  godot:
-    capital: true
-  ireturn:
-    allow: "error,empty,anon,stdlib,.*(or|er)$,github.com/99designs/gqlgen/graphql.Marshaler,github.com/dstotijn/hetty/pkg/api.QueryResolver,github.com/dstotijn/hetty/pkg/filter.Expression"
-    
-issues:
-  exclude-rules:
-    - linters:
-      - gosec
-      # Ignore SHA1 usage.
-      text: "G(401|505):"
-    - linters:
-      - wsl
-      # Ignore cuddled defer statements.
-      text: "only one cuddle assignment allowed before defer statement"
-    - linters:
-      - nlreturn
-      # Ignore `break` without leading blank line.
-      text: "break with no blank line before"
+run:
+  timeout: 5m
+
+linters:
+  default: none
+  enable:
+    - bodyclose
+    - contextcheck
+    - depguard
+    - errcheck
+    - errorlint
+    - gosec
+    - govet
+    - ineffassign
+    - modernize
+    - nilerr
+    - nolintlint
+    - perfsprint
+    - revive
+    - staticcheck
+    - unused
+    - usestdlibvars
+
+  settings:
+    depguard:
+      rules:
+        byte-fidelity:
+          # ADR-0003: proxy/Replay/Automate traffic never goes through httputil.
+          files:
+            - $all
+          deny:
+            - pkg: net/http/httputil
+              desc: normalizes requests; use internal/rawhttp (ADR-0003)
+    nolintlint:
+      # Rule 7 in AGENTS.md: every //nolint needs a reason.
+      require-explanation: true
+      require-specific: true
+    revive:
+      rules:
+        - name: exported
+        - name: package-comments
+        - name: var-naming
+        - name: indent-error-flow
+        - name: errorf
+        - name: error-strings
+        - name: error-return
+        - name: receiver-naming
+        - name: context-as-argument
+        - name: context-keys-type
+        - name: unused-parameter
+        - name: unreachable-code
+        - name: redefines-builtin-id
+
+  exclusions:
+    generated: strict
+    presets:
+      - std-error-handling
+    paths:
+      # Legacy Hetty code: kept compiling for reference only and deleted, moved
+      # or rewritten in T-002 and later tasks. Not held to the new lint bar.
+      - ^pkg/
+      - ^cmd/hetty/
+    rules:
+      - path: _test\.go
+        linters:
+          - gosec
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/pocikode/ratatoskr
+  exclusions:
+    paths:
+      - ^pkg/
+      - ^cmd/hetty/

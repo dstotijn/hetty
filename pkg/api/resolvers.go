@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"regexp"
 	"sort"
@@ -18,13 +17,13 @@ import (
 	"github.com/oklog/ulid"
 	"github.com/vektah/gqlparser/v2/gqlerror"
 
-	"github.com/dstotijn/hetty/pkg/filter"
-	"github.com/dstotijn/hetty/pkg/proj"
-	"github.com/dstotijn/hetty/pkg/proxy"
-	"github.com/dstotijn/hetty/pkg/proxy/intercept"
-	"github.com/dstotijn/hetty/pkg/reqlog"
-	"github.com/dstotijn/hetty/pkg/scope"
-	"github.com/dstotijn/hetty/pkg/sender"
+	"github.com/pocikode/ratatoskr/pkg/filter"
+	"github.com/pocikode/ratatoskr/pkg/proj"
+	"github.com/pocikode/ratatoskr/pkg/proxy"
+	"github.com/pocikode/ratatoskr/pkg/proxy/intercept"
+	"github.com/pocikode/ratatoskr/pkg/reqlog"
+	"github.com/pocikode/ratatoskr/pkg/scope"
+	"github.com/pocikode/ratatoskr/pkg/sender"
 )
 
 var httpProtocolMap = map[string]HTTPProtocol{
@@ -490,7 +489,7 @@ func (r *mutationResolver) SendRequest(ctx context.Context, id ulid.ULID) (*Send
 		return nil, &gqlerror.Error{
 			Path:    graphql.GetPath(ctx),
 			Message: fmt.Sprintf("Sending request failed: %v", sendErr.Unwrap()),
-			Extensions: map[string]interface{}{
+			Extensions: map[string]any{
 				"code": "send_request_failed",
 			},
 		}
@@ -777,12 +776,12 @@ func parseHTTPRequest(req *http.Request) (HTTPRequest, error) {
 	}
 
 	if req.Body != nil {
-		body, err := ioutil.ReadAll(req.Body)
+		body, err := io.ReadAll(req.Body)
 		if err != nil {
 			return HTTPRequest{}, fmt.Errorf("failed to read request body: %w", err)
 		}
 
-		req.Body = ioutil.NopCloser(bytes.NewBuffer(body))
+		req.Body = io.NopCloser(bytes.NewBuffer(body))
 		bodyStr := string(body)
 		httpReq.Body = &bodyStr
 	}
@@ -829,12 +828,12 @@ func parseHTTPResponse(res *http.Response) (HTTPResponse, error) {
 	}
 
 	if res.Body != nil {
-		body, err := ioutil.ReadAll(res.Body)
+		body, err := io.ReadAll(res.Body)
 		if err != nil {
 			return HTTPResponse{}, fmt.Errorf("failed to read response body: %w", err)
 		}
 
-		res.Body = ioutil.NopCloser(bytes.NewBuffer(body))
+		res.Body = io.NopCloser(bytes.NewBuffer(body))
 		bodyStr := string(body)
 		httpRes.Body = &bodyStr
 	}
@@ -998,7 +997,7 @@ func noActiveProjectErr(ctx context.Context) error {
 	return &gqlerror.Error{
 		Path:    graphql.GetPath(ctx),
 		Message: "No active project.",
-		Extensions: map[string]interface{}{
+		Extensions: map[string]any{
 			"code": "no_active_project",
 		},
 	}

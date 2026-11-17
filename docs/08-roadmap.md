@@ -10,7 +10,7 @@ Legend — role: L lead · B backend · F frontend · Q qa. Status lives in each
 
 | ID | Title | Role | Depends on |
 |---|---|---|---|
-| T-001 | Repo bootstrap: module path, Go 1.27, `internal/` layout, Makefile, golangci, CI (Linux/macOS/Windows), LICENSE attribution | L | — |
+| T-001 | Repo bootstrap: module path, Go 1.27, `internal/` layout, Makefile, golangci, CI (Linux/macOS), LICENSE attribution | L | — |
 | T-002 | Remove Hetty `admin/` + bbolt; keep app compiling with stubbed services | B | T-001 |
 | T-003 | Svelte 5 + Vite + Bun scaffold, tokens, app shell (TopBar, Sidebar, StatusBar, router, command palette skeleton), embed into Go | F | T-001 |
 | T-004 | `internal/config` + CLI flags/env/TOML + `cmd/ratatoskr` wiring + slog multi-handler + `/debug` | B | T-002 |

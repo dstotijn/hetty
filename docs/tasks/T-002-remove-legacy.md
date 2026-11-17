@@ -14,6 +14,10 @@ paths:
   - internal/legacy/**
   - go.mod
   - go.sum
+  - .golangci.yml
+  - .goreleaser.yml
+  - Dockerfile
+  - .dockerignore
 spec:
   - docs/03-architecture.md §3
 ---
@@ -31,6 +35,13 @@ Legacy pieces we will never reuse are gone; the remaining Hetty packages that se
 - [ ] `go build ./cmd/ratatoskr && ./ratatoskr` serves a placeholder on :8080.
 - [ ] `internal/legacy/importguard_test.go` fails if any non-legacy package imports `internal/legacy` (uses `go list -deps -json`).
 - [ ] `make check` green.
+
+## Notes from lead (added in T-001)
+- `cmd/hetty/*.go` carry `//go:build legacy_hetty` (the admin embed no longer builds); delete the package.
+- `.golangci.yml` excludes `^pkg/` and `^cmd/hetty/` (comment references T-002). Narrow or remove the exclusions
+  for whatever leaves `pkg/`; `internal/legacy/**` may be excluded the same way (reference-only code).
+- `.goreleaser.yml`, `Dockerfile`, `.dockerignore` still build `cmd/hetty` + `admin/`: delete them or point them at
+  `cmd/ratatoskr` (no release pipeline is specified yet; deleting is acceptable).
 
 ## Plan (implementer, ≤15 lines)
 

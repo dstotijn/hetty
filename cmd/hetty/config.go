@@ -1,3 +1,8 @@
+// Legacy Hetty entrypoint. It embeds the Next.js admin build, which is no longer
+// produced, so it is excluded from default builds until T-002 deletes it.
+
+//go:build legacy_hetty
+
 package main
 
 import (

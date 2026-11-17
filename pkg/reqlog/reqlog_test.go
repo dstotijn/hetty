@@ -2,8 +2,8 @@ package reqlog_test
 
 import (
 	"context"
+	"crypto/rand"
 	"io"
-	"math/rand"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -14,15 +14,17 @@ import (
 	"github.com/oklog/ulid"
 	"go.etcd.io/bbolt"
 
-	"github.com/dstotijn/hetty/pkg/db/bolt"
-	"github.com/dstotijn/hetty/pkg/proj"
-	"github.com/dstotijn/hetty/pkg/proxy"
-	"github.com/dstotijn/hetty/pkg/reqlog"
-	"github.com/dstotijn/hetty/pkg/scope"
+	"github.com/pocikode/ratatoskr/pkg/db/bolt"
+	"github.com/pocikode/ratatoskr/pkg/proj"
+	"github.com/pocikode/ratatoskr/pkg/proxy"
+	"github.com/pocikode/ratatoskr/pkg/reqlog"
+	"github.com/pocikode/ratatoskr/pkg/scope"
 )
 
+// crypto/rand is safe for concurrent use; parallel subtests share this source.
+//
 //nolint:gosec
-var ulidEntropy = rand.New(rand.NewSource(time.Now().UnixNano()))
+var ulidEntropy = rand.Reader
 
 //nolint:paralleltest
 func TestRequestModifier(t *testing.T) {
@@ -141,12 +143,27 @@ func TestResponseModifier(t *testing.T) {
 	}
 
 	t.Run("request log was stored in repository", func(t *testing.T) {
-		// Dirty (but simple) wait for other goroutine to finish calling repository.
-		time.Sleep(10 * time.Millisecond)
+		// The response log is stored by another goroutine; poll until it lands
+		// instead of sleeping a fixed time, which was flaky (T-001).
+		var got reqlog.RequestLog
 
-		got, err := svc.FindRequestLogByID(context.Background(), reqLogID)
-		if err != nil {
-			t.Fatalf("failed to find request by id: %v", err)
+		deadline := time.Now().Add(5 * time.Second)
+
+		for {
+			got, err = svc.FindRequestLogByID(context.Background(), reqLogID)
+			if err != nil {
+				t.Fatalf("failed to find request by id: %v", err)
+			}
+
+			if got.Response != nil {
+				break
+			}
+
+			if time.Now().After(deadline) {
+				t.Fatal("timed out waiting for response log to be stored")
+			}
+
+			time.Sleep(time.Millisecond)
 		}
 
 		t.Run("ran next modifier first, before calling repository", func(t *testing.T) {

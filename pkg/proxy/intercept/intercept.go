@@ -10,9 +10,9 @@ import (
 
 	"github.com/oklog/ulid"
 
-	"github.com/dstotijn/hetty/pkg/filter"
-	"github.com/dstotijn/hetty/pkg/log"
-	"github.com/dstotijn/hetty/pkg/proxy"
+	"github.com/pocikode/ratatoskr/pkg/filter"
+	"github.com/pocikode/ratatoskr/pkg/log"
+	"github.com/pocikode/ratatoskr/pkg/proxy"
 )
 
 var (

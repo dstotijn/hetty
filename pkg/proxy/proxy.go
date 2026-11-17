@@ -3,24 +3,27 @@ package proxy
 import (
 	"context"
 	"crypto"
+	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
 	"fmt"
-	"math/rand"
 	"net"
 	"net/http"
 	"net/http/httputil"
+	"slices"
 	"strings"
 	"time"
 
 	"github.com/oklog/ulid"
 
-	"github.com/dstotijn/hetty/pkg/log"
+	"github.com/pocikode/ratatoskr/pkg/log"
 )
 
+// crypto/rand is safe for concurrent use; math/rand.Rand is not (data race under -race).
+//
 //nolint:gosec
-var ulidEntropy = rand.New(rand.NewSource(time.Now().UnixNano()))
+var ulidEntropy = rand.Reader
 
 type contextKey int
 
@@ -142,8 +145,8 @@ func (p *Proxy) modifyRequest(r *http.Request) {
 
 	fn := nopReqModifier
 
-	for i := len(p.reqModifiers) - 1; i >= 0; i-- {
-		fn = p.reqModifiers[i](fn)
+	for _, v := range slices.Backward(p.reqModifiers) {
+		fn = v(fn)
 	}
 
 	fn(r)
@@ -157,8 +160,8 @@ func (p *Proxy) modifyResponse(res *http.Response) error {
 		return fmt.Errorf("proxy: failed to gunzip response body: %w", err)
 	}
 
-	for i := len(p.resModifiers) - 1; i >= 0; i-- {
-		fn = p.resModifiers[i](fn)
+	for _, v := range slices.Backward(p.resModifiers) {
+		fn = v(fn)
 	}
 
 	return fn(res)

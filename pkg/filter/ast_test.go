@@ -4,7 +4,7 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/dstotijn/hetty/pkg/filter"
+	"github.com/pocikode/ratatoskr/pkg/filter"
 )
 
 func TestExpressionString(t *testing.T) {
@@ -200,7 +200,6 @@ func TestExpressionString(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			got := tt.expression.String()

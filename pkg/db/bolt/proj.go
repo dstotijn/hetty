@@ -10,7 +10,7 @@ import (
 	"github.com/oklog/ulid"
 	bolt "go.etcd.io/bbolt"
 
-	"github.com/dstotijn/hetty/pkg/proj"
+	"github.com/pocikode/ratatoskr/pkg/proj"
 )
 
 var (

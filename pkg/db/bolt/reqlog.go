@@ -10,8 +10,8 @@ import (
 	"github.com/oklog/ulid"
 	bolt "go.etcd.io/bbolt"
 
-	"github.com/dstotijn/hetty/pkg/reqlog"
-	"github.com/dstotijn/hetty/pkg/scope"
+	"github.com/pocikode/ratatoskr/pkg/reqlog"
+	"github.com/pocikode/ratatoskr/pkg/scope"
 )
 
 var ErrRequestLogsBucketNotFound = errors.New("bolt: request logs bucket not found")

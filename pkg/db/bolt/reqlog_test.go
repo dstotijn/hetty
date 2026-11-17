@@ -12,9 +12,9 @@ import (
 	"github.com/oklog/ulid"
 	"go.etcd.io/bbolt"
 
-	"github.com/dstotijn/hetty/pkg/db/bolt"
-	"github.com/dstotijn/hetty/pkg/proj"
-	"github.com/dstotijn/hetty/pkg/reqlog"
+	"github.com/pocikode/ratatoskr/pkg/db/bolt"
+	"github.com/pocikode/ratatoskr/pkg/proj"
+	"github.com/pocikode/ratatoskr/pkg/reqlog"
 )
 
 func TestFindRequestLogs(t *testing.T) {

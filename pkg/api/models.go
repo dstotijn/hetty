@@ -16,7 +16,7 @@ func MarshalULID(u ulid.ULID) graphql.Marshaler {
 	})
 }
 
-func UnmarshalULID(v interface{}) (ulid.ULID, error) {
+func UnmarshalULID(v any) (ulid.ULID, error) {
 	rawULID, ok := v.(string)
 	if !ok {
 		return ulid.ULID{}, fmt.Errorf("ulid must be a string")
@@ -36,7 +36,7 @@ func MarshalURL(u *url.URL) graphql.Marshaler {
 	})
 }
 
-func UnmarshalURL(v interface{}) (*url.URL, error) {
+func UnmarshalURL(v any) (*url.URL, error) {
 	rawURL, ok := v.(string)
 	if !ok {
 		return nil, fmt.Errorf("url must be a string")

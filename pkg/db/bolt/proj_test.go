@@ -3,9 +3,9 @@ package bolt_test
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
 	"encoding/gob"
 	"errors"
-	"math/rand"
 	"regexp"
 	"testing"
 	"time"
@@ -15,14 +15,16 @@ import (
 	"github.com/oklog/ulid"
 	"go.etcd.io/bbolt"
 
-	"github.com/dstotijn/hetty/pkg/db/bolt"
-	"github.com/dstotijn/hetty/pkg/filter"
-	"github.com/dstotijn/hetty/pkg/proj"
-	"github.com/dstotijn/hetty/pkg/scope"
+	"github.com/pocikode/ratatoskr/pkg/db/bolt"
+	"github.com/pocikode/ratatoskr/pkg/filter"
+	"github.com/pocikode/ratatoskr/pkg/proj"
+	"github.com/pocikode/ratatoskr/pkg/scope"
 )
 
+// crypto/rand is safe for concurrent use; parallel subtests share this source.
+//
 //nolint:gosec
-var ulidEntropy = rand.New(rand.NewSource(time.Now().UnixNano()))
+var ulidEntropy = rand.Reader
 
 var regexpCompareOpt = cmp.Comparer(func(x, y *regexp.Regexp) bool {
 	switch {

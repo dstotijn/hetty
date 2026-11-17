@@ -1,3 +1,8 @@
+// Legacy Hetty entrypoint. It embeds the Next.js admin build, which is no longer
+// produced, so it is excluded from default builds until T-002 deletes it.
+
+//go:build legacy_hetty
+
 package main
 
 import (
@@ -22,15 +27,15 @@ import (
 	"go.etcd.io/bbolt"
 	"go.uber.org/zap"
 
-	"github.com/dstotijn/hetty/pkg/api"
-	"github.com/dstotijn/hetty/pkg/chrome"
-	"github.com/dstotijn/hetty/pkg/db/bolt"
-	"github.com/dstotijn/hetty/pkg/proj"
-	"github.com/dstotijn/hetty/pkg/proxy"
-	"github.com/dstotijn/hetty/pkg/proxy/intercept"
-	"github.com/dstotijn/hetty/pkg/reqlog"
-	"github.com/dstotijn/hetty/pkg/scope"
-	"github.com/dstotijn/hetty/pkg/sender"
+	"github.com/pocikode/ratatoskr/pkg/api"
+	"github.com/pocikode/ratatoskr/pkg/chrome"
+	"github.com/pocikode/ratatoskr/pkg/db/bolt"
+	"github.com/pocikode/ratatoskr/pkg/proj"
+	"github.com/pocikode/ratatoskr/pkg/proxy"
+	"github.com/pocikode/ratatoskr/pkg/proxy/intercept"
+	"github.com/pocikode/ratatoskr/pkg/reqlog"
+	"github.com/pocikode/ratatoskr/pkg/scope"
+	"github.com/pocikode/ratatoskr/pkg/sender"
 )
 
 var version = "0.0.0"

@@ -80,8 +80,8 @@ func (rl *RegexpLiteral) UnmarshalBinary(data []byte) error {
 func init() {
 	// The `filter` package was previously named `search`.
 	// We use the legacy names for backwards compatibility with existing database data.
-	gob.RegisterName("github.com/dstotijn/hetty/pkg/search.PrefixExpression", PrefixExpression{})
-	gob.RegisterName("github.com/dstotijn/hetty/pkg/search.InfixExpression", InfixExpression{})
-	gob.RegisterName("github.com/dstotijn/hetty/pkg/search.StringLiteral", StringLiteral{})
-	gob.RegisterName("github.com/dstotijn/hetty/pkg/search.RegexpLiteral", RegexpLiteral{})
+	gob.RegisterName("github.com/pocikode/ratatoskr/pkg/search.PrefixExpression", PrefixExpression{})
+	gob.RegisterName("github.com/pocikode/ratatoskr/pkg/search.InfixExpression", InfixExpression{})
+	gob.RegisterName("github.com/pocikode/ratatoskr/pkg/search.StringLiteral", StringLiteral{})
+	gob.RegisterName("github.com/pocikode/ratatoskr/pkg/search.RegexpLiteral", RegexpLiteral{})
 }

@@ -2,6 +2,7 @@ package filter
 
 import (
 	"fmt"
+	"slices"
 	"unicode"
 	"unicode/utf8"
 )
@@ -143,7 +144,7 @@ func (l *Lexer) backup() {
 	l.pos -= l.width
 }
 
-func (l *Lexer) errorf(format string, args ...interface{}) stateFn {
+func (l *Lexer) errorf(format string, args ...any) stateFn {
 	l.tokens <- Token{
 		Type:    TokInvalid,
 		Literal: fmt.Sprintf(format, args...),
@@ -266,11 +267,5 @@ func (l *Lexer) emitUnquotedString() {
 }
 
 func isReserved(r rune) bool {
-	for _, v := range reservedRunes {
-		if r == v {
-			return true
-		}
-	}
-
-	return false
+	return slices.Contains(reservedRunes, r)
 }

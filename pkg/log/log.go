@@ -9,9 +9,9 @@ import (
 )
 
 type Logger interface {
-	Debugw(msg string, v ...interface{})
-	Infow(msg string, v ...interface{})
-	Errorw(msg string, v ...interface{})
+	Debugw(msg string, v ...any)
+	Infow(msg string, v ...any)
+	Errorw(msg string, v ...any)
 }
 
 func NewZapLogger(verbose, jsonLogs bool) (*zap.Logger, error) {
@@ -78,9 +78,9 @@ func NewZapLogger(verbose, jsonLogs bool) (*zap.Logger, error) {
 
 type NopLogger struct{}
 
-func (nop NopLogger) Debugw(_ string, _ ...interface{}) {}
-func (nop NopLogger) Infow(_ string, _ ...interface{})  {}
-func (nop NopLogger) Errorw(_ string, _ ...interface{}) {}
+func (nop NopLogger) Debugw(_ string, _ ...any) {}
+func (nop NopLogger) Infow(_ string, _ ...any)  {}
+func (nop NopLogger) Errorw(_ string, _ ...any) {}
 
 func NewNopLogger() NopLogger {
 	return NopLogger{}
