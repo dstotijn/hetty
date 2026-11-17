@@ -3,7 +3,7 @@ id: T-002
 title: Remove Hetty admin UI and bbolt, keep the binary compiling with stubs
 milestone: M0
 role: backend
-status: in_progress
+status: in_review
 depends_on: [T-001]
 owner: opencode/deepseek-v4.1-flash-1017
 branch: task/T-002-remove-legacy
@@ -31,10 +31,10 @@ Legacy pieces we will never reuse are gone; the remaining Hetty packages that se
 - Out: new features.
 
 ## Acceptance criteria
-- [ ] No `admin/` dir, no bbolt dependency in `go.mod` (`go mod tidy`).
-- [ ] `go build ./cmd/ratatoskr && ./ratatoskr` serves a placeholder on :8080.
-- [ ] `internal/legacy/importguard_test.go` fails if any non-legacy package imports `internal/legacy` (uses `go list -deps -json`).
-- [ ] `make check` green.
+- [x] No `admin/` dir, no bbolt dependency in `go.mod` (`go mod tidy`).
+- [x] `go build ./cmd/ratatoskr && ./ratatoskr` serves a placeholder on :8080.
+- [x] `internal/legacy/importguard_test.go` fails if any non-legacy package imports `internal/legacy` (uses `go list -deps -json`).
+- [x] `make check` green.
 
 ## Notes from lead (added in T-001)
 - `cmd/hetty/*.go` carry `//go:build legacy_hetty` (the admin embed no longer builds); delete the package.
@@ -58,7 +58,56 @@ Legacy pieces we will never reuse are gone; the remaining Hetty packages that se
 8. `go mod tidy` drops bbolt; verify `go build ./cmd/ratatoskr && ./ratatoskr` + `make check`.
 
 ## Out-of-scope change needed (if any)
+Three stale references sit outside this task's `paths`:
+- `gqlgen.yml` (root) still points at `pkg/api/schema.graphql`, `pkg/api/generated.go`, `pkg/api/resolvers.go` and the
+  `github.com/pocikode/ratatoskr/pkg/api.ULID|URL` models. It is inert today (`go generate ./...` has no directives) and T-007
+  replaces it with the `internal/api/graphql` config — delete it there rather than retargeting dead code now.
+- `.gitignore` still lists `/cmd/hetty/admin`; the directory is gone.
+- `AGENTS.md:62` says the knowledge graph "still contains legacy Hetty code (`admin/`, `pkg/`) until T-002 removes it" —
+  refresh `graphify-out/` (`graphify update .`) and that line once this merges.
 
 ## Handoff (implementer)
+**What changed**
+- Deleted `admin/` (Next.js UI, replaced by `web/` in T-003), `cmd/hetty` (the `legacy_hetty` package with the admin `go:embed`
+  directives) and `pkg/db/bolt` (bbolt → SQLite, ADR-0002). The two tests that only existed to drive the bolt repository
+  (`pkg/reqlog/reqlog_test.go`, `pkg/sender/sender_test.go`) went with it; their `search_test.go` siblings stay.
+- `pkg/{proxy,proxy/intercept,filter,scope,chrome,api,proj,reqlog,sender,log}` → `internal/legacy/…` via `git mv`, imports
+  rewritten mechanically, no logic change. Only the five "reference" packages were named in Scope, but `api`, `proj`, `reqlog`,
+  `sender` and `log` import them and the new guard forbids `pkg/` → `internal/legacy/` imports, so the reference tree moved as a
+  unit rather than being deleted.
+- New `internal/legacy/doc.go` + `README.md` ("reference only, do not import", with the §3 fate table) and
+  `internal/legacy/importguard_test.go`: runs `go list -deps -json -test ./...` from the module root (found by walking up to
+  `go.mod`), decodes with `encoding/json/v2` + `jsontext`, and fails on any main-module package outside `internal/legacy/` that
+  imports it — test-only imports included.
+- `cmd/ratatoskr`: `run`/`serve` split, `--listen` (default `127.0.0.1:8080`), `--data-dir` (accepted, used by T-004),
+  `-version`; `GET /{$}` placeholder page, `ReadHeaderTimeout` 10 s, `IdleTimeout` 60 s, 1 MiB header cap, SIGINT/SIGTERM →
+  `Shutdown` with a 5 s grace period, address logged after `net.Listen` so `--listen 127.0.0.1:0` is usable in parallel worktrees.
+  Tests cover the handler (200/404/405/HEAD), the `serve` lifecycle on a real ephemeral listener, and flag parsing.
+- `.golangci.yml`: `^pkg/` + `^cmd/hetty/` exclusions replaced by `^internal/legacy/` (linters and formatters). Stale
+  `//nolint:gosec` above `ulidEntropy` removed in `proj`, `proxy`, `sender` and `proxy/intercept` (T-001 review nit).
+- Deleted `.goreleaser.yml`, `Dockerfile`, `.dockerignore` (Hetty tap/scoop/snapcraft/ghcr config for the deleted `cmd/hetty`).
+  `go mod tidy` dropped bbolt, go-cmp, ff/v3, go-homedir and truststore.
+
+**How to verify**
+- `make check` → `go fix -diff` empty, vet clean, `0 issues.` from golangci-lint, `go test -race ./...` green (web targets skip).
+- `make build && ./ratatoskr` → `curl -i http://127.0.0.1:8080/` gives 200 + `text/html` placeholder, `/nope` 404, `POST /` 405,
+  `Ctrl-C` logs `ratatoskr stopped`; `./ratatoskr -version` prints `ratatoskr <git describe>`.
+- `grep -rn bbolt go.mod go.sum` → empty; `ls admin pkg` → neither exists.
+- Guard: temporarily import `internal/legacy/filter` from any non-legacy package → `go test ./internal/legacy` fails with
+  `<pkg> imports …/internal/legacy/filter` (verified, then reverted).
+- `go tool govulncheck ./...` → no vulnerabilities (not part of `make check`).
+
+**Known limitations**
+- `--data-dir` is parsed and logged but not used; `internal/config` (T-004) owns it. The flag exists so `make run` keeps working.
+- `internal/legacy` is still in `./...`: vet and `go test -race` cover it, golangci-lint does not. It is dead code until each
+  rewrite task supersedes it.
+- The placeholder has no auth/CSRF middleware, no logging middleware and no UI — those land with T-003/T-004/T-007.
+- `internal/legacy/api/generated.go` is gqlgen output kept as-is (generated code, never edited by hand).
+
+**Follow-ups (proposed tasks)**
+- Delete `gqlgen.yml` with T-007.
+- Delete each `internal/legacy/<pkg>` as its rewrite lands (T-010 rawhttp/proxy, T-014 query, T-018 scope, T-031 intercept,
+  T-033 replay, T-041 files…), so the tree reaches zero; the guard keeps it from leaking back.
+- Re-add a container/release pipeline when packaging is specified (no task yet).
 
 ## Review (reviewer)
