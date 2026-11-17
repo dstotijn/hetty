@@ -111,3 +111,41 @@ Three stale references sit outside this task's `paths`:
 - Re-add a container/release pipeline when packaging is specified (no task yet).
 
 ## Review (reviewer)
+Reviewer: claude-code/claude-opus-5-5 · round 1 · 2026-11-17
+
+**Checks run**
+- `make check`: green. `go fix -diff` empty, vet clean, golangci-lint `0 issues.`, `go test -race ./...` ok (`cmd/ratatoskr`,
+  `internal/legacy` + its surviving `filter`, `proxy/intercept`, `reqlog`, `sender` tests); web targets skipped (no `web/` until T-003).
+- `make test-int` not run: no proxy/store/rawhttp product code changed. `internal/legacy/proxy` is a pure move.
+- Scope: every changed file matches `paths` (plus this task file). `git mv` keeps history for the moved tree.
+- Manual check: `./ratatoskr --listen 127.0.0.1:0` logs the bound address. SIGINT logs `ratatoskr stopped` and exits 0.
+- `git grep bbolt` outside docs: none. `admin/` and `pkg/` are gone.
+
+**AC coverage**
+- No `admin/`, no bbolt in `go.mod`: verified, and `go mod tidy` also dropped ff/v3, go-cmp, go-homedir and truststore.
+- Placeholder on :8080: `defaultListen` is `127.0.0.1:8080` and binds loopback per docs/03 §8. Tests cover the handler
+  (GET/HEAD/404/405 + headers), the real-listener `serve` lifecycle with ctx cancel, and flag parsing.
+- Import guard: `go list -deps -json -test ./...`, skips synthetic `.test` mains and checks test imports, including
+  external `_test` packages (their cut ImportPath is non-legacy). The `checked == 0` and empty-module-path sanity checks
+  catch a guard that silently passes.
+- Spec docs/03 §3: each package's fate matches the README table. Moving the whole `pkg/` tree (not only the five named
+  packages) is justified in the Plan, because the guard would otherwise forbid `pkg/` → `internal/legacy/` imports.
+
+**Findings**
+- [ ] [minor] cmd/ratatoskr/main.go:55: `fs.SetOutput(io.Discard)` hides usage, so `./ratatoskr -h` prints
+  `ERROR ratatoskr stopped error="parse flags: flag: help requested"` and exits 1. Handle `errors.Is(err, flag.ErrHelp)`
+  in `run` by printing `fs.PrintDefaults()` (or keeping output on stderr only for help) and returning nil. Fine to fold into T-004, which
+  replaces this CLI anyway; add it to T-004's AC so it isn't lost.
+- [ ] [nit] cmd/ratatoskr/main.go:113: after the first signal cancels ctx, `stop()` only runs on return, so a second Ctrl-C
+  during the 5 s drain is swallowed. Calling `stop()` right after `<-ctx.Done()` (pass it in, or re-arm in `main`)
+  restores the default "second signal kills" behaviour.
+- [ ] [nit] internal/legacy/importguard_test.go:96: the guard only sees the host GOOS/GOARCH and default build tags. A
+  legacy import behind `//go:build windows` or a custom tag would slip through. Acceptable for now. If tagged files appear,
+  run `go list` once per relevant `GOOS`/tags, or switch to a `go/parser` scan of all `.go` files.
+
+**Out-of-scope items for the lead** (already listed by the implementer, confirmed still present)
+- `gqlgen.yml` still points at `pkg/api/*` (inert; delete in T-007).
+- `.gitignore:7` `/cmd/hetty/admin` is stale.
+- `AGENTS.md:62` and `graphify-out/` still describe `admin/` and `pkg/`; refresh them after merge.
+
+**Verdict: approve.** No blocker or major findings. Status stays `in_review` until the operator merges and sets `done`.
