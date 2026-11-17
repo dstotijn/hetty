@@ -110,3 +110,26 @@ Replace `OWNER` with the real GitHub owner (ask the operator). Keep Hetty code c
 - Consider a `govulncheck` CI job once legacy deps are gone.
 
 ## Review (reviewer)
+Reviewed by claude-code (claude-opus-5-5), 2026-11-17, against `7c05016...1bd5efe` (merged as PR #1, `1676833`).
+`make check` on merged main: green (exit 0). `go build ./...` ok. CI green on ubuntu/macos (operator).
+AC: build/vet ✔, `go fix -diff` empty ✔, `make check` local + CI ✔, README credits Hetty and links existing docs ✔.
+Hard rules: no httputil added (depguard now denies it), no generated code hand-edited (gqlgen regenerated), no secrets.
+
+- [ ] [minor] pkg/proxy/intercept/intercept_test.go:82,203 — the `ErrRequestDone` branch of `ModifyRequest`/`ModifyResponse`
+  is no longer exercised by any test (assertions moved to the settled `ErrRequestNotFound` state). Acceptable for legacy
+  code, but the behaviour must not be lost → when `internal/intercept` is written, cover "modify after cancel" deterministically
+  with `testing/synctest` (docs/05) instead of sleeps; add this to the intercept task's acceptance criteria.
+- [ ] [minor] docs/tasks/T-001-repo-bootstrap.md:10 — `cmd/hetty/**` (4 files modified: import rewrite + `legacy_hetty` build tag)
+  is not in `paths`; only `cmd/ratatoskr/**` is. The Out-of-scope note explains it, but `paths` should match the diff →
+  add `cmd/hetty/**` to the widened list.
+- [ ] [minor] .github/workflows/ci.yml — CI runs only `make check`; docs/05 §2 requires `govulncheck`, and `make build`
+  (ldflags, `-trimpath`, CGO_ENABLED=0) is never exercised in CI → add `make vulncheck` (once legacy deps are gone, per
+  Handoff follow-up) and `make build` steps, or track them in a task.
+- [ ] [nit] pkg/proj/proj.go:23, pkg/proxy/proxy.go:25, pkg/sender/sender.go:22 (+4 test files) — `//nolint:gosec` left above
+  `var ulidEntropy = rand.Reader`; it was for `math/rand` and is now stale and lacks the explanation nolintlint requires
+  (masked only because `pkg/` is lint-excluded) → drop the directives (T-002 can do it).
+- [ ] [nit] Goal says "has the target directory skeleton"; only `internal/doc.go` exists. Fine given Scope, as later tasks create
+  their packages; consider rewording the Goal so it doesn't read as unmet.
+
+**Verdict: approve.** No blocker/major findings. Already merged; operator may set `status: done`. Minor items can go to
+T-002 or a follow-up task.
