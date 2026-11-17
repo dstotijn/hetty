@@ -1,8 +1,0 @@
-/admin/.env
-/admin/.next
-/admin/dist
-/admin/node_modules
-/dist
-/docs
-/hetty
-/cmd/hetty/admin
