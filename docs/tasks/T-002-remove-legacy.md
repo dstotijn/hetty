@@ -3,9 +3,9 @@ id: T-002
 title: Remove Hetty admin UI and bbolt, keep the binary compiling with stubs
 milestone: M0
 role: backend
-status: todo
+status: in_progress
 depends_on: [T-001]
-owner: ""
+owner: opencode/deepseek-v4.1-flash-1017
 branch: task/T-002-remove-legacy
 paths:
   - admin/**
@@ -44,6 +44,18 @@ Legacy pieces we will never reuse are gone; the remaining Hetty packages that se
   `cmd/ratatoskr` (no release pipeline is specified yet; deleting is acceptable).
 
 ## Plan (implementer, ≤15 lines)
+1. Delete `admin/`, `cmd/hetty/` (the `legacy_hetty` Next.js embed) and `pkg/db/bolt` (bbolt, ADR-0002).
+2. `git mv pkg internal/legacy`: the whole remaining tree moves, not just the five named packages — `api`, `proj`,
+   `reqlog`, `sender`, `log` import `proxy`/`filter`/`scope`/`proxy/intercept`, and the guard forbids `pkg/` →
+   `internal/legacy/` imports. Reference tree stays intact; imports rewritten mechanically.
+3. `internal/legacy/{doc.go,README.md}`: "reference only, do not import".
+4. `internal/legacy/importguard_test.go`: `go list -deps -json -test ./...` from the module root; fail when a
+   main-module package outside `internal/legacy/` imports it (test imports included).
+5. `cmd/ratatoskr`: `-listen` (default `127.0.0.1:8080`), `-data-dir` (accepted, wired in T-004), `-version`;
+   `http.Server` serving `GET /{$}` placeholder, ReadHeaderTimeout/IdleTimeout/MaxHeaderBytes, graceful shutdown.
+6. Delete `.goreleaser.yml`, `Dockerfile`, `.dockerignore` (Hetty release/container infra for the deleted `cmd/hetty`).
+7. `.golangci.yml`: drop `^pkg/` + `^cmd/hetty/` exclusions, exclude `^internal/legacy/` instead.
+8. `go mod tidy` drops bbolt; verify `go build ./cmd/ratatoskr && ./ratatoskr` + `make check`.
 
 ## Out-of-scope change needed (if any)
 
