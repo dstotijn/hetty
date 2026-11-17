@@ -3,9 +3,9 @@ id: T-001
 title: Bootstrap the fork - module path, Go 1.27, internal layout, Makefile, lint, CI
 milestone: M0
 role: lead
-status: todo
+status: in_progress
 depends_on: []
-owner: ""
+owner: "claude-code (claude-opus-5-5)"
 branch: task/T-001-repo-bootstrap
 paths:
   - go.mod
@@ -46,6 +46,14 @@ The forked repo builds with Go 1.27 under the new module path, has the target di
 Replace `OWNER` with the real GitHub owner (ask the operator). Keep Hetty code compiling in `pkg/` for now.
 
 ## Plan (implementer, ≤15 lines)
+1. go.mod: module github.com/pocikode/ratatoskr, go 1.27, toolchain go1.27.4; rewrite Hetty import paths; go mod tidy.
+2. Replace tools.go with `tool` directives (gqlgen, govulncheck); keep pkg/api generated code compiling.
+3. Apply `go fix ./...` so `go fix -diff` is empty (modernizer rewrites in legacy pkg/).
+4. Makefile: gen, check, test-int, build, fuzz, run (+ web-* no-ops until T-003).
+5. .golangci.yml v2; legacy pkg/, cmd/hetty excluded with T-002 comment if needed.
+6. CI: replace Hetty workflows with ci.yml matrix ubuntu/macos/windows running `make check`.
+7. LICENSE second copyright line; short README; cmd/ratatoskr/main.go (version); internal/doc.go.
+8. go build/vet/fix -diff + make check green; Handoff.
 
 ## Out-of-scope change needed (if any)
 
