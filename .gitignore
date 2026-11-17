@@ -4,3 +4,7 @@
 /cmd/hetty/admin
 *.pem
 *.test
+
+# agents
+!AGENTS.md
+!CLAUDE.md
