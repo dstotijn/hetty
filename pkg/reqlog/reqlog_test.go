@@ -143,12 +143,27 @@ func TestResponseModifier(t *testing.T) {
 	}
 
 	t.Run("request log was stored in repository", func(t *testing.T) {
-		// Dirty (but simple) wait for other goroutine to finish calling repository.
-		time.Sleep(10 * time.Millisecond)
+		// The response log is stored by another goroutine; poll until it lands
+		// instead of sleeping a fixed time, which was flaky (T-001).
+		var got reqlog.RequestLog
 
-		got, err := svc.FindRequestLogByID(context.Background(), reqLogID)
-		if err != nil {
-			t.Fatalf("failed to find request by id: %v", err)
+		deadline := time.Now().Add(5 * time.Second)
+
+		for {
+			got, err = svc.FindRequestLogByID(context.Background(), reqLogID)
+			if err != nil {
+				t.Fatalf("failed to find request by id: %v", err)
+			}
+
+			if got.Response != nil {
+				break
+			}
+
+			if time.Now().After(deadline) {
+				t.Fatal("timed out waiting for response log to be stored")
+			}
+
+			time.Sleep(time.Millisecond)
 		}
 
 		t.Run("ran next modifier first, before calling repository", func(t *testing.T) {

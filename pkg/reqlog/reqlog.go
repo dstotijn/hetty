@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 
@@ -121,15 +120,15 @@ func (svc *Service) RequestModifier(next proxy.RequestModifyFunc) proxy.RequestM
 			// TODO: Use io.LimitReader.
 			var err error
 
-			body, err = ioutil.ReadAll(req.Body)
+			body, err = io.ReadAll(req.Body)
 			if err != nil {
 				svc.logger.Errorw("Failed to read request body for logging.",
 					"error", err)
 				return
 			}
 
-			req.Body = ioutil.NopCloser(bytes.NewBuffer(body))
-			clone.Body = ioutil.NopCloser(bytes.NewBuffer(body))
+			req.Body = io.NopCloser(bytes.NewBuffer(body))
+			clone.Body = io.NopCloser(bytes.NewBuffer(body))
 		}
 
 		// Bypass logging if no project is active.

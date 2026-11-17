@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"strconv"
 	"strings"
@@ -34,7 +33,7 @@ var reqFilterKeyFns = map[string]func(req *http.Request) (string, error){
 			return "", err
 		}
 
-		req.Body = ioutil.NopCloser(bytes.NewBuffer(body))
+		req.Body = io.NopCloser(bytes.NewBuffer(body))
 		return string(body), nil
 	},
 }
@@ -61,7 +60,7 @@ var resFilterKeyFns = map[string]func(res *http.Response) (string, error){
 			return "", err
 		}
 
-		res.Body = ioutil.NopCloser(bytes.NewBuffer(body))
+		res.Body = io.NopCloser(bytes.NewBuffer(body))
 
 		return string(body), nil
 	},
@@ -267,7 +266,7 @@ func MatchRequestScope(req *http.Request, s *scope.Scope) (bool, error) {
 				return false, fmt.Errorf("failed to read request body: %w", err)
 			}
 
-			req.Body = ioutil.NopCloser(bytes.NewBuffer(body))
+			req.Body = io.NopCloser(bytes.NewBuffer(body))
 
 			if matches := rule.Body.Match(body); matches {
 				return true, nil

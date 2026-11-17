@@ -13,11 +13,11 @@ type Logger struct {
 }
 
 // Warning implements bbolt.Logger.
-func (l *Logger) Warning(v ...interface{}) {
+func (l *Logger) Warning(v ...any) {
 	l.Warn(v...)
 }
 
 // Warningf implements bbolt.Logger.
-func (l *Logger) Warningf(format string, v ...interface{}) {
+func (l *Logger) Warningf(format string, v ...any) {
 	l.Warnf(format, v...)
 }

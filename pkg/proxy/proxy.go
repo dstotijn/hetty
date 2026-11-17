@@ -11,6 +11,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httputil"
+	"slices"
 	"strings"
 	"time"
 
@@ -144,8 +145,8 @@ func (p *Proxy) modifyRequest(r *http.Request) {
 
 	fn := nopReqModifier
 
-	for i := len(p.reqModifiers) - 1; i >= 0; i-- {
-		fn = p.reqModifiers[i](fn)
+	for _, v := range slices.Backward(p.reqModifiers) {
+		fn = v(fn)
 	}
 
 	fn(r)
@@ -159,8 +160,8 @@ func (p *Proxy) modifyResponse(res *http.Response) error {
 		return fmt.Errorf("proxy: failed to gunzip response body: %w", err)
 	}
 
-	for i := len(p.resModifiers) - 1; i >= 0; i-- {
-		fn = p.resModifiers[i](fn)
+	for _, v := range slices.Backward(p.resModifiers) {
+		fn = v(fn)
 	}
 
 	return fn(res)
