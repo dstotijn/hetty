@@ -1,6 +1,9 @@
 *.vscode
 /dist
 /hetty
+/ratatoskr
+/ratatoskr.exe
+/.dev-data
 /cmd/hetty/admin
 *.pem
 *.test
