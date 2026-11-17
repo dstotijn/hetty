@@ -6,5 +6,7 @@
 *.test
 
 # agents
-!AGENTS.md
-!CLAUDE.md
+!/.claude
+!/CLAUDE.md
+!/.opencode
+!/AGENTS.md
