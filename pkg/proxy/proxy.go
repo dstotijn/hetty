@@ -3,11 +3,11 @@ package proxy
 import (
 	"context"
 	"crypto"
+	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
 	"fmt"
-	"math/rand"
 	"net"
 	"net/http"
 	"net/http/httputil"
@@ -16,11 +16,13 @@ import (
 
 	"github.com/oklog/ulid"
 
-	"github.com/dstotijn/hetty/pkg/log"
+	"github.com/pocikode/ratatoskr/pkg/log"
 )
 
+// crypto/rand is safe for concurrent use; math/rand.Rand is not (data race under -race).
+//
 //nolint:gosec
-var ulidEntropy = rand.New(rand.NewSource(time.Now().UnixNano()))
+var ulidEntropy = rand.Reader
 
 type contextKey int
 

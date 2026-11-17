@@ -2,24 +2,26 @@ package proj
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
 	"fmt"
-	"math/rand"
 	"regexp"
 	"sync"
 	"time"
 
 	"github.com/oklog/ulid"
 
-	"github.com/dstotijn/hetty/pkg/filter"
-	"github.com/dstotijn/hetty/pkg/proxy/intercept"
-	"github.com/dstotijn/hetty/pkg/reqlog"
-	"github.com/dstotijn/hetty/pkg/scope"
-	"github.com/dstotijn/hetty/pkg/sender"
+	"github.com/pocikode/ratatoskr/pkg/filter"
+	"github.com/pocikode/ratatoskr/pkg/proxy/intercept"
+	"github.com/pocikode/ratatoskr/pkg/reqlog"
+	"github.com/pocikode/ratatoskr/pkg/scope"
+	"github.com/pocikode/ratatoskr/pkg/sender"
 )
 
+// crypto/rand is safe for concurrent use; math/rand.Rand is not (data race under -race).
+//
 //nolint:gosec
-var ulidEntropy = rand.New(rand.NewSource(time.Now().UnixNano()))
+var ulidEntropy = rand.Reader
 
 type Service struct {
 	repo            Repository

@@ -1,3 +1,8 @@
+// Legacy Hetty entrypoint. It embeds the Next.js admin build, which is no longer
+// produced, so it is excluded from default builds until T-002 deletes it.
+
+//go:build legacy_hetty
+
 package main
 
 import (
@@ -9,7 +14,7 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/dstotijn/hetty/pkg/log"
+	"github.com/pocikode/ratatoskr/pkg/log"
 )
 
 func main() {

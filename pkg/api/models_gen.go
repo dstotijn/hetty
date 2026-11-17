@@ -3,6 +3,7 @@
 package api
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"net/url"
@@ -52,8 +53,8 @@ type HTTPRequest struct {
 	Method   HTTPMethod    `json:"method"`
 	Proto    HTTPProtocol  `json:"proto"`
 	Headers  []HTTPHeader  `json:"headers"`
-	Body     *string       `json:"body"`
-	Response *HTTPResponse `json:"response"`
+	Body     *string       `json:"body,omitempty"`
+	Response *HTTPResponse `json:"response,omitempty"`
 }
 
 type HTTPRequestLog struct {
@@ -62,19 +63,19 @@ type HTTPRequestLog struct {
 	Method    HTTPMethod       `json:"method"`
 	Proto     string           `json:"proto"`
 	Headers   []HTTPHeader     `json:"headers"`
-	Body      *string          `json:"body"`
+	Body      *string          `json:"body,omitempty"`
 	Timestamp time.Time        `json:"timestamp"`
-	Response  *HTTPResponseLog `json:"response"`
+	Response  *HTTPResponseLog `json:"response,omitempty"`
 }
 
 type HTTPRequestLogFilter struct {
 	OnlyInScope      bool    `json:"onlyInScope"`
-	SearchExpression *string `json:"searchExpression"`
+	SearchExpression *string `json:"searchExpression,omitempty"`
 }
 
 type HTTPRequestLogFilterInput struct {
-	OnlyInScope      *bool   `json:"onlyInScope"`
-	SearchExpression *string `json:"searchExpression"`
+	OnlyInScope      *bool   `json:"onlyInScope,omitempty"`
+	SearchExpression *string `json:"searchExpression,omitempty"`
 }
 
 type HTTPResponse struct {
@@ -83,7 +84,7 @@ type HTTPResponse struct {
 	Proto        HTTPProtocol `json:"proto"`
 	StatusCode   int          `json:"statusCode"`
 	StatusReason string       `json:"statusReason"`
-	Body         *string      `json:"body"`
+	Body         *string      `json:"body,omitempty"`
 	Headers      []HTTPHeader `json:"headers"`
 }
 
@@ -93,15 +94,15 @@ type HTTPResponseLog struct {
 	Proto        HTTPProtocol `json:"proto"`
 	StatusCode   int          `json:"statusCode"`
 	StatusReason string       `json:"statusReason"`
-	Body         *string      `json:"body"`
+	Body         *string      `json:"body,omitempty"`
 	Headers      []HTTPHeader `json:"headers"`
 }
 
 type InterceptSettings struct {
 	RequestsEnabled  bool    `json:"requestsEnabled"`
 	ResponsesEnabled bool    `json:"responsesEnabled"`
-	RequestFilter    *string `json:"requestFilter"`
-	ResponseFilter   *string `json:"responseFilter"`
+	RequestFilter    *string `json:"requestFilter,omitempty"`
+	ResponseFilter   *string `json:"responseFilter,omitempty"`
 }
 
 type ModifyRequestInput struct {
@@ -109,9 +110,9 @@ type ModifyRequestInput struct {
 	URL            *url.URL          `json:"url"`
 	Method         HTTPMethod        `json:"method"`
 	Proto          HTTPProtocol      `json:"proto"`
-	Headers        []HTTPHeaderInput `json:"headers"`
-	Body           *string           `json:"body"`
-	ModifyResponse *bool             `json:"modifyResponse"`
+	Headers        []HTTPHeaderInput `json:"headers,omitempty"`
+	Body           *string           `json:"body,omitempty"`
+	ModifyResponse *bool             `json:"modifyResponse,omitempty"`
 }
 
 type ModifyRequestResult struct {
@@ -121,14 +122,17 @@ type ModifyRequestResult struct {
 type ModifyResponseInput struct {
 	RequestID    ulid.ULID         `json:"requestID"`
 	Proto        HTTPProtocol      `json:"proto"`
-	Headers      []HTTPHeaderInput `json:"headers"`
-	Body         *string           `json:"body"`
+	Headers      []HTTPHeaderInput `json:"headers,omitempty"`
+	Body         *string           `json:"body,omitempty"`
 	StatusCode   int               `json:"statusCode"`
 	StatusReason string            `json:"statusReason"`
 }
 
 type ModifyResponseResult struct {
 	Success bool `json:"success"`
+}
+
+type Mutation struct {
 }
 
 type Project struct {
@@ -142,64 +146,67 @@ type ProjectSettings struct {
 	Intercept *InterceptSettings `json:"intercept"`
 }
 
+type Query struct {
+}
+
 type ScopeHeader struct {
-	Key   *string `json:"key"`
-	Value *string `json:"value"`
+	Key   *string `json:"key,omitempty"`
+	Value *string `json:"value,omitempty"`
 }
 
 type ScopeHeaderInput struct {
-	Key   *string `json:"key"`
-	Value *string `json:"value"`
+	Key   *string `json:"key,omitempty"`
+	Value *string `json:"value,omitempty"`
 }
 
 type ScopeRule struct {
-	URL    *string      `json:"url"`
-	Header *ScopeHeader `json:"header"`
-	Body   *string      `json:"body"`
+	URL    *string      `json:"url,omitempty"`
+	Header *ScopeHeader `json:"header,omitempty"`
+	Body   *string      `json:"body,omitempty"`
 }
 
 type ScopeRuleInput struct {
-	URL    *string           `json:"url"`
-	Header *ScopeHeaderInput `json:"header"`
-	Body   *string           `json:"body"`
+	URL    *string           `json:"url,omitempty"`
+	Header *ScopeHeaderInput `json:"header,omitempty"`
+	Body   *string           `json:"body,omitempty"`
 }
 
 type SenderRequest struct {
 	ID                 ulid.ULID        `json:"id"`
-	SourceRequestLogID *ulid.ULID       `json:"sourceRequestLogID"`
+	SourceRequestLogID *ulid.ULID       `json:"sourceRequestLogID,omitempty"`
 	URL                *url.URL         `json:"url"`
 	Method             HTTPMethod       `json:"method"`
 	Proto              HTTPProtocol     `json:"proto"`
-	Headers            []HTTPHeader     `json:"headers"`
-	Body               *string          `json:"body"`
+	Headers            []HTTPHeader     `json:"headers,omitempty"`
+	Body               *string          `json:"body,omitempty"`
 	Timestamp          time.Time        `json:"timestamp"`
-	Response           *HTTPResponseLog `json:"response"`
+	Response           *HTTPResponseLog `json:"response,omitempty"`
 }
 
 type SenderRequestFilter struct {
 	OnlyInScope      bool    `json:"onlyInScope"`
-	SearchExpression *string `json:"searchExpression"`
+	SearchExpression *string `json:"searchExpression,omitempty"`
 }
 
 type SenderRequestFilterInput struct {
-	OnlyInScope      *bool   `json:"onlyInScope"`
-	SearchExpression *string `json:"searchExpression"`
+	OnlyInScope      *bool   `json:"onlyInScope,omitempty"`
+	SearchExpression *string `json:"searchExpression,omitempty"`
 }
 
 type SenderRequestInput struct {
-	ID      *ulid.ULID        `json:"id"`
+	ID      *ulid.ULID        `json:"id,omitempty"`
 	URL     *url.URL          `json:"url"`
-	Method  *HTTPMethod       `json:"method"`
-	Proto   *HTTPProtocol     `json:"proto"`
-	Headers []HTTPHeaderInput `json:"headers"`
-	Body    *string           `json:"body"`
+	Method  *HTTPMethod       `json:"method,omitempty"`
+	Proto   *HTTPProtocol     `json:"proto,omitempty"`
+	Headers []HTTPHeaderInput `json:"headers,omitempty"`
+	Body    *string           `json:"body,omitempty"`
 }
 
 type UpdateInterceptSettingsInput struct {
 	RequestsEnabled  bool    `json:"requestsEnabled"`
 	ResponsesEnabled bool    `json:"responsesEnabled"`
-	RequestFilter    *string `json:"requestFilter"`
-	ResponseFilter   *string `json:"responseFilter"`
+	RequestFilter    *string `json:"requestFilter,omitempty"`
+	ResponseFilter   *string `json:"responseFilter,omitempty"`
 }
 
 type HTTPMethod string
@@ -240,7 +247,7 @@ func (e HTTPMethod) String() string {
 	return string(e)
 }
 
-func (e *HTTPMethod) UnmarshalGQL(v interface{}) error {
+func (e *HTTPMethod) UnmarshalGQL(v any) error {
 	str, ok := v.(string)
 	if !ok {
 		return fmt.Errorf("enums must be strings")
@@ -254,7 +261,21 @@ func (e *HTTPMethod) UnmarshalGQL(v interface{}) error {
 }
 
 func (e HTTPMethod) MarshalGQL(w io.Writer) {
-	fmt.Fprint(w, strconv.Quote(e.String()))
+	_, _ = fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *HTTPMethod) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e HTTPMethod) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
 }
 
 type HTTPProtocol string
@@ -283,7 +304,7 @@ func (e HTTPProtocol) String() string {
 	return string(e)
 }
 
-func (e *HTTPProtocol) UnmarshalGQL(v interface{}) error {
+func (e *HTTPProtocol) UnmarshalGQL(v any) error {
 	str, ok := v.(string)
 	if !ok {
 		return fmt.Errorf("enums must be strings")
@@ -297,5 +318,19 @@ func (e *HTTPProtocol) UnmarshalGQL(v interface{}) error {
 }
 
 func (e HTTPProtocol) MarshalGQL(w io.Writer) {
-	fmt.Fprint(w, strconv.Quote(e.String()))
+	_, _ = fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *HTTPProtocol) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e HTTPProtocol) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
 }

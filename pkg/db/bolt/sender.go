@@ -10,8 +10,8 @@ import (
 	"github.com/oklog/ulid"
 	bolt "go.etcd.io/bbolt"
 
-	"github.com/dstotijn/hetty/pkg/scope"
-	"github.com/dstotijn/hetty/pkg/sender"
+	"github.com/pocikode/ratatoskr/pkg/scope"
+	"github.com/pocikode/ratatoskr/pkg/sender"
 )
 
 var ErrSenderRequestsBucketNotFound = errors.New("bolt: sender requests bucket not found")

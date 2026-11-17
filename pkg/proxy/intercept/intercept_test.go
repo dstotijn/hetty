@@ -2,8 +2,8 @@ package intercept_test
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
-	"math/rand"
 	"net/http"
 	"net/http/httptest"
 	"sync"
@@ -13,12 +13,14 @@ import (
 	"github.com/oklog/ulid"
 	"go.uber.org/zap"
 
-	"github.com/dstotijn/hetty/pkg/proxy"
-	"github.com/dstotijn/hetty/pkg/proxy/intercept"
+	"github.com/pocikode/ratatoskr/pkg/proxy"
+	"github.com/pocikode/ratatoskr/pkg/proxy/intercept"
 )
 
+// crypto/rand is safe for concurrent use; parallel subtests share this source.
+//
 //nolint:gosec
-var ulidEntropy = rand.New(rand.NewSource(time.Now().UnixNano()))
+var ulidEntropy = rand.Reader
 
 func TestRequestModifier(t *testing.T) {
 	t.Parallel()
