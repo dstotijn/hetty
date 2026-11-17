@@ -32,7 +32,8 @@ spec:
 ---
 
 ## Goal
-The forked repo builds with Go 1.27 under the new module path, has the target directory skeleton, and CI runs `make check` on Linux, macOS and Windows.
+The forked repo builds with Go 1.27 under the new module path, has the target directory skeleton, and CI runs `make check` on Linux and macOS.
+(Operator decision 2026-11-17: Windows is not a supported target; Unix-like only.)
 
 ## Scope
 - In: `go.mod` → `module github.com/OWNER/ratatoskr`, `go 1.27`, `toolchain go1.27.x`; update imports; `tool` directives (gqlgen, govulncheck);
@@ -43,7 +44,7 @@ The forked repo builds with Go 1.27 under the new module path, has the target di
 
 ## Acceptance criteria
 - [x] `go build ./...` and `go vet ./...` pass with Go 1.27.
-- [ ] `make check` passes locally and in CI on ubuntu/macos/windows. (local: green on darwin/arm64; CI not run yet, branch not pushed)
+- [ ] `make check` passes locally and in CI on ubuntu/macos. (local: green on darwin/arm64; CI not run yet, branch not pushed)
 - [x] `go fix -diff ./...` is empty.
 - [x] README credits Hetty and links the docs.
 
@@ -56,7 +57,7 @@ Replace `OWNER` with the real GitHub owner (ask the operator). Keep Hetty code c
 3. Apply `go fix ./...` so `go fix -diff` is empty (modernizer rewrites in legacy pkg/).
 4. Makefile: gen, check, test-int, build, fuzz, run (+ web-* no-ops until T-003).
 5. .golangci.yml v2; legacy pkg/, cmd/hetty excluded with T-002 comment if needed.
-6. CI: replace Hetty workflows with ci.yml matrix ubuntu/macos/windows running `make check`.
+6. CI: replace Hetty workflows with ci.yml matrix ubuntu/macos running `make check`.
 7. LICENSE second copyright line; short README; cmd/ratatoskr/main.go (version); internal/doc.go.
 8. go build/vet/fix -diff + make check green; Handoff.
 
@@ -89,17 +90,16 @@ Replace `OWNER` with the real GitHub owner (ask the operator). Keep Hetty code c
   run `bun` only when `web/package.json` exists), `.golangci.yml` (v2; linters from docs/05 §3 + depguard
   denying `net/http/httputil` per ADR-0003 + nolintlint requiring explanations), `.editorconfig`, `.gitignore` entries.
 - CI: Hetty `build-test.yml`/`lint.yml` and `FUNDING.yml` removed; `.github/workflows/ci.yml` runs `make check` on
-  ubuntu/macos/windows (bash shell, LF checkout, golangci-lint v2.15.0 via `go install`, `make` via choco on Windows).
+  ubuntu/macos (golangci-lint v2.15.0 via `go install`). Windows dropped by operator decision; Makefile has no `.exe` handling.
   Issue template discussion link points to our repo.
 - `LICENSE`: `Copyright (c) 2026 pocikode` added below Hetty's line. `README.md` rewritten.
 
 **How to verify**
 `go build ./... && go vet ./... && go fix -diff ./... && make check && make build && ./ratatoskr`
-(expect `ratatoskr <git describe>`). `go tool govulncheck ./...` → no vulnerabilities. `GOOS=windows go vet ./...` ok.
+(expect `ratatoskr <git describe>`). `go tool govulncheck ./...` → no vulnerabilities.
 
 **Limitations**
-- CI matrix not yet exercised (nothing pushed). Windows assumptions: `make` installable via choco, gcc on PATH for
-  `-race` (cgo). If either fails, fix in `.github/workflows/ci.yml`.
+- CI matrix not yet exercised (nothing pushed).
 - Legacy `pkg/` and `cmd/hetty/` are excluded from golangci-lint (89 issues, mostly revive) with a T-002 comment.
 - `make gen` runs `go generate ./...` (no directives yet; T-007 adds gqlgen's). `make run` passes `--data-dir`,
   which `cmd/ratatoskr` ignores until T-004.

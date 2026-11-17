@@ -1,5 +1,5 @@
 # Ratatoskr build entry points. See docs/05-go-conventions.md §5.
-# Recipes use POSIX sh; on Windows run make from Git Bash (as CI does).
+# Recipes use POSIX sh. Supported platforms: Linux and macOS.
 
 SHELL := /bin/sh
 
@@ -8,10 +8,7 @@ LDFLAGS  := -s -w -X main.version=$(VERSION)
 FUZZTIME ?= 10s
 DATA_DIR ?= ./.dev-data
 
-ifeq ($(OS),Windows_NT)
-EXE := .exe
-endif
-BIN := ratatoskr$(EXE)
+BIN := ratatoskr
 
 # Web targets run only once the Svelte app exists (T-003); until then they are no-ops.
 HAVE_WEB := $(wildcard web/package.json)
@@ -40,7 +37,7 @@ vet:
 lint:
 	golangci-lint run ./...
 
-# The race detector needs cgo on Linux and Windows, so tests opt back in.
+# The race detector needs cgo on Linux, so tests opt back in.
 .PHONY: test
 test:
 	CGO_ENABLED=1 go test -race ./...
