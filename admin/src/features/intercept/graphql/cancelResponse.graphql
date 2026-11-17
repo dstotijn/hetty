@@ -1,5 +1,0 @@
-mutation CancelResponse($requestID: ID!) {
-  cancelResponse(requestID: $requestID) {
-    success
-  }
-}

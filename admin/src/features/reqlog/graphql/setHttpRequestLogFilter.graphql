@@ -1,6 +1,0 @@
-mutation SetHttpRequestLogFilter($filter: HttpRequestLogFilterInput) {
-  setHttpRequestLogFilter(filter: $filter) {
-    onlyInScope
-    searchExpression
-  }
-}

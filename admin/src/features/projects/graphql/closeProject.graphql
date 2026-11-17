@@ -1,5 +1,0 @@
-mutation CloseProject {
-  closeProject {
-    success
-  }
-}

@@ -1,5 +1,0 @@
-mutation ModifyRequest($request: ModifyRequestInput!) {
-  modifyRequest(request: $request) {
-    success
-  }
-}

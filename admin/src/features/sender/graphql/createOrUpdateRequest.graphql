@@ -1,5 +1,0 @@
-mutation CreateOrUpdateSenderRequest($request: SenderRequestInput!) {
-  createOrUpdateSenderRequest(request: $request) {
-    id
-  }
-}

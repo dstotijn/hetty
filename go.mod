@@ -7,14 +7,9 @@ toolchain go1.27.4
 require (
 	github.com/99designs/gqlgen v0.17.98
 	github.com/chromedp/chromedp v0.7.8
-	github.com/google/go-cmp v0.6.0
 	github.com/gorilla/mux v1.7.4
-	github.com/mitchellh/go-homedir v1.1.0
 	github.com/oklog/ulid v1.3.1
-	github.com/peterbourgon/ff/v3 v3.1.2
-	github.com/smallstep/truststore v0.11.0
 	github.com/vektah/gqlparser/v2 v2.5.64
-	go.etcd.io/bbolt v1.4.0-beta.0
 	go.uber.org/zap v1.21.0
 )
 
@@ -44,7 +39,6 @@ require (
 	golang.org/x/text v0.43.0 // indirect
 	golang.org/x/tools v0.52.0 // indirect
 	golang.org/x/vuln v1.9.0 // indirect
-	howett.net/plist v0.0.0-20181124034731-591f970eefbb // indirect
 )
 
 tool (

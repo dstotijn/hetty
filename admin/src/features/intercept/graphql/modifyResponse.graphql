@@ -1,5 +1,0 @@
-mutation ModifyResponse($response: ModifyResponseInput!) {
-  modifyResponse(response: $response) {
-    success
-  }
-}

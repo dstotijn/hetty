@@ -1,5 +1,0 @@
-mutation DeleteProject($id: ID!) {
-  deleteProject(id: $id) {
-    success
-  }
-}
