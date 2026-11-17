@@ -59,10 +59,9 @@ linters:
     presets:
       - std-error-handling
     paths:
-      # Legacy Hetty code: kept compiling for reference only and deleted, moved
-      # or rewritten in T-002 and later tasks. Not held to the new lint bar.
-      - ^pkg/
-      - ^cmd/hetty/
+      # Frozen Hetty packages kept as reference material only (T-002), see
+      # internal/legacy/README.md. Dead code, not held to the new lint bar.
+      - ^internal/legacy/
     rules:
       - path: _test\.go
         linters:
@@ -78,5 +77,4 @@ formatters:
         - github.com/pocikode/ratatoskr
   exclusions:
     paths:
-      - ^pkg/
-      - ^cmd/hetty/
+      - ^internal/legacy/

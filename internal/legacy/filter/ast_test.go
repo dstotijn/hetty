@@ -4,7 +4,7 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/pocikode/ratatoskr/pkg/filter"
+	"github.com/pocikode/ratatoskr/internal/legacy/filter"
 )
 
 func TestExpressionString(t *testing.T) {

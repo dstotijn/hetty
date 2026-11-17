@@ -1,10 +1,11 @@
-package reqlog_test
+package sender_test
 
 import (
 	"testing"
 
-	"github.com/pocikode/ratatoskr/pkg/filter"
-	"github.com/pocikode/ratatoskr/pkg/reqlog"
+	"github.com/pocikode/ratatoskr/internal/legacy/filter"
+	"github.com/pocikode/ratatoskr/internal/legacy/reqlog"
+	"github.com/pocikode/ratatoskr/internal/legacy/sender"
 )
 
 func TestRequestLogMatch(t *testing.T) {
@@ -13,14 +14,14 @@ func TestRequestLogMatch(t *testing.T) {
 	tests := []struct {
 		name          string
 		query         string
-		requestLog    reqlog.RequestLog
+		senderReq     sender.Request
 		expectedMatch bool
 		expectedError error
 	}{
 		{
 			name:  "infix expression, equal operator, match",
 			query: "req.body = foo",
-			requestLog: reqlog.RequestLog{
+			senderReq: sender.Request{
 				Body: []byte("foo"),
 			},
 			expectedMatch: true,
@@ -29,7 +30,7 @@ func TestRequestLogMatch(t *testing.T) {
 		{
 			name:  "infix expression, not equal operator, match",
 			query: "req.body != bar",
-			requestLog: reqlog.RequestLog{
+			senderReq: sender.Request{
 				Body: []byte("foo"),
 			},
 			expectedMatch: true,
@@ -38,7 +39,7 @@ func TestRequestLogMatch(t *testing.T) {
 		{
 			name:  "infix expression, greater than operator, match",
 			query: "req.body > a",
-			requestLog: reqlog.RequestLog{
+			senderReq: sender.Request{
 				Body: []byte("b"),
 			},
 			expectedMatch: true,
@@ -47,7 +48,7 @@ func TestRequestLogMatch(t *testing.T) {
 		{
 			name:  "infix expression, less than operator, match",
 			query: "req.body < b",
-			requestLog: reqlog.RequestLog{
+			senderReq: sender.Request{
 				Body: []byte("a"),
 			},
 			expectedMatch: true,
@@ -56,7 +57,7 @@ func TestRequestLogMatch(t *testing.T) {
 		{
 			name:  "infix expression, greater than or equal operator, match greater than",
 			query: "req.body >= a",
-			requestLog: reqlog.RequestLog{
+			senderReq: sender.Request{
 				Body: []byte("b"),
 			},
 			expectedMatch: true,
@@ -65,7 +66,7 @@ func TestRequestLogMatch(t *testing.T) {
 		{
 			name:  "infix expression, greater than or equal operator, match equal",
 			query: "req.body >= a",
-			requestLog: reqlog.RequestLog{
+			senderReq: sender.Request{
 				Body: []byte("a"),
 			},
 			expectedMatch: true,
@@ -74,7 +75,7 @@ func TestRequestLogMatch(t *testing.T) {
 		{
 			name:  "infix expression, less than or equal operator, match less than",
 			query: "req.body <= b",
-			requestLog: reqlog.RequestLog{
+			senderReq: sender.Request{
 				Body: []byte("a"),
 			},
 			expectedMatch: true,
@@ -83,7 +84,7 @@ func TestRequestLogMatch(t *testing.T) {
 		{
 			name:  "infix expression, less than or equal operator, match equal",
 			query: "req.body <= b",
-			requestLog: reqlog.RequestLog{
+			senderReq: sender.Request{
 				Body: []byte("b"),
 			},
 			expectedMatch: true,
@@ -92,7 +93,7 @@ func TestRequestLogMatch(t *testing.T) {
 		{
 			name:  "infix expression, regular expression operator, match",
 			query: `req.body =~ "^foo(.*)$"`,
-			requestLog: reqlog.RequestLog{
+			senderReq: sender.Request{
 				Body: []byte("foobar"),
 			},
 			expectedMatch: true,
@@ -101,7 +102,7 @@ func TestRequestLogMatch(t *testing.T) {
 		{
 			name:  "infix expression, negate regular expression operator, match",
 			query: `req.body !~ "^foo(.*)$"`,
-			requestLog: reqlog.RequestLog{
+			senderReq: sender.Request{
 				Body: []byte("xoobar"),
 			},
 			expectedMatch: true,
@@ -110,7 +111,7 @@ func TestRequestLogMatch(t *testing.T) {
 		{
 			name:  "infix expression, and operator, match",
 			query: "req.body = bar AND res.body = yolo",
-			requestLog: reqlog.RequestLog{
+			senderReq: sender.Request{
 				Body: []byte("bar"),
 				Response: &reqlog.ResponseLog{
 					Body: []byte("yolo"),
@@ -122,7 +123,7 @@ func TestRequestLogMatch(t *testing.T) {
 		{
 			name:  "infix expression, or operator, match",
 			query: "req.body = bar OR res.body = yolo",
-			requestLog: reqlog.RequestLog{
+			senderReq: sender.Request{
 				Body: []byte("foo"),
 				Response: &reqlog.ResponseLog{
 					Body: []byte("yolo"),
@@ -134,7 +135,7 @@ func TestRequestLogMatch(t *testing.T) {
 		{
 			name:  "prefix expression, not operator, match",
 			query: "NOT (req.body = bar)",
-			requestLog: reqlog.RequestLog{
+			senderReq: sender.Request{
 				Body: []byte("foo"),
 			},
 			expectedMatch: true,
@@ -143,7 +144,7 @@ func TestRequestLogMatch(t *testing.T) {
 		{
 			name:  "string literal expression, match in request log",
 			query: "foo",
-			requestLog: reqlog.RequestLog{
+			senderReq: sender.Request{
 				Body: []byte("foo"),
 			},
 			expectedMatch: true,
@@ -152,7 +153,7 @@ func TestRequestLogMatch(t *testing.T) {
 		{
 			name:  "string literal expression, no match",
 			query: "foo",
-			requestLog: reqlog.RequestLog{
+			senderReq: sender.Request{
 				Body: []byte("bar"),
 			},
 			expectedMatch: false,
@@ -161,7 +162,7 @@ func TestRequestLogMatch(t *testing.T) {
 		{
 			name:  "string literal expression, match in response log",
 			query: "foo",
-			requestLog: reqlog.RequestLog{
+			senderReq: sender.Request{
 				Response: &reqlog.ResponseLog{
 					Body: []byte("foo"),
 				},
@@ -178,7 +179,7 @@ func TestRequestLogMatch(t *testing.T) {
 			searchExpr, err := filter.ParseQuery(tt.query)
 			assertError(t, nil, err)
 
-			got, err := tt.requestLog.Matches(searchExpr)
+			got, err := tt.senderReq.Matches(searchExpr)
 			assertError(t, tt.expectedError, err)
 
 			if tt.expectedMatch != got {

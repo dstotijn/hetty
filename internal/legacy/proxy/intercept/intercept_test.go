@@ -13,13 +13,11 @@ import (
 	"github.com/oklog/ulid"
 	"go.uber.org/zap"
 
-	"github.com/pocikode/ratatoskr/pkg/proxy"
-	"github.com/pocikode/ratatoskr/pkg/proxy/intercept"
+	"github.com/pocikode/ratatoskr/internal/legacy/proxy"
+	"github.com/pocikode/ratatoskr/internal/legacy/proxy/intercept"
 )
 
 // crypto/rand is safe for concurrent use; parallel subtests share this source.
-//
-//nolint:gosec
 var ulidEntropy = rand.Reader
 
 func TestRequestModifier(t *testing.T) {

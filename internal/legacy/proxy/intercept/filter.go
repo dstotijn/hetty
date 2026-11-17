@@ -9,8 +9,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/pocikode/ratatoskr/pkg/filter"
-	"github.com/pocikode/ratatoskr/pkg/scope"
+	"github.com/pocikode/ratatoskr/internal/legacy/filter"
+	"github.com/pocikode/ratatoskr/internal/legacy/scope"
 )
 
 //nolint:unparam

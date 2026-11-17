@@ -1,6 +1,6 @@
 package intercept
 
-import "github.com/pocikode/ratatoskr/pkg/filter"
+import "github.com/pocikode/ratatoskr/internal/legacy/filter"
 
 type Settings struct {
 	RequestsEnabled  bool

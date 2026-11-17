@@ -5,7 +5,7 @@ import (
 
 	"github.com/oklog/ulid"
 
-	"github.com/pocikode/ratatoskr/pkg/scope"
+	"github.com/pocikode/ratatoskr/internal/legacy/scope"
 )
 
 type Repository interface {

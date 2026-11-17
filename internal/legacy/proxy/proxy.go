@@ -17,12 +17,10 @@ import (
 
 	"github.com/oklog/ulid"
 
-	"github.com/pocikode/ratatoskr/pkg/log"
+	"github.com/pocikode/ratatoskr/internal/legacy/log"
 )
 
 // crypto/rand is safe for concurrent use; math/rand.Rand is not (data race under -race).
-//
-//nolint:gosec
 var ulidEntropy = rand.Reader
 
 type contextKey int

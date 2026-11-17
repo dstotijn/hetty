@@ -11,16 +11,14 @@ import (
 
 	"github.com/oklog/ulid"
 
-	"github.com/pocikode/ratatoskr/pkg/filter"
-	"github.com/pocikode/ratatoskr/pkg/proxy/intercept"
-	"github.com/pocikode/ratatoskr/pkg/reqlog"
-	"github.com/pocikode/ratatoskr/pkg/scope"
-	"github.com/pocikode/ratatoskr/pkg/sender"
+	"github.com/pocikode/ratatoskr/internal/legacy/filter"
+	"github.com/pocikode/ratatoskr/internal/legacy/proxy/intercept"
+	"github.com/pocikode/ratatoskr/internal/legacy/reqlog"
+	"github.com/pocikode/ratatoskr/internal/legacy/scope"
+	"github.com/pocikode/ratatoskr/internal/legacy/sender"
 )
 
 // crypto/rand is safe for concurrent use; math/rand.Rand is not (data race under -race).
-//
-//nolint:gosec
 var ulidEntropy = rand.Reader
 
 type Service struct {

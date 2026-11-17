@@ -10,9 +10,9 @@ import (
 
 	"github.com/oklog/ulid"
 
-	"github.com/pocikode/ratatoskr/pkg/filter"
-	"github.com/pocikode/ratatoskr/pkg/log"
-	"github.com/pocikode/ratatoskr/pkg/proxy"
+	"github.com/pocikode/ratatoskr/internal/legacy/filter"
+	"github.com/pocikode/ratatoskr/internal/legacy/log"
+	"github.com/pocikode/ratatoskr/internal/legacy/proxy"
 )
 
 var (

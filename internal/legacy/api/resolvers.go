@@ -17,13 +17,13 @@ import (
 	"github.com/oklog/ulid"
 	"github.com/vektah/gqlparser/v2/gqlerror"
 
-	"github.com/pocikode/ratatoskr/pkg/filter"
-	"github.com/pocikode/ratatoskr/pkg/proj"
-	"github.com/pocikode/ratatoskr/pkg/proxy"
-	"github.com/pocikode/ratatoskr/pkg/proxy/intercept"
-	"github.com/pocikode/ratatoskr/pkg/reqlog"
-	"github.com/pocikode/ratatoskr/pkg/scope"
-	"github.com/pocikode/ratatoskr/pkg/sender"
+	"github.com/pocikode/ratatoskr/internal/legacy/filter"
+	"github.com/pocikode/ratatoskr/internal/legacy/proj"
+	"github.com/pocikode/ratatoskr/internal/legacy/proxy"
+	"github.com/pocikode/ratatoskr/internal/legacy/proxy/intercept"
+	"github.com/pocikode/ratatoskr/internal/legacy/reqlog"
+	"github.com/pocikode/ratatoskr/internal/legacy/scope"
+	"github.com/pocikode/ratatoskr/internal/legacy/sender"
 )
 
 var httpProtocolMap = map[string]HTTPProtocol{
